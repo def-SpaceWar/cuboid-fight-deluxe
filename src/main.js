@@ -10,10 +10,10 @@ const canvas = app.appendChild(document.createElement("canvas")),
     ctx = canvas.getContext("2d");
 if (!ctx) throw new Error("2d context couldn't be loaded!");
 
-const setCanvasDim = () => [canvas.width, canvas.height]
+const resizeCanvas = () => [canvas.width, canvas.height]
     = [window.innerWidth, window.innerHeight];
-setCanvasDim();
-window.addEventListener("resize", setCanvasDim);
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
 
 const
     myPlayer = Player$New(),
