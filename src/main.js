@@ -8,7 +8,7 @@ if (!app) throw new Error("Something went wrong!");
 
 const canvas = app.appendChild(document.createElement("canvas")),
     ctx = canvas.getContext("2d");
-if (!app) throw new Error("2d context couldn't be loaded!");
+if (!ctx) throw new Error("2d context couldn't be loaded!");
 
 const setCanvasDim = () => [canvas.width, canvas.height]
     = [window.innerWidth, window.innerHeight];
