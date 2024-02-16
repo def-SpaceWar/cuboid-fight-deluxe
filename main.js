@@ -1,4 +1,6 @@
-import { PhysicsObject$New, Player$New, RectangleRender$New } from './lib';
+import { Player$New } from './player';
+import { BasicPhysics$New } from './physics';
+import { Rectangle2D$New } from './render';
 import './style.css'
 
 const app = document.querySelector('#app');
@@ -16,8 +18,8 @@ window.addEventListener("resize", setCanvasDim);
 const
     myPlayer = Player$New(),
     myPlayer2 = Player$New({
-        physicsObject: PhysicsObject$New({ x: -150, gravity: -250 }),
-        renders: [RectangleRender$New({ color: "blue" })]
+        physics: BasicPhysics$New({ x: -150, gravity: -250 }),
+        renders: [Rectangle2D$New({ color: "blue" })]
     });
 
 let before = performance.now() / 1000,
