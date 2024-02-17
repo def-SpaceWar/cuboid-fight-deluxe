@@ -1,7 +1,8 @@
-import { Player$New } from './player';
-import { BasicPhysics$New } from './physics';
-import { Rectangle2D$New } from './render';
+import { Player$new } from './player';
+import { BasicPhysics$new } from './physics';
+import { Rectangle2D$new } from './render';
 import './style.css'
+import { listenKeys } from './input';
 
 const app = document.querySelector('#app');
 if (!app) throw new Error("Something went wrong!");
@@ -15,11 +16,13 @@ const resizeCanvas = () => [canvas.width, canvas.height]
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
+listenKeys();
+
 const
-    myPlayer = Player$New(),
-    myPlayer2 = Player$New({
-        physics: BasicPhysics$New({ x: -150, gravity: -250 }),
-        renders: [Rectangle2D$New({ color: "blue" })]
+    myPlayer = Player$new(),
+    myPlayer2 = Player$new({
+        physics: BasicPhysics$new({ x: -150, gravity: -250 }),
+        renders: [Rectangle2D$new({ color: "blue" })]
     });
 
 let before = performance.now() / 1000,
@@ -45,4 +48,5 @@ function game() {
 
 setTimeout(() => {
     cancelAnimationFrame(process);
+    stopKeys();
 }, 750);

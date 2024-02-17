@@ -23,10 +23,18 @@ BasicPhysics.update = function(dt) {
 BasicPhysics.forceAtPoint = function(x, y) {};
 BasicPhysics.collide = function(other) {};
 
-export const BasicPhysics$New = (params = {}) =>
+export const BasicPhysics$new = (params = {}) =>
     Object.setPrototypeOf(params, BasicPhysics);
 
 const ComplexPhysics = {}; // TODO
 
-export const ComplexPhysics$New = (params = {}) =>
+export const ComplexPhysics$new = (params = {}) =>
     Object.setPrototypeOf(params, BasicPhysics);
+
+const Vector = {
+    x: 0,
+    y: 0,
+};
+
+export const Vector$new = (params = {}) =>
+    Object.setPrototypeOf(params, Vector);

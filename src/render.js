@@ -16,5 +16,5 @@ Rectangle2D.render = function(ctx) {
     ctx.restore();
 };
 
-export const Rectangle2D$New = (params = {}) =>
+export const Rectangle2D$new = (params = {}) =>
     Object.setPrototypeOf(params, Rectangle2D);
