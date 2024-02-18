@@ -23,4 +23,4 @@ export function stopKeys() {
     document.removeEventListener("keyup", keyup);
 }
 
-export function getKeys() { }
+export const getKey = (key) => keys.indexOf(key) !== -1;

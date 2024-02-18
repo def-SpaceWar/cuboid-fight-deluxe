@@ -1,8 +1,8 @@
-import { Player$new } from './player';
-import { BasicPhysics$new } from './physics';
-import { Rectangle2D$new } from './render';
-import './style.css'
-import { listenKeys } from './input';
+import { Player$Default } from './player';
+import { BasicPhysicsBody$new } from './physics';
+import { FilterEffect$new, Rectangle2D$new } from './render';
+import { getKey, listenKeys, stopKeys } from './input';
+import './style.css';
 
 const app = document.querySelector('#app');
 if (!app) throw new Error("Something went wrong!");
@@ -19,15 +19,35 @@ window.addEventListener("resize", resizeCanvas);
 listenKeys();
 
 const
-    myPlayer = Player$new(),
-    myPlayer2 = Player$new({
-        physics: BasicPhysics$new({ x: -150, gravity: -250 }),
-        renders: [Rectangle2D$new({ color: "blue" })]
+    myPlayer = Player$Default(),
+    myPlayer2 = Player$Default({
+        physics: BasicPhysicsBody$new({ x: -150, gravity: -500 }),
+        renders: [
+            Rectangle2D$new({
+                color: "#00f",
+                effects: [FilterEffect$new({
+                    dropShadows: [
+                        { blurRadius: 20, color: "#100" },
+                        { offsetX: 20, color: "#010" },
+                    ],
+                    saturate: 10000,
+                })]
+            }),
+        ],
     });
 
 let before = performance.now() / 1000,
     dt = 0,
     process = requestAnimationFrame(game);
+
+function cont() {
+    process = requestAnimationFrame(game);
+};
+
+function stop() {
+    stopKeys();
+    return cancelAnimationFrame(process);
+}
 
 function game() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -43,10 +63,6 @@ function game() {
     dt = now - before;
     before = now;
 
-    return process = requestAnimationFrame(game);
+    if (getKey("q")) return stop();
+    return cont();
 }
-
-setTimeout(() => {
-    cancelAnimationFrame(process);
-    stopKeys();
-}, 750);

@@ -1,8 +1,9 @@
-import { BasicPhysics$new } from './physics';
+import { BasicPhysicsBody$new } from './physics';
 import { Rectangle2D$new } from './render';
 
 const Player = {
     isGrounded: false,
+    renders: [],
 };
 
 Player.render = function(ctx) {
@@ -14,9 +15,9 @@ Player.render = function(ctx) {
 
 Player.update = function(dt) { this.physics.update(dt); };
 
-export const Player$new = (params = {}) =>
+export const Player$Default = (params = {}) =>
     Object.setPrototypeOf({
-        physics: BasicPhysics$new(),
+        physics: BasicPhysicsBody$new(),
         renders: [Rectangle2D$new()],
-        ...params
+        ...params,
     }, Player);
