@@ -10,7 +10,7 @@ const TransformEffect = {
 
 TransformEffect.apply = function(ctx) {
     ctx.transform(this.a, this.b, this.c, this.d, this.e, this.f);
-}
+};
 
 export const TransformEffect$new = (params = {}) =>
     Object.setPrototypeOf(params, TransformEffect);
@@ -25,7 +25,7 @@ const FilterEffect = {
     //     offsetX: 0,
     //     offsetY: 0,
     //     blurRadius: 0,
-    //     color: "transparent"
+    //     color: "transparent",
     // }],
     // grayscale: 0,
     // hueRotate: 0,

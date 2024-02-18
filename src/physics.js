@@ -10,7 +10,7 @@ const BasicPhysicsBody = {
     colliders: [],
 };
 
-BasicPhysicsBody.transform = function(ctx) { ctx.translate(this.x, this.y); }
+BasicPhysicsBody.transform = function(ctx) { ctx.translate(this.x, this.y); };
 
 BasicPhysicsBody.update = function(dt) {
     this.x += this.velX * dt;

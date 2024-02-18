@@ -42,7 +42,7 @@ let before = performance.now() / 1000,
 
 function cont() {
     process = requestAnimationFrame(game);
-};
+}
 
 function stop() {
     stopKeys();
@@ -52,9 +52,9 @@ function stop() {
 function game() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
-    ctx.translate(canvas.width / 2, canvas.height / 2)
-    myPlayer.render(ctx)
-    myPlayer2.render(ctx)
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    myPlayer.render(ctx);
+    myPlayer2.render(ctx);
     myPlayer.update(dt);
     myPlayer2.update(dt);
     ctx.restore();
