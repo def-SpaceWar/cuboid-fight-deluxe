@@ -305,7 +305,7 @@ const EllipticalCollider = {
 
 EllipticalCollider.getAxes = function*(rotation) {
     const newPoints = this.points.map(p => Vector$rotate(p, rotation)),
-        newPointsLength = newPoints.length;
+        newPointsLength = newPoints.length / 2;
     for (let i = 0; i < newPointsLength; i++)
         yield Vector$normal(
             Vector$normalize(
