@@ -1,5 +1,10 @@
 import { Player$Default } from './player';
-import { BasicPhysicsBody$new } from './physics';
+import {
+    PhysicsBody$new,
+    PhysicsBody$resolveCollision,
+    Vector$new,
+    PolygonCollider$new
+} from './physics';
 import { FilterEffect$new, Rectangle2D$new } from './render';
 import { getKey, listenKeys, stopKeys } from './input';
 import './style.css';
@@ -21,7 +26,19 @@ listenKeys();
 const
     myPlayer = Player$Default(),
     myPlayer2 = Player$Default({
-        physics: BasicPhysicsBody$new({ x: -150, gravity: -500 }),
+        physics: PhysicsBody$new({
+            pos: Vector$new({ x: -150 }),
+            vel: Vector$new({ x: 150 }),
+            angVel: 2.5,
+            colliders: [PolygonCollider$new({
+                points: [
+                    { x: -50, y: -50 },
+                    { x: -50, y: 50 },
+                    { x: 50, y: 50 },
+                    { x: 50, y: -50 },
+                ],
+            })],
+        }),
         renders: [
             Rectangle2D$new({
                 color: "#00f",
@@ -34,34 +51,72 @@ const
                 })]
             }),
         ],
-    });
+    }),
+    myPlayer3 = Player$Default({
+        physics: PhysicsBody$new({
+            pos: Vector$new({ y: 150 }),
+            vel: Vector$new({ x: 0, y: 0 }),
+            gravity: 0,
+            angVel: 0,
+            mass: Infinity,
+            colliders: [PolygonCollider$new({
+                points: [
+                    { x: -250, y: -25 },
+                    { x: -250, y: 25 },
+                    { x: 250, y: 25 },
+                    { x: 250, y: -25 },
+                ],
+            })],
+        }),
+        renders: [
+            Rectangle2D$new({
+                w: 500,
+                h: 50,
+                color: "#0f0",
+            }),
+        ],
+    })
+    ;
 
 let before = performance.now() / 1000,
     dt = 0,
-    process = requestAnimationFrame(game);
+    renderLoop = requestAnimationFrame(render),
+    updateInterval = setInterval(update, 5);
 
 function cont() {
-    process = requestAnimationFrame(game);
+    renderLoop = requestAnimationFrame(render);
 }
 
 function stop() {
     stopKeys();
-    return cancelAnimationFrame(process);
+    clearInterval(updateInterval);
+    cancelAnimationFrame(renderLoop);
 }
 
-function game() {
+function update() {
+    myPlayer3.update(dt);
+    myPlayer2.update(dt);
+    myPlayer.update(dt);
+
+    PhysicsBody$resolveCollision(myPlayer.physics, myPlayer2.physics);
+    PhysicsBody$resolveCollision(myPlayer.physics, myPlayer3.physics);
+    PhysicsBody$resolveCollision(myPlayer2.physics, myPlayer3.physics);
+
+    const now = performance.now() / 1000;
+    dt = Math.min(0.1, now - before);
+    before = now;
+}
+
+function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.translate(canvas.width / 2, canvas.height / 2);
-    myPlayer.render(ctx);
-    myPlayer2.render(ctx);
-    myPlayer.update(dt);
-    myPlayer2.update(dt);
-    ctx.restore();
 
-    const now = performance.now() / 1000;
-    dt = now - before;
-    before = now;
+    myPlayer3.render(ctx);
+    myPlayer2.render(ctx);
+    myPlayer.render(ctx);
+
+    ctx.restore();
 
     if (getKey("q")) return stop();
     return cont();

@@ -1,4 +1,4 @@
-import { BasicPhysicsBody$new } from './physics';
+import { PhysicsBody$new, PolygonCollider$new } from './physics';
 import { Rectangle2D$new } from './render';
 
 const Player = {
@@ -17,7 +17,16 @@ Player.update = function(dt) { this.physics.update(dt); };
 
 export const Player$Default = (params = {}) =>
     Object.setPrototypeOf({
-        physics: BasicPhysicsBody$new(),
+        physics: PhysicsBody$new({
+            colliders: [PolygonCollider$new({
+                points: [
+                    { x: -50, y: -50 },
+                    { x: -50, y: 50 },
+                    { x: 50, y: 50 },
+                    { x: 50, y: -50 },
+                ],
+            })],
+        }),
         renders: [Rectangle2D$new()],
         ...params,
     }, Player);
