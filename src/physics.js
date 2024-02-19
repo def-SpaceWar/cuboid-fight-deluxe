@@ -1,4 +1,4 @@
-// Physics Bodies -------------------------------------------------------------
+// Physics Body Stuff ---------------------------------------------------------
 const PhysicsBody = {
     pos: {
         x: 0,
@@ -67,23 +67,23 @@ PhysicsBody.update = function(dt) {
 };
 
 export const PhysicsBody$new = (params = {}) =>
-    Object.setPrototypeOf(params, PhysicsBody).calculateInertia();
+    Object.setPrototypeOf(
+        { pos: Vector$new(), vel: Vector$new(), ...params },
+        PhysicsBody,
+    ).calculateInertia();
 
 export function PhysicsBody$resolveCollision(pb1, pb2) {
-    let collisionInfo, c1, c2;
-    main: for (const _c1 of pb1.colliders) {
-        for (const _c2 of pb2.colliders) {
+    let collisionInfo;
+    main: for (const c1 of pb1.colliders) {
+        for (const c2 of pb2.colliders) {
             collisionInfo = areColliding(
-                _c1, pb1.pos, pb1.rotation,
-                _c2, pb2.pos, pb2.rotation
+                c1, pb1.pos, pb1.rotation,
+                c2, pb2.pos, pb2.rotation
             );
             if (!collisionInfo[0]) continue;
-            c1 = _c1;
-            c2 = _c2;
             break main;
         }
     }
-
     if (!collisionInfo[0]) return;
 
     {
@@ -413,7 +413,16 @@ export const EllipticalCollider$new = (params = {}) =>
 function distanceFromPointToLineSquared(p, v, w) {
     const l2 = Vector$distanceSquared(v, w);
     if (l2 === 0) return Vector$distanceSquared(p, v);
-    const t = Math.max(0, Math.min(1, Vector$dot(Vector$subtract(p, v), Vector$subtract(w, v)) / l2));
+    const t = Math.max(
+        0,
+        Math.min(
+            1,
+            Vector$dot(
+                Vector$subtract(p, v),
+                Vector$subtract(w, v),
+            ) / l2,
+        ),
+    );
     return Vector$distanceSquared(
         p,
         Vector$add(v, Vector$scale(Vector$subtract(w, v), t)),
