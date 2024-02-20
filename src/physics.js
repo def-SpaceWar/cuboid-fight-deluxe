@@ -8,12 +8,13 @@ const PhysicsBody = {
         x: 0,
         y: 0,
     },
+    lockRotation: false,
     rotation: 0,
     angVel: 0,
     gravity: 500,
 
     drag: Math.log(1.1),
-    elasticity: .1,
+    elasticity: .2,
     staticFriction: .4,
     kineticFriction: .2,
 
@@ -22,6 +23,13 @@ const PhysicsBody = {
     inertia: 0,
 
     calculateInertia() {
+        if (this.lockRotation) {
+            this.inertia = Infinity;
+            this.rotation = 0;
+            this.angVel = 0;
+            return this;
+        }
+
         this.inertia = 0;
         for (const collider of this.colliders) {
             const points = collider.points,
@@ -59,11 +67,11 @@ PhysicsBody.update = function(dt) {
     this.pos.x += this.vel.x * dt;
     this.pos.y += this.vel.y * dt;
     this.vel.y += this.gravity * dt;
-    this.rotation += this.angVel * dt;
+    if (!this.lockRotation) this.rotation += this.angVel * dt;
     const dragConst = Math.exp(-dt * this.drag);
     this.vel.x *= dragConst;
     this.vel.y *= dragConst;
-    this.angVel *= dragConst;
+    if (!this.lockRotation) this.angVel *= dragConst;
 };
 
 export const PhysicsBody$new = (params = {}) =>
@@ -72,7 +80,19 @@ export const PhysicsBody$new = (params = {}) =>
         PhysicsBody,
     ).calculateInertia();
 
-export function PhysicsBody$resolveCollision(pb1, pb2) {
+let collisionEvents = [];
+
+export function* getCollisionEvents() {
+    for (const collisionEvent of collisionEvents) {
+        yield collisionEvent;
+    }
+}
+
+export function* clearCollisionEvents() {
+    collisionEvents = [];
+}
+
+export function resolveCollision(pb1, pb2) {
     let collisionInfo;
     main: for (const c1 of pb1.colliders) {
         for (const c2 of pb2.colliders) {
@@ -85,6 +105,11 @@ export function PhysicsBody$resolveCollision(pb1, pb2) {
         }
     }
     if (!collisionInfo[0]) return;
+    collisionEvents.push({
+        primary: pb1,
+        secondary: pb2,
+        collisionInfo
+    });
 
     {
         if (pb2.mass === Infinity) {
@@ -169,7 +194,7 @@ export function PhysicsBody$resolveCollision(pb1, pb2) {
 
         pb1.vel.x += collisionInfo.axis.x * mod1;
         pb1.vel.y += collisionInfo.axis.y * mod1;
-        pb1.angVel += modAng1 / inertia1;
+        if (!pb1.lockRotation) pb1.angVel += modAng1 / inertia1;
 
         const
             mod2 = -j / pb2.mass,
@@ -177,7 +202,7 @@ export function PhysicsBody$resolveCollision(pb1, pb2) {
 
         pb2.vel.x += collisionInfo.axis.x * mod2;
         pb2.vel.y += collisionInfo.axis.y * mod2;
-        pb2.angVel += modAng2 / inertia2;
+        if (!pb2.lockRotation) pb2.angVel += modAng2 / inertia2;
     }
 
     if (Vector$nearZero(tangentVel)) return;
@@ -195,12 +220,12 @@ export function PhysicsBody$resolveCollision(pb1, pb2) {
     const mod1 = 1 / pb1.mass;
     pb1.vel.x += frictionImpulse.x * mod1;
     pb1.vel.y += frictionImpulse.y * mod1;
-    pb1.angVel += Vector$cross(collisionArm1, frictionImpulse) / inertia1;
+    if (!pb1.lockRotation) pb1.angVel += Vector$cross(collisionArm1, frictionImpulse) / inertia1;
 
     const mod2 = -1 / pb2.mass;
     pb2.vel.x += frictionImpulse.x * mod2;
     pb2.vel.y += frictionImpulse.y * mod2;
-    pb1.angVel -= Vector$cross(collisionArm2, frictionImpulse) / inertia2;
+    if (!pb2.lockRotation) pb2.angVel -= Vector$cross(collisionArm2, frictionImpulse) / inertia2;
 }
 
 // Colliders ------------------------------------------------------------------
@@ -276,16 +301,16 @@ export const PolygonCollider$new = (params = {}) =>
 
 const EllipticalCollider = {
     type: "ellipse",
-    w: 100,
-    h: 100,
+    w: 20,
+    h: 20,
     rotation: 0,
     points: [],
     center: { x: 0, y: 0 },
 
     calculatePoints() {
         this.points = [];
-        for (let i = 0; i < 100; i++) {
-            const angle = i * Math.PI / 50;
+        for (let i = 0; i < 50; i++) {
+            const angle = i * Math.PI / 25;
             this.points.push(
                 Vector$add(
                     Vector$rotate(
@@ -338,72 +363,17 @@ EllipticalCollider.getPoints = function*(pos, rotation) {
 };
 
 EllipticalCollider.project = function(pos, rotation, axis) {
-    const projections = [
-        Vector$dot(
+    const projections = this.points.map(p => {
+        const pPrime =
             Vector$add(
                 Vector$rotate(
-                    Vector$add(
-                        Vector$rotate(
-                            Vector$new({ x: - this.w / 2 }),
-                            this.rotation,
-                        ),
-                        this.center,
-                    ),
+                    p,
                     rotation,
                 ),
                 pos,
-            ),
-            axis,
-        ),
-        Vector$dot(
-            Vector$add(
-                Vector$rotate(
-                    Vector$add(
-                        Vector$rotate(
-                            Vector$new({ y: - this.h / 2 }),
-                            this.rotation,
-                        ),
-                        this.center,
-                    ),
-                    rotation,
-                ),
-                pos,
-            ),
-            axis,
-        ),
-        Vector$dot(
-            Vector$add(
-                Vector$rotate(
-                    Vector$add(
-                        Vector$rotate(
-                            Vector$new({ x: + this.w / 2 }),
-                            this.rotation,
-                        ),
-                        this.center,
-                    ),
-                    rotation,
-                ),
-                pos,
-            ),
-            axis,
-        ),
-        Vector$dot(
-            Vector$add(
-                Vector$rotate(
-                    Vector$add(
-                        Vector$rotate(
-                            Vector$new({ y: + this.h / 2 }),
-                            this.rotation,
-                        ),
-                        this.center,
-                    ),
-                    rotation,
-                ),
-                pos,
-            ),
-            axis,
-        ),
-    ];
+            );
+        return [Vector$dot(pPrime, axis)];
+    });
     return [Math.min(...projections), Math.max(...projections)];
 };
 
@@ -491,7 +461,7 @@ export function areColliding(c1, pos1, rotation1, c2, pos2, rotation2) {
             if (distanceSq > smallestDistance) {
                 continue;
             } else if (
-                collisionPoint && Math.abs(distanceSq - smallestDistance) < 1
+                collisionPoint && Math.abs(distanceSq - smallestDistance) < .1
             ) {
                 collisionPoint = Vector$scale(
                     Vector$add(collisionPoint, p),
@@ -510,7 +480,7 @@ export function areColliding(c1, pos1, rotation1, c2, pos2, rotation2) {
             if (distanceSq > smallestDistance) {
                 continue;
             } else if (
-                collisionPoint && Math.abs(distanceSq - smallestDistance) < 1
+                collisionPoint && Math.abs(distanceSq - smallestDistance) < .1
             ) {
                 collisionPoint = Vector$scale(
                     Vector$add(collisionPoint, p),

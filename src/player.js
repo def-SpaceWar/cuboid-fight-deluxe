@@ -3,7 +3,6 @@ import { Rectangle2D$new } from './render';
 
 const Player = {
     isGrounded: false,
-    renders: [],
 };
 
 Player.render = function(ctx) {
@@ -15,17 +14,19 @@ Player.render = function(ctx) {
 
 Player.update = function(dt) { this.physics.update(dt); };
 
-export const Player$Default = (params = {}) =>
+export const Player$Default = (params = {}, physicsParams = {}) =>
     Object.setPrototypeOf({
         physics: PhysicsBody$new({
+            lockRotation: false,
             colliders: [PolygonCollider$new({
                 points: [
-                    { x: -50, y: -50 },
-                    { x: -50, y: 50 },
-                    { x: 50, y: 50 },
-                    { x: 50, y: -50 },
+                    { x: -10, y: -10 },
+                    { x: -10, y: 10 },
+                    { x: 10, y: 10 },
+                    { x: 10, y: -10 },
                 ],
             })],
+            ...physicsParams,
         }),
         renders: [Rectangle2D$new()],
         ...params,

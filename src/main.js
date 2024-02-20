@@ -1,13 +1,15 @@
 import { Player$Default } from './player';
 import {
-    PhysicsBody$new,
-    PhysicsBody$resolveCollision,
     Vector$new,
-    PolygonCollider$new
+    PolygonCollider$new,
+    EllipticalCollider$new,
+    resolveCollision,
+    clearCollisionEvents
 } from './physics';
-import { FilterEffect$new, Rectangle2D$new } from './render';
+import { Ellipse2D$new, FilterEffect$new, Rectangle2D$new } from './render';
 import { getKey, listenKeys, stopKeys } from './input';
 import './style.css';
+import { Platform$new } from './platform';
 
 const app = document.querySelector('#app');
 if (!app) throw new Error("Something went wrong!");
@@ -15,73 +17,76 @@ if (!app) throw new Error("Something went wrong!");
 const canvas = app.appendChild(document.createElement("canvas")),
     ctx = canvas.getContext("2d");
 if (!ctx) throw new Error("2d context couldn't be loaded!");
+ctx.webkitImageSmoothingEnabled = false;
+ctx.mozImageSmoothingEnabled = false;
+ctx.imageSmoothingEnabled = false;
+canvas.width = 800;
+canvas.height = 600;
 
-const resizeCanvas = () => [canvas.width, canvas.height]
-    = [window.innerWidth, window.innerHeight];
+const resizeCanvas = () => {
+    const scaleX = window.innerWidth / canvas.width,
+        scaleY = window.innerHeight / canvas.height,
+        scale = Math.max(scaleX, scaleY);
+    canvas.style.transform = `translate(-50%, -50%) scale(${scale}, ${scale})`;
+}
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
-
-listenKeys();
 
 const
     myPlayer = Player$Default(),
     myPlayer2 = Player$Default({
-        physics: PhysicsBody$new({
-            pos: Vector$new({ x: -150 }),
-            vel: Vector$new({ x: 150 }),
-            angVel: 2.5,
-            colliders: [PolygonCollider$new({
-                points: [
-                    { x: -50, y: -50 },
-                    { x: -50, y: 50 },
-                    { x: 50, y: 50 },
-                    { x: 50, y: -50 },
-                ],
-            })],
-        }),
         renders: [
-            Rectangle2D$new({
+            Ellipse2D$new({
                 color: "#00f",
+                w: 30,
+                h: 30,
                 effects: [FilterEffect$new({
                     dropShadows: [
-                        { blurRadius: 20, color: "#100" },
-                        { offsetX: 20, color: "#010" },
+                        { blurRadius: 4, color: "#f00" },
+                        {
+                            blurRadius: 8,
+                            offsetX: 4,
+                            offsetY: 4,
+                            color: "#0f0"
+                        },
                     ],
-                    saturate: 10000,
                 })]
             }),
-        ],
-    }),
-    myPlayer3 = Player$Default({
-        physics: PhysicsBody$new({
-            pos: Vector$new({ y: 150 }),
-            vel: Vector$new({ x: 0, y: 0 }),
-            gravity: 0,
-            angVel: 0,
-            mass: Infinity,
-            colliders: [PolygonCollider$new({
-                points: [
-                    { x: -250, y: -25 },
-                    { x: -250, y: 25 },
-                    { x: 250, y: 25 },
-                    { x: 250, y: -25 },
-                ],
-            })],
-        }),
-        renders: [
             Rectangle2D$new({
-                w: 500,
-                h: 50,
-                color: "#0f0",
+                color: "#ff0",
+                x: 15,
+                y: 0,
+                w: 30,
+                h: 5,
             }),
         ],
-    })
-    ;
+    }, {
+        pos: Vector$new({ x: -30 }),
+        vel: Vector$new({ x: 30 }),
+        mass: 2.25,
+        angVel: 1.5,
+        colliders: [
+            EllipticalCollider$new({
+                w: 30,
+                h: 30,
+            }),
+            PolygonCollider$new({
+                points: [
+                    { x: 0, y: -2.5 },
+                    { x: 30, y: -2.5 },
+                    { x: 30, y: 2.5 },
+                    { x: 0, y: 2.5 },
+                ],
+            }),
+        ]
+    }),
+    myPlatform = Platform$new();
 
+listenKeys();
 let before = performance.now() / 1000,
     dt = 0,
     renderLoop = requestAnimationFrame(render),
-    updateInterval = setInterval(update, 5);
+    updateInterval = setInterval(update, 0);
 
 function cont() {
     renderLoop = requestAnimationFrame(render);
@@ -94,16 +99,16 @@ function stop() {
 }
 
 function update() {
-    myPlayer3.update(dt);
+    clearCollisionEvents();
+    resolveCollision(myPlayer.physics, myPlayer2.physics);
+    resolveCollision(myPlayer.physics, myPlatform.physics);
+    resolveCollision(myPlayer2.physics, myPlatform.physics);
+
     myPlayer2.update(dt);
     myPlayer.update(dt);
 
-    PhysicsBody$resolveCollision(myPlayer.physics, myPlayer2.physics);
-    PhysicsBody$resolveCollision(myPlayer.physics, myPlayer3.physics);
-    PhysicsBody$resolveCollision(myPlayer2.physics, myPlayer3.physics);
-
     const now = performance.now() / 1000;
-    dt = Math.min(0.1, now - before);
+    dt = Math.min(0.05, now - before);
     before = now;
 }
 
@@ -112,9 +117,9 @@ function render() {
     ctx.save();
     ctx.translate(canvas.width / 2, canvas.height / 2);
 
-    myPlayer3.render(ctx);
-    myPlayer2.render(ctx);
     myPlayer.render(ctx);
+    myPlayer2.render(ctx);
+    myPlatform.render(ctx);
 
     ctx.restore();
 

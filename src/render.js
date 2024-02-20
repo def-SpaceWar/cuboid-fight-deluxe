@@ -36,7 +36,7 @@ const FilterEffect = {
 };
 
 FilterEffect.apply = function(ctx) {
-    ctx.filter =
+    ctx.filter +=
         (this.url ? `url(${this.url}) ` : "") +
         (this.blur ? `blur(${this.blur}px) ` : "") +
         (this.brightness ? `brightness(${this.brightness}%) ` : "") +
@@ -57,8 +57,8 @@ export const FilterEffect$new = (params = {}) =>
 const Rectangle2D = {
     x: 0,
     y: 0,
-    w: 100,
-    h: 100,
+    w: 20,
+    h: 20,
     rotation: 0,
     color: "red",
     effects: [],
@@ -76,3 +76,34 @@ Rectangle2D.render = function(ctx) {
 
 export const Rectangle2D$new = (params = {}) =>
     Object.setPrototypeOf(params, Rectangle2D);
+
+const Ellipse2D = {
+    x: 0,
+    y: 0,
+    w: 20,
+    h: 20,
+    rotation: 0,
+    color: "red",
+    effects: [],
+};
+
+Ellipse2D.render = function(ctx) {
+    ctx.save();
+    for (const effect of this.effects) effect.apply(ctx);
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.ellipse(
+        this.x,
+        this.y,
+        this.w / 2,
+        this.h / 2,
+        this.rotation,
+        0,
+        Math.PI * 2,
+    );
+    ctx.fill();
+    ctx.restore();
+};
+
+export const Ellipse2D$new = (params = {}) =>
+    Object.setPrototypeOf(params, Ellipse2D);
