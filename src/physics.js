@@ -1,10 +1,16 @@
-// Physics Body Stuff ---------------------------------------------------------
+/**
+ * Physics Body ---------------------------------------------------------------
+ * @typedef {typeof PhysicsBody} PhysicsBody
+ */
+
 const PhysicsBody = {
+    /** @type Vector */
     pos: {
         x: 0,
         y: 0,
     },
 
+    /** @type Vector */
     vel: {
         x: 0,
         y: 0,
@@ -20,10 +26,17 @@ const PhysicsBody = {
     staticFriction: .4,
     kineticFriction: .2,
 
+    /** @type Collider[] */
     colliders: [],
     mass: 1,
     inertia: 0,
 };
+
+export const PhysicsBody$new = (params = {}) =>
+    PhysicsBody$calculateInertia(Object.setPrototypeOf(
+        { pos: Vector$new(), vel: Vector$new(), ...params },
+        PhysicsBody,
+    ));
 
 export function PhysicsBody$calculateInertia(p) {
     if (p.lockRotation) {
@@ -76,12 +89,6 @@ export function PhysicsBody$update(p, dt) {
     if (!p.lockRotation) p.angVel *= dragConst;
 };
 
-export const PhysicsBody$new = (params = {}) =>
-    PhysicsBody$calculateInertia(Object.setPrototypeOf(
-        { pos: Vector$new(), vel: Vector$new(), ...params },
-        PhysicsBody,
-    ));
-
 let collisionEvents = [];
 
 export function* getCollisionEvents() {
@@ -122,7 +129,7 @@ export function resolveCollision(pb1, pb2) {
                 ),
                 pb1.pos,
             );
-        } else if (pb1.mass == Infinity) {
+        } else if (pb1.mass === Infinity) {
             pb2.pos = Vector$add(
                 Vector$scale(
                     collisionInfo.axis,
@@ -165,8 +172,8 @@ export function resolveCollision(pb1, pb2) {
         inertia1 = pb1.inertia * pb1.mass,
         inertia2 = pb2.inertia * pb2.mass,
 
-        angVel1 = Vector$scale(Vector$normal(collisionArm1), pb1.angVel),
-        angVel2 = Vector$scale(Vector$normal(collisionArm2), pb2.angVel),
+        angVel1 = Vector$scale(Vector$orthogonal(collisionArm1), pb1.angVel),
+        angVel2 = Vector$scale(Vector$orthogonal(collisionArm2), pb2.angVel),
         relAngVel = Vector$subtract(angVel1, angVel2),
 
         totalRelVel = Vector$add(relVel, relAngVel),
@@ -230,7 +237,10 @@ export function resolveCollision(pb1, pb2) {
     if (!pb2.lockRotation) pb2.angVel -= Vector$cross(collisionArm2, frictionImpulse) / inertia2;
 }
 
-// Colliders ------------------------------------------------------------------
+/**
+ * Colliders ------------------------------------------------------------------
+ */
+
 const PolygonCollider = {
     type: "polygon",
     points: [],
@@ -239,7 +249,7 @@ const PolygonCollider = {
         const newPoints = this.points.map(p => Vector$rotate(p, rotation)),
             newPointsLength = newPoints.length;
         for (let i = 0; i < newPointsLength; i++)
-            yield Vector$normal(
+            yield Vector$orthogonal(
                 Vector$normalize(
                     Vector$subtract(
                         newPoints[i],
@@ -310,7 +320,7 @@ const EllipticalCollider = {
         const newPoints = this.points.map(p => Vector$rotate(p, rotation)),
             newPointsLength = newPoints.length / 2;
         for (let i = 0; i < newPointsLength; i++)
-            yield Vector$normal(
+            yield Vector$orthogonal(
                 Vector$normalize(
                     Vector$subtract(
                         newPoints[i],
@@ -346,6 +356,11 @@ const EllipticalCollider = {
     },
 };
 
+export const EllipticalCollider$new = (params = {}) =>
+    EllipticalCollider$calculatePoints(
+        Object.setPrototypeOf(params, EllipticalCollider)
+    );
+
 export function EllipticalCollider$calculatePoints(c) {
     c.points = [];
     for (let i = 0; i < 50; i++) {
@@ -365,11 +380,6 @@ export function EllipticalCollider$calculatePoints(c) {
     }
     return c;
 }
-
-export const EllipticalCollider$new = (params = {}) =>
-    EllipticalCollider$calculatePoints(
-        Object.setPrototypeOf(params, EllipticalCollider)
-    );
 
 function distanceFromPointToLineSquared(p, v, w) {
     const l2 = Vector$distanceSquared(v, w);
@@ -494,42 +504,142 @@ export function areColliding(c1, pos1, rotation1, c2, pos2, rotation2) {
     };
 }
 
-// Vector Math ----------------------------------------------------------------
+/**
+ * Vector Math ----------------------------------------------------------------
+ * @typedef {{ x: number, y: number }} VectorLike
+ * @typedef {typeof Vector} Vector
+ */
+
 const Vector = {
-    x: 0,
-    y: 0,
+    /** @type Float32Array */
+    data: undefined,
+    get x() { return this.data[0]; },
+    get y() { return this.data[1]; },
+    set x(val) { this.data[0] = val; },
+    set y(val) { this.data[1] = val; },
 };
 
-export const Vector$new = (params = {}) =>
-    Object.setPrototypeOf(params, Vector);
+/**
+ * Vector$new
+ * @param {{ x?: number, y?: number }} params
+ * @returns {Vector}
+ */
+export function Vector$new(params = {}) {
+    const vec = Object.setPrototypeOf({ data: new Float32Array(2) }, Vector);
+    vec.x = params.x || 0;
+    vec.y = params.y || 0;
+    return vec;
+}
+
+/**
+ * Vector$clone
+ * @param {VectorLike} v
+ * @returns {Vector}
+ */
 export const Vector$clone = v => Vector$new({ x: v.x, y: v.y });
 
-export const Vector$up = () => Vector$new({ y: -1 });
-export const Vector$down = () => Vector$new({ y: 1 });
-export const Vector$left = () => Vector$new({ x: -1 });
-export const Vector$right = () => Vector$new({ x: 1 });
+/**
+ * Vector$orthogonal
+ * @param {VectorLike} v
+ * @returns {Vector}
+ */
+export const Vector$orthogonal = v => Vector$new({ x: -v.y, y: v.x });
 
+/**
+ * Vector$normalize
+ * @param {VectorLike} v
+ * @returns {Vector}
+ */
+export const Vector$normalize = v => Vector$scale(v, 1 / Vector$magnitude(v));
+
+/**
+ * Vector$magnitudeSquared
+ * @param {VectorLike} v
+ * @returns {number}
+ */
+export const Vector$magnitudeSquared = v => v.x ** 2 + v.y ** 2;
+
+/**
+ * Vector$magnitudeSquared
+ * @param {VectorLike} v
+ * @returns {number}
+ */
+export const Vector$magnitude = v => Math.sqrt(Vector$magnitudeSquared(v));
+
+/**
+ * Vector$nearZero
+ * @param {VectorLike} v
+ * @returns {boolean}
+ */
+export const Vector$nearZero = v => Vector$magnitudeSquared(v) < 0.01;
+
+/**
+ * Vector$add
+ * @param {VectorLike} v1
+ * @param {VectorLike} v2
+ * @returns {Vector}
+ */
 export const Vector$add = (v1, v2) =>
     Vector$new({ x: v1.x + v2.x, y: v1.y + v2.y });
+
+/**
+ * Vector$subtract
+ * @param {VectorLike} v1
+ * @param {VectorLike} v2
+ * @returns {Vector}
+ */
 export const Vector$subtract = (v1, v2) =>
     Vector$new({ x: v1.x - v2.x, y: v1.y - v2.y });
+
+/**
+ * Vector$rotate
+ * @param {VectorLike} v
+ * @param {number} angle
+ * @returns {Vector}
+ */
 export const Vector$rotate = (v, angle) => Vector$new({
     x: v.x * Math.cos(angle) - v.y * Math.sin(angle),
     y: v.y * Math.cos(angle) + v.x * Math.sin(angle),
 });
+
+/**
+ * Vector$scale
+ * @param {VectorLike} v
+ * @param {number} s
+ * @returns {Vector}
+ */
 export const Vector$scale = (v, s) => Vector$new({ x: v.x * s, y: v.y * s });
 
+/**
+ * Vector$dot
+ * @param {VectorLike} v1
+ * @param {VectorLike} v2
+ * @returns {number}
+ */
 export const Vector$dot = (v1, v2) => v1.x * v2.x + v1.y * v2.y;
+
+/**
+ * Vector$cross
+ * @param {VectorLike} v1
+ * @param {VectorLike} v2
+ * @returns {number}
+ */
 export const Vector$cross = (v1, v2) => v1.x * v2.y - v1.y * v2.x;
 
-export const Vector$magnitudeSquared = v => v.x ** 2 + v.y ** 2;
-export const Vector$magnitude = v => Math.sqrt(Vector$magnitudeSquared(v));
-export const Vector$nearZero = v => Vector$magnitudeSquared(v) < 0.01;
-
+/**
+ * Vector$distanceSquared
+ * @param {VectorLike} v1
+ * @param {VectorLike} v2
+ * @returns {number}
+ */
 export const Vector$distanceSquared = (v1, v2) =>
     (v1.x - v2.x) ** 2 + (v1.y - v2.y) ** 2;
+
+/**
+ * Vector$distance
+ * @param {VectorLike} v1
+ * @param {VectorLike} v2
+ * @returns {number}
+ */
 export const Vector$distance = (v1, v2) =>
     Math.sqrt(Vector$distanceSquared(v1, v2));
-
-export const Vector$normal = v => Vector$new({ x: -v.y, y: v.x });
-export const Vector$normalize = v => Vector$scale(v, 1 / Vector$magnitude(v));
