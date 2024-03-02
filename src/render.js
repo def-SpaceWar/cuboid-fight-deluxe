@@ -15,6 +15,7 @@ TransformEffect.apply = function(ctx) {
 export const TransformEffect$new = (params = {}) =>
     Object.setPrototypeOf(params, TransformEffect);
 
+// unperformant as hell
 const FilterEffect = {
     // Defaults!
     // url: "",
@@ -35,23 +36,23 @@ const FilterEffect = {
     // sepia: 0,
 };
 
-FilterEffect.apply = function(ctx) {
-    ctx.filter +=
-        (this.url ? `url(${this.url}) ` : "") +
-        (this.blur ? `blur(${this.blur}px) ` : "") +
-        (this.brightness ? `brightness(${this.brightness}%) ` : "") +
-        (this.contrast ? `contrast(${this.contrast}%) ` : "") +
-        (this.dropShadows.map(d => `drop-shadow(${d.offsetX || 0}px ${d.offsetY || 0}px ${d.blurRadius || 0}px ${d.color || "black"}) `).join("")) +
-        (this.grayscale ? `grayscale(${this.grayscale}%) ` : "") +
-        (this.hueRotate ? `hue-rotate(${this.hueRotate}deg) ` : "") +
-        (this.invert ? `invert(${this.invert}%) ` : "") +
-        (this.opacity ? `opacity(${this.opacity}%) ` : "") +
-        (this.saturate ? `saturate(${this.saturate}%) ` : "") +
-        (this.sepia ? `sepia(${this.sepia}%) ` : "");
-};
+//FilterEffect.apply = function(ctx) {
+//    ctx.filter =
+//        (this.url ? `url(${this.url}) ` : "") +
+//        (this.blur ? `blur(${this.blur}px) ` : "") +
+//        (this.brightness ? `brightness(${this.brightness}%) ` : "") +
+//        (this.contrast ? `contrast(${this.contrast}%) ` : "") +
+//        (this.dropShadows.map(d => `drop-shadow(${d.offsetX || 0}px ${d.offsetY || 0}px ${d.blurRadius || 0}px ${d.color || "black"}) `).join("")) +
+//        (this.grayscale ? `grayscale(${this.grayscale}%) ` : "") +
+//        (this.hueRotate ? `hue-rotate(${this.hueRotate}deg) ` : "") +
+//        (this.invert ? `invert(${this.invert}%) ` : "") +
+//        (this.opacity ? `opacity(${this.opacity}%) ` : "") +
+//        (this.saturate ? `saturate(${this.saturate}%) ` : "") +
+//        (this.sepia ? `sepia(${this.sepia}%) ` : "");
+//};
 
-export const FilterEffect$new = (params = {}) =>
-    Object.setPrototypeOf(params, FilterEffect);
+//export const FilterEffect$new = (params = {}) =>
+//    Object.setPrototypeOf(params, FilterEffect);
 
 // Renders --------------------------------------------------------------------
 const Rectangle2D = {

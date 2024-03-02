@@ -1,4 +1,4 @@
-import { PhysicsBody$new, PolygonCollider$new } from './physics';
+import { PhysicsBody$new, PhysicsBody$transform, PhysicsBody$update, PolygonCollider$new } from './physics';
 import { Rectangle2D$new } from './render';
 
 const Player = {
@@ -7,12 +7,14 @@ const Player = {
 
 Player.render = function(ctx) {
     ctx.save();
-    this.physics.transform(ctx);
+    PhysicsBody$transform(this.physics, ctx);
     for (const render of this.renders) render.render(ctx);
     ctx.restore();
 };
 
-Player.update = function(dt) { this.physics.update(dt); };
+Player.update = function(dt) {
+    PhysicsBody$update(this.physics, dt);
+};
 
 export const Player$Default = (params = {}, physicsParams = {}) =>
     Object.setPrototypeOf({

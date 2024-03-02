@@ -1,4 +1,4 @@
-import { PhysicsBody$new, PolygonCollider$new, Vector$new } from "./physics";
+import { PhysicsBody$new, PhysicsBody$transform, PolygonCollider$new, Vector$new } from "./physics";
 import { Rectangle2D$new } from "./render";
 
 const Platform = {
@@ -6,7 +6,7 @@ const Platform = {
 
 Platform.render = function(ctx) {
     ctx.save();
-    this.physics.transform(ctx);
+    PhysicsBody$transform(this.physics, ctx);
     for (const render of this.renders) render.render(ctx);
     ctx.restore();
 };

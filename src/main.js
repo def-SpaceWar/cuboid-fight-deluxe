@@ -6,7 +6,7 @@ import {
     resolveCollision,
     clearCollisionEvents
 } from './physics';
-import { Ellipse2D$new, FilterEffect$new, Rectangle2D$new } from './render';
+import { Ellipse2D$new, Rectangle2D$new } from './render';
 import { getKey, listenKeys, stopKeys } from './input';
 import './style.css';
 import { Platform$new } from './platform';
@@ -40,17 +40,6 @@ const
                 color: "#00f",
                 w: 30,
                 h: 30,
-                effects: [FilterEffect$new({
-                    dropShadows: [
-                        { blurRadius: 4, color: "#f00" },
-                        {
-                            blurRadius: 8,
-                            offsetX: 4,
-                            offsetY: 4,
-                            color: "#0f0"
-                        },
-                    ],
-                })]
             }),
             Rectangle2D$new({
                 color: "#ff0",

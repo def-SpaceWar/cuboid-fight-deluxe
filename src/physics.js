@@ -4,10 +4,12 @@ const PhysicsBody = {
         x: 0,
         y: 0,
     },
+
     vel: {
         x: 0,
         y: 0,
     },
+
     lockRotation: false,
     rotation: 0,
     angVel: 0,
@@ -21,64 +23,64 @@ const PhysicsBody = {
     colliders: [],
     mass: 1,
     inertia: 0,
-
-    calculateInertia() {
-        if (this.lockRotation) {
-            this.inertia = Infinity;
-            this.rotation = 0;
-            this.angVel = 0;
-            return this;
-        }
-
-        this.inertia = 0;
-        for (const collider of this.colliders) {
-            const points = collider.points,
-                N = points.length;
-
-            let numerator = 0,
-                denominator = 0;
-
-            for (let n = 1; n <= N; n++) {
-                numerator += Vector$cross(points[(n + 1) % N], points[n % N]) *
-                    (
-                        Vector$dot(points[n % N], points[n % N]) +
-                        Vector$dot(points[n % N], points[(n + 1) % N]) +
-                        Vector$dot(points[(n + 1) % N], points[(n + 1) % N])
-                    );
-
-                denominator += 6 *
-                    Vector$cross(points[(n + 1) % N], points[n % N]);
-            }
-
-            this.inertia += numerator / denominator;
-        }
-        this.inertia /= this.colliders.length;
-
-        return this;
-    },
 };
 
-PhysicsBody.transform = function(ctx) {
-    ctx.translate(this.pos.x, this.pos.y);
-    ctx.rotate(this.rotation);
+export function PhysicsBody$calculateInertia(p) {
+    if (p.lockRotation) {
+        p.inertia = Infinity;
+        p.rotation = 0;
+        p.angVel = 0;
+        return p;
+    }
+
+    p.inertia = 0;
+    for (const collider of p.colliders) {
+        const points = collider.points,
+            _N = points.length;
+
+        let numerator = 0,
+            denominator = 0;
+
+        for (let n = 1; n <= _N; n++) {
+            numerator += Vector$cross(points[(n + 1) % _N], points[n % _N]) *
+                (
+                    Vector$dot(points[n % _N], points[n % _N]) +
+                    Vector$dot(points[n % _N], points[(n + 1) % _N]) +
+                    Vector$dot(points[(n + 1) % _N], points[(n + 1) % _N])
+                );
+
+            denominator += 6 *
+                Vector$cross(points[(n + 1) % _N], points[n % _N]);
+        }
+
+        p.inertia += numerator / denominator;
+    }
+    p.inertia /= p.colliders.length;
+
+    return p;
 };
 
-PhysicsBody.update = function(dt) {
-    this.pos.x += this.vel.x * dt;
-    this.pos.y += this.vel.y * dt;
-    this.vel.y += this.gravity * dt;
-    if (!this.lockRotation) this.rotation += this.angVel * dt;
-    const dragConst = Math.exp(-dt * this.drag);
-    this.vel.x *= dragConst;
-    this.vel.y *= dragConst;
-    if (!this.lockRotation) this.angVel *= dragConst;
+export function PhysicsBody$transform(p, ctx) {
+    ctx.translate(p.pos.x, p.pos.y);
+    ctx.rotate(p.rotation);
+};
+
+export function PhysicsBody$update(p, dt) {
+    p.pos.x += p.vel.x * dt;
+    p.pos.y += p.vel.y * dt;
+    p.vel.y += p.gravity * dt;
+    if (!p.lockRotation) p.rotation += p.angVel * dt;
+    const dragConst = Math.exp(-dt * p.drag);
+    p.vel.x *= dragConst;
+    p.vel.y *= dragConst;
+    if (!p.lockRotation) p.angVel *= dragConst;
 };
 
 export const PhysicsBody$new = (params = {}) =>
-    Object.setPrototypeOf(
+    PhysicsBody$calculateInertia(Object.setPrototypeOf(
         { pos: Vector$new(), vel: Vector$new(), ...params },
         PhysicsBody,
-    ).calculateInertia();
+    ));
 
 let collisionEvents = [];
 
@@ -232,72 +234,59 @@ export function resolveCollision(pb1, pb2) {
 const PolygonCollider = {
     type: "polygon",
     points: [],
-    center: { x: 0, y: 0 },
 
-    calculateCenter() {
-        this.center = { x: 0, y: 0 };
-        if (this.points.length === 0) return;
-        this.points.forEach(p => {
-            this.center.x += p.x;
-            this.center.y += p.y;
+    getAxes: function*(rotation) {
+        const newPoints = this.points.map(p => Vector$rotate(p, rotation)),
+            newPointsLength = newPoints.length;
+        for (let i = 0; i < newPointsLength; i++)
+            yield Vector$normal(
+                Vector$normalize(
+                    Vector$subtract(
+                        newPoints[i],
+                        newPoints[(i + 1) % newPointsLength],
+                    ),
+                ),
+            );
+    },
+
+    getLines: function*(pos, rotation) {
+        const newPoints = this.points.map(p => Vector$add(
+            Vector$rotate(p, rotation),
+            pos,
+        )),
+            newPointsLength = newPoints.length;
+        for (let i = 0; i < newPointsLength; i++)
+            yield [newPoints[i], newPoints[(i + 1) % newPointsLength]];
+    },
+
+    getPoints: function*(pos, rotation) {
+        const newPoints = this.points.map(p => Vector$add(
+            Vector$rotate(p, rotation),
+            pos,
+        )),
+            newPointsLength = newPoints.length;
+        for (let i = 0; i < newPointsLength; i++)
+            yield newPoints[i];
+    },
+
+    project: function(pos, rotation, axis) {
+        const projections = this.points.map(p => {
+            const pPrime =
+                Vector$add(
+                    Vector$rotate(
+                        p,
+                        rotation,
+                    ),
+                    pos,
+                );
+            return Vector$dot(pPrime, axis);
         });
-        this.center.x /= this.points.length;
-        this.center.y /= this.points.length;
-        return this;
+        return [Math.min(...projections), Math.max(...projections)];
     },
 };
 
-PolygonCollider.getAxes = function*(rotation) {
-    const newPoints = this.points.map(p => Vector$rotate(p, rotation)),
-        newPointsLength = newPoints.length;
-    for (let i = 0; i < newPointsLength; i++)
-        yield Vector$normal(
-            Vector$normalize(
-                Vector$subtract(
-                    newPoints[i],
-                    newPoints[(i + 1) % newPointsLength],
-                ),
-            ),
-        );
-};
-
-PolygonCollider.getLines = function*(pos, rotation) {
-    const newPoints = this.points.map(p => Vector$add(
-        Vector$rotate(p, rotation),
-        pos,
-    )),
-        newPointsLength = newPoints.length;
-    for (let i = 0; i < newPointsLength; i++)
-        yield [newPoints[i], newPoints[(i + 1) % newPointsLength]];
-};
-
-PolygonCollider.getPoints = function*(pos, rotation) {
-    const newPoints = this.points.map(p => Vector$add(
-        Vector$rotate(p, rotation),
-        pos,
-    )),
-        newPointsLength = newPoints.length;
-    for (let i = 0; i < newPointsLength; i++)
-        yield newPoints[i];
-};
-
-PolygonCollider.project = function(pos, rotation, axis) {
-    const projections = this.points.map(p => {
-        const pPrime =
-            Vector$add(
-                Vector$rotate(
-                    p,
-                    rotation,
-                ),
-                pos,
-            );
-        return Vector$dot(pPrime, axis);
-    });
-    return [Math.min(...projections), Math.max(...projections)];
-};
-
 export const PolygonCollider$new = (params = {}) =>
-    Object.setPrototypeOf(params, PolygonCollider).calculateCenter();
+    Object.setPrototypeOf(params, PolygonCollider);
 
 const EllipticalCollider = {
     type: "ellipse",
@@ -307,78 +296,80 @@ const EllipticalCollider = {
     points: [],
     center: { x: 0, y: 0 },
 
-    calculatePoints() {
-        this.points = [];
-        for (let i = 0; i < 50; i++) {
-            const angle = i * Math.PI / 25;
-            this.points.push(
-                Vector$add(
-                    Vector$rotate(
-                        Vector$new({
-                            x: Math.cos(angle) * this.w / 2,
-                            y: Math.sin(angle) * this.h / 2,
-                        }),
-                        this.rotation,
+    getLines: function*(pos, rotation) {
+        const newPoints = this.points.map(p => Vector$add(
+            Vector$rotate(p, rotation),
+            pos,
+        )),
+            newPointsLength = newPoints.length;
+        for (let i = 0; i < newPointsLength; i++)
+            yield [newPoints[i], newPoints[(i + 1) % newPointsLength]];
+    },
+
+    getAxes: function*(rotation) {
+        const newPoints = this.points.map(p => Vector$rotate(p, rotation)),
+            newPointsLength = newPoints.length / 2;
+        for (let i = 0; i < newPointsLength; i++)
+            yield Vector$normal(
+                Vector$normalize(
+                    Vector$subtract(
+                        newPoints[i],
+                        newPoints[(i + 1) % newPointsLength],
                     ),
-                    this.center,
                 ),
             );
-        }
-        return this;
+    },
+
+    getPoints: function*(pos, rotation) {
+        const newPoints = this.points.map(p => Vector$add(
+            Vector$rotate(p, rotation),
+            pos,
+        )),
+            newPointsLength = newPoints.length;
+        for (let i = 0; i < newPointsLength; i++)
+            yield newPoints[i];
+    },
+
+    project: function(pos, rotation, axis) {
+        const projections = this.points.map(p => {
+            const pPrime =
+                Vector$add(
+                    Vector$rotate(
+                        p,
+                        rotation,
+                    ),
+                    pos,
+                );
+            return [Vector$dot(pPrime, axis)];
+        });
+        return [Math.min(...projections), Math.max(...projections)];
     },
 };
 
-EllipticalCollider.getAxes = function*(rotation) {
-    const newPoints = this.points.map(p => Vector$rotate(p, rotation)),
-        newPointsLength = newPoints.length / 2;
-    for (let i = 0; i < newPointsLength; i++)
-        yield Vector$normal(
-            Vector$normalize(
-                Vector$subtract(
-                    newPoints[i],
-                    newPoints[(i + 1) % newPointsLength],
-                ),
-            ),
-        );
-};
-
-EllipticalCollider.getLines = function*(pos, rotation) {
-    const newPoints = this.points.map(p => Vector$add(
-        Vector$rotate(p, rotation),
-        pos,
-    )),
-        newPointsLength = newPoints.length;
-    for (let i = 0; i < newPointsLength; i++)
-        yield [newPoints[i], newPoints[(i + 1) % newPointsLength]];
-};
-
-EllipticalCollider.getPoints = function*(pos, rotation) {
-    const newPoints = this.points.map(p => Vector$add(
-        Vector$rotate(p, rotation),
-        pos,
-    )),
-        newPointsLength = newPoints.length;
-    for (let i = 0; i < newPointsLength; i++)
-        yield newPoints[i];
-};
-
-EllipticalCollider.project = function(pos, rotation, axis) {
-    const projections = this.points.map(p => {
-        const pPrime =
+export function EllipticalCollider$calculatePoints(c) {
+    c.points = [];
+    for (let i = 0; i < 50; i++) {
+        const angle = i * Math.PI / 25;
+        c.points.push(
             Vector$add(
                 Vector$rotate(
-                    p,
-                    rotation,
+                    Vector$new({
+                        x: Math.cos(angle) * c.w / 2,
+                        y: Math.sin(angle) * c.h / 2,
+                    }),
+                    c.rotation,
                 ),
-                pos,
-            );
-        return [Vector$dot(pPrime, axis)];
-    });
-    return [Math.min(...projections), Math.max(...projections)];
-};
+                c.center,
+            ),
+        );
+    }
+    return c;
+}
 
 export const EllipticalCollider$new = (params = {}) =>
-    Object.setPrototypeOf(params, EllipticalCollider).calculatePoints();
+    EllipticalCollider$calculatePoints(
+        Object.setPrototypeOf(params, EllipticalCollider)
+    );
 
 function distanceFromPointToLineSquared(p, v, w) {
     const l2 = Vector$distanceSquared(v, w);
@@ -458,38 +449,40 @@ export function areColliding(c1, pos1, rotation1, c2, pos2, rotation2) {
     for (const [a, b] of c1.getLines(pos1, rotation1)) {
         for (const p of c2.getPoints(pos2, rotation2)) {
             const distanceSq = distanceFromPointToLineSquared(p, a, b);
-            if (distanceSq > smallestDistance) {
-                continue;
-            } else if (
+            if (distanceSq > smallestDistance) continue;
+
+            if (
                 collisionPoint && Math.abs(distanceSq - smallestDistance) < .1
             ) {
                 collisionPoint = Vector$scale(
                     Vector$add(collisionPoint, p),
                     .5,
                 );
-            } else {
-                smallestDistance = distanceSq;
-                collisionPoint = p;
+                continue;
             }
+
+            smallestDistance = distanceSq;
+            collisionPoint = p;
         }
     }
 
     for (const [a, b] of c2.getLines(pos2, rotation2)) {
         for (const p of c1.getPoints(pos1, rotation1)) {
             const distanceSq = distanceFromPointToLineSquared(p, a, b);
-            if (distanceSq > smallestDistance) {
-                continue;
-            } else if (
+            if (distanceSq > smallestDistance) continue;
+
+            if (
                 collisionPoint && Math.abs(distanceSq - smallestDistance) < .1
             ) {
                 collisionPoint = Vector$scale(
                     Vector$add(collisionPoint, p),
                     .5,
                 );
-            } else {
-                smallestDistance = distanceSq;
-                collisionPoint = p;
+                continue;
             }
+
+            smallestDistance = distanceSq;
+            collisionPoint = p;
         }
     }
 
