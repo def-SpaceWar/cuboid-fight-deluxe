@@ -1,25 +1,38 @@
-import { PhysicsBody$new, PhysicsBody$transform, PhysicsBody$update, PolygonCollider$new } from './physics';
+import {
+    PhysicsBody$new,
+    PhysicsBody$transform,
+    PhysicsBody$update,
+    PolygonCollider$new
+} from './physics';
 import { Rectangle2D$new } from './render';
+
+/** @typedef {import('./physics').PhysicsBody} PhysicsBody */
 
 const Player = {
     isGrounded: false,
+
+    /** @type PhysicsBody */
+    physics: undefined,
+
+    /** @type Render[] */
+    renders: undefined,
 };
 
-Player.render = function(ctx) {
+export function Player$render(p, ctx) {
     ctx.save();
-    PhysicsBody$transform(this.physics, ctx);
-    for (const render of this.renders) render.render(ctx);
+    PhysicsBody$transform(p.physics, ctx);
+    for (const render of p.renders) render.render(ctx);
     ctx.restore();
 };
 
-Player.update = function(dt) {
-    PhysicsBody$update(this.physics, dt);
+export function Player$update(p, dt) {
+    PhysicsBody$update(p.physics, dt);
 };
 
 export const Player$Default = (params = {}, physicsParams = {}) =>
     Object.setPrototypeOf({
         physics: PhysicsBody$new({
-            lockRotation: false,
+            lockRotation: true,
             colliders: [PolygonCollider$new({
                 points: [
                     { x: -10, y: -10 },

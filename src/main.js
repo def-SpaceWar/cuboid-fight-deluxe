@@ -1,4 +1,4 @@
-import { Player$Default } from './player';
+import { Player$Default, Player$render, Player$update } from './player';
 import {
     Vector$new,
     PolygonCollider$new,
@@ -26,7 +26,7 @@ canvas.height = 600;
 const resizeCanvas = () => {
     const scaleX = window.innerWidth / canvas.width,
         scaleY = window.innerHeight / canvas.height,
-        scale = Math.max(scaleX, scaleY);
+        scale = Math.max(scaleX, scaleY) + 0.000001;
     canvas.style.transform = `translate(-50%, -50%) scale(${scale}, ${scale})`;
 }
 resizeCanvas();
@@ -50,8 +50,8 @@ const
             }),
         ],
     }, {
-        pos: Vector$new({ x: -30 }),
-        vel: Vector$new({ x: 30 }),
+        pos: Vector$new({ x: -50 }),
+        vel: Vector$new({ x: 100 }),
         mass: 2.25,
         angVel: 1.5,
         colliders: [
@@ -93,8 +93,8 @@ function update() {
     resolveCollision(myPlayer.physics, myPlatform.physics);
     resolveCollision(myPlayer2.physics, myPlatform.physics);
 
-    myPlayer2.update(dt);
-    myPlayer.update(dt);
+    Player$update(myPlayer2, dt);
+    Player$update(myPlayer, dt);
 
     const now = performance.now() / 1000;
     dt = Math.min(0.05, now - before);
@@ -106,8 +106,8 @@ function render() {
     ctx.save();
     ctx.translate(canvas.width / 2, canvas.height / 2);
 
-    myPlayer.render(ctx);
-    myPlayer2.render(ctx);
+	Player$render(myPlayer, ctx);
+	Player$render(myPlayer2, ctx);
     myPlatform.render(ctx);
 
     ctx.restore();

@@ -1,35 +1,31 @@
+// @ts-check
 /**
  * Physics Body ---------------------------------------------------------------
  * @typedef {typeof PhysicsBody} PhysicsBody
  */
 
 const PhysicsBody = {
-    /** @type Vector */
-    pos: {
-        x: 0,
-        y: 0,
-    },
+    /** @type VectorLike */
+    // @ts-ignore
+    pos: undefined,
 
-    /** @type Vector */
-    vel: {
-        x: 0,
-        y: 0,
-    },
+    /** @type VectorLike */
+    // @ts-ignore
+    vel: undefined,
 
     lockRotation: false,
     rotation: 0,
     angVel: 0,
     gravity: 500,
-
     drag: Math.log(1.1),
-    elasticity: .2,
-    staticFriction: .4,
-    kineticFriction: .2,
 
     /** @type Collider[] */
     colliders: [],
     mass: 1,
     inertia: 0,
+    elasticity: .6,
+    staticFriction: .4,
+    kineticFriction: .1,
 };
 
 export const PhysicsBody$new = (params = {}) =>
@@ -102,6 +98,7 @@ export function* clearCollisionEvents() {
 }
 
 export function resolveCollision(pb1, pb2) {
+    /** @type {CollisionInfo | [false] | undefined} */
     let collisionInfo;
     main: for (const c1 of pb1.colliders) {
         for (const c2 of pb2.colliders) {
@@ -109,10 +106,10 @@ export function resolveCollision(pb1, pb2) {
                 c1, pb1.pos, pb1.rotation,
                 c2, pb2.pos, pb2.rotation
             );
-            if (!collisionInfo[0]) continue;
-            break main;
+            if (collisionInfo[0]) break main;
         }
     }
+    if (!collisionInfo) return;
     if (!collisionInfo[0]) return;
     collisionEvents.push({
         primary: pb1,
@@ -120,25 +117,9 @@ export function resolveCollision(pb1, pb2) {
         collisionInfo
     });
 
-    {
-        if (pb2.mass === Infinity) {
-            pb1.pos = Vector$add(
-                Vector$scale(
-                    collisionInfo.axis,
-                    collisionInfo.overlap,
-                ),
-                pb1.pos,
-            );
-        } else if (pb1.mass === Infinity) {
-            pb2.pos = Vector$add(
-                Vector$scale(
-                    collisionInfo.axis,
-                    -collisionInfo.overlap,
-                ),
-                pb2.pos,
-            );
-        } else {
-            const total = pb1.mass + pb2.mass;
+    do {
+        const total = pb1.mass + pb2.mass;
+        if (total < Infinity) {
             pb1.pos = Vector$add(
                 Vector$scale(
                     collisionInfo.axis,
@@ -153,8 +134,36 @@ export function resolveCollision(pb1, pb2) {
                 ),
                 pb2.pos,
             );
+            break;
         }
-    }
+
+        const isMass1Inf = pb1.mass === Infinity,
+            isMass2Inf = pb2.mass === Infinity;
+
+        if (isMass1Inf && isMass2Inf) break;
+
+        if (isMass1Inf) {
+            pb2.pos = Vector$add(
+                Vector$scale(
+                    collisionInfo.axis,
+                    -collisionInfo.overlap,
+                ),
+                pb2.pos,
+            );
+            break;
+        }
+
+        if (isMass2Inf) {
+            pb1.pos = Vector$add(
+                Vector$scale(
+                    collisionInfo.axis,
+                    collisionInfo.overlap,
+                ),
+                pb1.pos,
+            );
+            break;
+        }
+    } while (false)
 
     const
         relVel = Vector$subtract(pb1.vel, pb2.vel),
@@ -220,9 +229,9 @@ export function resolveCollision(pb1, pb2) {
         normalizedTangentVel = Vector$normalize(tangentVel),
         staticFriction = Math.sqrt(pb1.staticFriction * pb2.staticFriction),
         kineticFriction = Math.sqrt(pb1.kineticFriction * pb2.kineticFriction),
-        jt = -Vector$dot(totalRelVel, tangentVel) /
+        jt = -Vector$dot(totalRelVel, normalizedTangentVel) /
             (jointMasses + jointAngularVelocities),
-        frictionImpulse = (Math.abs(jt) <= j * staticFriction)
+        frictionImpulse = (Math.abs(jt) <= Math.abs(j * staticFriction))
             ? Vector$scale(normalizedTangentVel, jt)
             : Vector$scale(normalizedTangentVel, -j * kineticFriction);
 
@@ -239,27 +248,31 @@ export function resolveCollision(pb1, pb2) {
 
 /**
  * Colliders ------------------------------------------------------------------
+ * @typedef {typeof PolygonCollider} PolygonCollider
+ * @typedef {typeof EllipticalCollider} EllipticalCollider
+ * @typedef {typeof PolygonCollider | typeof EllipticalCollider} Collider
+ * @typedef {{
+     * 0: true,
+     * axis: VectorLike,
+     * overlap: number,
+     * collisionPoint: VectorLike,
+ * }} CollisionInfo
  */
 
 const PolygonCollider = {
+    /** @type {"polygon"} */
     type: "polygon",
+
+    /** @type VectorLike[] */
     points: [],
 
-    getAxes: function*(rotation) {
-        const newPoints = this.points.map(p => Vector$rotate(p, rotation)),
-            newPointsLength = newPoints.length;
-        for (let i = 0; i < newPointsLength; i++)
-            yield Vector$orthogonal(
-                Vector$normalize(
-                    Vector$subtract(
-                        newPoints[i],
-                        newPoints[(i + 1) % newPointsLength],
-                    ),
-                ),
-            );
-    },
-
-    getLines: function*(pos, rotation) {
+    /**
+     * getLines
+     * @param {VectorLike} pos
+     * @param {number} rotation
+     * @returns {Generator<[Vector, Vector], void, unknown>}
+     */
+    *getLines(pos, rotation) {
         const newPoints = this.points.map(p => Vector$add(
             Vector$rotate(p, rotation),
             pos,
@@ -269,7 +282,13 @@ const PolygonCollider = {
             yield [newPoints[i], newPoints[(i + 1) % newPointsLength]];
     },
 
-    getPoints: function*(pos, rotation) {
+    /**
+     * getPoints
+     * @param {VectorLike} pos
+     * @param {number} rotation
+     * @returns {Generator<Vector, void, unknown>}
+     */
+    *getPoints(pos, rotation) {
         const newPoints = this.points.map(p => Vector$add(
             Vector$rotate(p, rotation),
             pos,
@@ -279,7 +298,14 @@ const PolygonCollider = {
             yield newPoints[i];
     },
 
-    project: function(pos, rotation, axis) {
+    /**
+     * project
+     * @param {VectorLike} pos
+     * @param {number} rotation
+     * @param {VectorLike} axis
+     * @returns {[min: number, max: number]}
+     */
+    project(pos, rotation, axis) {
         const projections = this.points.map(p => {
             const pPrime =
                 Vector$add(
@@ -295,42 +321,51 @@ const PolygonCollider = {
     },
 };
 
+/**
+ * PolygonCollider$new
+ * @param {{ points?: Vector[] }} params
+ * @returns {PolygonCollider}
+ */
 export const PolygonCollider$new = (params = {}) =>
     Object.setPrototypeOf(params, PolygonCollider);
 
 const EllipticalCollider = {
+    /** @type {"ellipse"} */
     type: "ellipse",
+
+    /** @type VectorLike[] */
+    points: [],
+
+    /** @type VectorLike */
+    center: { x: 0, y: 0 },
+
     w: 20,
     h: 20,
     rotation: 0,
-    points: [],
-    center: { x: 0, y: 0 },
 
-    getLines: function*(pos, rotation) {
+    /**
+     * getLines
+     * @param {VectorLike} pos
+     * @param {number} rotation
+     * @returns {Generator<[Vector, Vector], void, unknown>}
+     */
+    *getLines(pos, rotation) {
         const newPoints = this.points.map(p => Vector$add(
             Vector$rotate(p, rotation),
             pos,
         )),
             newPointsLength = newPoints.length;
-        for (let i = 0; i < newPointsLength; i++)
-            yield [newPoints[i], newPoints[(i + 1) % newPointsLength]];
+        for (let i = 1; i < newPointsLength; i++)
+            yield [newPoints[i - 1], newPoints[i]];
     },
 
-    getAxes: function*(rotation) {
-        const newPoints = this.points.map(p => Vector$rotate(p, rotation)),
-            newPointsLength = newPoints.length / 2;
-        for (let i = 0; i < newPointsLength; i++)
-            yield Vector$orthogonal(
-                Vector$normalize(
-                    Vector$subtract(
-                        newPoints[i],
-                        newPoints[(i + 1) % newPointsLength],
-                    ),
-                ),
-            );
-    },
-
-    getPoints: function*(pos, rotation) {
+    /**
+     * getPoints
+     * @param {VectorLike} pos
+     * @param {number} rotation
+     * @returns {Generator<Vector, void, unknown>}
+     */
+    *getPoints(pos, rotation) {
         const newPoints = this.points.map(p => Vector$add(
             Vector$rotate(p, rotation),
             pos,
@@ -340,7 +375,14 @@ const EllipticalCollider = {
             yield newPoints[i];
     },
 
-    project: function(pos, rotation, axis) {
+    /**
+     * project
+     * @param {VectorLike} pos
+     * @param {number} rotation
+     * @param {VectorLike} axis
+     * @returns {[min: number, max: number]}
+     */
+    project(pos, rotation, axis) {
         const projections = this.points.map(p => {
             const pPrime =
                 Vector$add(
@@ -350,17 +392,32 @@ const EllipticalCollider = {
                     ),
                     pos,
                 );
-            return [Vector$dot(pPrime, axis)];
+            return Vector$dot(pPrime, axis);
         });
         return [Math.min(...projections), Math.max(...projections)];
     },
 };
 
+/**
+ * EllipticalCollider$new
+ * @param {{
+     * center?: VectorLike,
+     * w?: number,
+     * h?: number,
+     * rotation?: number,
+ * }} params
+ * @returns {EllipticalCollider}
+ */
 export const EllipticalCollider$new = (params = {}) =>
     EllipticalCollider$calculatePoints(
         Object.setPrototypeOf(params, EllipticalCollider)
     );
 
+/**
+ * EllipticalCollider$calculatePoints
+ * @param {EllipticalCollider} c
+ * @returns {EllipticalCollider}
+ */
 export function EllipticalCollider$calculatePoints(c) {
     c.points = [];
     for (let i = 0; i < 50; i++) {
@@ -381,6 +438,13 @@ export function EllipticalCollider$calculatePoints(c) {
     return c;
 }
 
+/** 
+ * distanceFromPointToLineSquared
+ * @param {VectorLike} p
+ * @param {VectorLike} v
+ * @param {VectorLike} w
+ * @returns number
+ */
 function distanceFromPointToLineSquared(p, v, w) {
     const l2 = Vector$distanceSquared(v, w);
     if (l2 === 0) return Vector$distanceSquared(p, v);
@@ -400,36 +464,62 @@ function distanceFromPointToLineSquared(p, v, w) {
     );
 }
 
-export function areColliding(c1, pos1, rotation1, c2, pos2, rotation2) {
-    let separationDistance = Infinity,
-        bestAxis,
-        bestLocation;
-
-    for (const axis of c1.getAxes(rotation1)) {
-        const [min1, max1] = c1.project(pos1, rotation1, axis);
-        const [min2, max2] = c2.project(pos2, rotation2, axis);
-        if (max1 <= min2 || min1 >= max2) return [false];
-
-        if (max1 > min2) {
-            const distance = min2 - max1;
-            if (Math.abs(distance) < Math.abs(separationDistance)) {
-                separationDistance = distance;
-                bestAxis = axis;
-                bestLocation = max1 + min2 / 2;
-            }
-        }
-
-        if (max2 > min1) {
-            const distance = max2 - min1;
-            if (Math.abs(distance) < Math.abs(separationDistance)) {
-                separationDistance = distance;
-                bestAxis = axis;
-                bestLocation = max2 + min1 / 2;
-            }
-        }
+/** 
+ * getAxes
+ * @param {Collider} c
+ * @param {VectorLike} pos
+ * @param {number} rot
+ * @param {Collider} o
+ * @param {VectorLike} posO
+ * @param {number} rotO
+ * @returns {Generator<Vector, void, unknown>}
+ */
+export function* getAxes(c, pos, rot, o, posO, rotO) {
+    if (c.type === "polygon") {
+        for (const line of c.getLines(pos, rot))
+            yield Vector$normalize(
+                Vector$orthogonal(Vector$subtract(line[0], line[1])),
+            );
+        return;
     }
 
-    for (const axis of c2.getAxes(rotation2)) {
+    // do special ellipse stuff
+    // do some math in a notebook idk
+    // should be similar to circles
+}
+
+
+/** 
+ * getBothAxes
+ * @param {Collider} c1
+ * @param {VectorLike} pos1
+ * @param {number} rotation1
+ * @param {Collider} c2
+ * @param {VectorLike} pos2
+ * @param {number} rotation2
+ * @returns {Generator<Vector, void, unknown>}
+ */
+export function* getBothAxes(c1, pos1, rotation1, c2, pos2, rotation2) {
+    yield* getAxes(c1, pos1, rotation1, c2, pos2, rotation2);
+    yield* getAxes(c2, pos2, rotation2, c1, pos1, rotation1);
+}
+
+/** 
+ * areColliding
+ * @param {Collider} c1
+ * @param {VectorLike} pos1
+ * @param {number} rotation1
+ * @param {Collider} c2
+ * @param {VectorLike} pos2
+ * @param {number} rotation2
+ * @returns {[false] | CollisionInfo}
+ */
+export function areColliding(c1, pos1, rotation1, c2, pos2, rotation2) {
+    let separationDistance = Infinity,
+        /** @type VectorLike */
+        bestAxis = { x: Infinity, y: Infinity };
+
+    for (const axis of getBothAxes(c1, pos1, rotation1, c2, pos2, rotation2)) {
         const [min1, max1] = c1.project(pos1, rotation1, axis);
         const [min2, max2] = c2.project(pos2, rotation2, axis);
         if (max1 <= min2 || min1 >= max2) return [false];
@@ -439,7 +529,6 @@ export function areColliding(c1, pos1, rotation1, c2, pos2, rotation2) {
             if (Math.abs(distance) < Math.abs(separationDistance)) {
                 separationDistance = distance;
                 bestAxis = axis;
-                bestLocation = max1 + min2 / 2;
             }
         }
 
@@ -448,13 +537,13 @@ export function areColliding(c1, pos1, rotation1, c2, pos2, rotation2) {
             if (Math.abs(distance) < Math.abs(separationDistance)) {
                 separationDistance = distance;
                 bestAxis = axis;
-                bestLocation = max2 + min1 / 2;
             }
         }
     }
 
     let smallestDistance = Infinity,
-        collisionPoint;
+        /** @type VectorLike */
+        collisionPoint = { x: Infinity, y: Infinity };
 
     for (const [a, b] of c1.getLines(pos1, rotation1)) {
         for (const p of c2.getPoints(pos2, rotation2)) {
@@ -512,6 +601,7 @@ export function areColliding(c1, pos1, rotation1, c2, pos2, rotation2) {
 
 const Vector = {
     /** @type Float32Array */
+    // @ts-ignore
     data: undefined,
     get x() { return this.data[0]; },
     get y() { return this.data[1]; },
