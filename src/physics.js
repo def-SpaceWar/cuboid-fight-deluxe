@@ -23,7 +23,7 @@ const PhysicsBody = {
     colliders: [],
     mass: 1,
     inertia: 0,
-    elasticity: .6,
+    elasticity: .3,
     staticFriction: .4,
     kineticFriction: .1,
 };
@@ -118,19 +118,19 @@ export function resolveCollision(pb1, pb2) {
     });
 
     do {
-        const total = pb1.mass + pb2.mass;
-        if (total < Infinity) {
+        const halfTotal = (pb1.mass + pb2.mass) / 2;
+        if (halfTotal !== Infinity) {
             pb1.pos = Vector$add(
                 Vector$scale(
                     collisionInfo.axis,
-                    collisionInfo.overlap * pb2.mass / total / 2,
+                    collisionInfo.overlap * pb2.mass / halfTotal,
                 ),
                 pb1.pos,
             );
             pb2.pos = Vector$add(
                 Vector$scale(
                     collisionInfo.axis,
-                    -collisionInfo.overlap * pb1.mass / total / 2,
+                    -collisionInfo.overlap * pb1.mass / halfTotal,
                 ),
                 pb2.pos,
             );
@@ -413,6 +413,10 @@ export const EllipticalCollider$new = (params = {}) =>
         Object.setPrototypeOf(params, EllipticalCollider)
     );
 
+const ELLIPSE_PRECISION = 20,
+    TAU = Math.PI * 2,
+    ELLIPSE_INCREMENT = TAU / ELLIPSE_PRECISION;
+
 /**
  * EllipticalCollider$calculatePoints
  * @param {EllipticalCollider} c
@@ -420,8 +424,7 @@ export const EllipticalCollider$new = (params = {}) =>
  */
 export function EllipticalCollider$calculatePoints(c) {
     c.points = [];
-    for (let i = 0; i < 50; i++) {
-        const angle = i * Math.PI / 25;
+    for (let angle = 0; angle < TAU; angle += ELLIPSE_INCREMENT)
         c.points.push(
             Vector$add(
                 Vector$rotate(
@@ -434,7 +437,6 @@ export function EllipticalCollider$calculatePoints(c) {
                 c.center,
             ),
         );
-    }
     return c;
 }
 
@@ -477,15 +479,51 @@ function distanceFromPointToLineSquared(p, v, w) {
 export function* getAxes(c, pos, rot, o, posO, rotO) {
     if (c.type === "polygon") {
         for (const line of c.getLines(pos, rot))
-            yield Vector$normalize(
-                Vector$orthogonal(Vector$subtract(line[0], line[1])),
+            yield Vector$orthogonal(
+                Vector$normalize(
+                    Vector$subtract(
+                        line[0],
+                        line[1],
+                    ),
+                ),
             );
         return;
     }
 
-    // do special ellipse stuff
-    // do some math in a notebook idk
-    // should be similar to circles
+    const center = Vector$add(c.center, pos);
+    if (o.type === "ellipse") {
+        yield Vector$orthogonal(
+            Vector$normalize(
+                Vector$subtract(
+                    center,
+                    Vector$add(o.center, posO),
+                ),
+            ),
+        );
+        return;
+    }
+
+    let closestDist = Infinity,
+        closestPoint = { x: Infinity, y: Infinity };
+
+    for (const p of o.getPoints(posO, rotO)) {
+        const pPrime = Vector$rotate(Vector$subtract(p, center), -c.rotation),
+            // TODO: Fix distance calculations
+            ellipticalDistance = (pPrime.x / c.w) ** 2 + (pPrime.y / c.h) ** 2;
+
+        if (ellipticalDistance < closestDist) {
+            closestDist = ellipticalDistance;
+            closestPoint = p;
+        }
+    }
+
+    yield Vector$orthogonal(
+        Vector$normalize(
+            Vector$subtract(
+                center, closestPoint
+            ),
+        ),
+    );
 }
 
 
@@ -516,7 +554,6 @@ export function* getBothAxes(c1, pos1, rotation1, c2, pos2, rotation2) {
  */
 export function areColliding(c1, pos1, rotation1, c2, pos2, rotation2) {
     let separationDistance = Infinity,
-        /** @type VectorLike */
         bestAxis = { x: Infinity, y: Infinity };
 
     for (const axis of getBothAxes(c1, pos1, rotation1, c2, pos2, rotation2)) {
@@ -542,7 +579,6 @@ export function areColliding(c1, pos1, rotation1, c2, pos2, rotation2) {
     }
 
     let smallestDistance = Infinity,
-        /** @type VectorLike */
         collisionPoint = { x: Infinity, y: Infinity };
 
     for (const [a, b] of c1.getLines(pos1, rotation1)) {

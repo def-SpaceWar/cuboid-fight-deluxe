@@ -32,7 +32,7 @@ export function Player$update(p, dt) {
 export const Player$Default = (params = {}, physicsParams = {}) =>
     Object.setPrototypeOf({
         physics: PhysicsBody$new({
-            lockRotation: true,
+            lockRotation: false,
             colliders: [PolygonCollider$new({
                 points: [
                     { x: -10, y: -10 },
