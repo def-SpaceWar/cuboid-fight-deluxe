@@ -97,30 +97,7 @@ export function* clearCollisionEvents() {
     collisionEvents = [];
 }
 
-export function resolveCollision(pb1, pb2) {
-    const isMass1Inf = pb1.mass === Infinity,
-        isMass2Inf = pb2.mass === Infinity;
-    if (isMass1Inf && isMass2Inf) return;
-
-    /** @type {CollisionInfo | [false] | undefined} */
-    let collisionInfo;
-    main: for (const c1 of pb1.colliders) {
-        for (const c2 of pb2.colliders) {
-            collisionInfo = areColliding(
-                c1, pb1.pos, pb1.rotation,
-                c2, pb2.pos, pb2.rotation
-            );
-            if (collisionInfo[0]) break main;
-        }
-    }
-    if (!collisionInfo) return;
-    if (!collisionInfo[0]) return;
-    collisionEvents.push({
-        primary: pb1,
-        secondary: pb2,
-        collisionInfo
-    });
-
+function doPhysics(collisionInfo, pb1, isMass1Inf, pb2, isMass2Inf) {
     const halfTotal = (pb1.mass + pb2.mass) / 2;
     if (halfTotal !== Infinity) {
         pb1.pos = Vector$add(
@@ -238,6 +215,30 @@ export function resolveCollision(pb1, pb2) {
     pb2.vel.x += frictionImpulse.x * mod2;
     pb2.vel.y += frictionImpulse.y * mod2;
     if (!pb2.lockRotation) pb2.angVel -= Vector$cross(collisionArm2, frictionImpulse) / inertia2;
+}
+
+export function resolveCollision(pb1, pb2) {
+    const isMass1Inf = pb1.mass === Infinity,
+        isMass2Inf = pb2.mass === Infinity;
+    if (isMass1Inf && isMass2Inf) return;
+
+    /** @type {CollisionInfo | [false] | undefined} */
+    let collisionInfo;
+    for (const c1 of pb1.colliders) {
+        for (const c2 of pb2.colliders) {
+            collisionInfo = areColliding(
+                c1, pb1.pos, pb1.rotation,
+                c2, pb2.pos, pb2.rotation
+            );
+            if (!collisionInfo[0]) continue;
+            collisionEvents.push({
+                primary: pb1,
+                secondary: pb2,
+                collisionInfo
+            });
+            doPhysics(collisionInfo, pb1, isMass1Inf, pb2, isMass2Inf);
+        }
+    }
 }
 
 /**
