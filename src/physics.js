@@ -98,6 +98,10 @@ export function* clearCollisionEvents() {
 }
 
 export function resolveCollision(pb1, pb2) {
+    const isMass1Inf = pb1.mass === Infinity,
+        isMass2Inf = pb2.mass === Infinity;
+    if (isMass1Inf && isMass2Inf) return;
+
     /** @type {CollisionInfo | [false] | undefined} */
     let collisionInfo;
     main: for (const c1 of pb1.colliders) {
@@ -117,53 +121,43 @@ export function resolveCollision(pb1, pb2) {
         collisionInfo
     });
 
-    do {
-        const halfTotal = (pb1.mass + pb2.mass) / 2;
-        if (halfTotal !== Infinity) {
-            pb1.pos = Vector$add(
-                Vector$scale(
-                    collisionInfo.axis,
-                    collisionInfo.overlap * pb2.mass / halfTotal,
-                ),
-                pb1.pos,
-            );
-            pb2.pos = Vector$add(
-                Vector$scale(
-                    collisionInfo.axis,
-                    -collisionInfo.overlap * pb1.mass / halfTotal,
-                ),
-                pb2.pos,
-            );
-            break;
-        }
+    const halfTotal = (pb1.mass + pb2.mass) / 2;
+    if (halfTotal !== Infinity) {
+        pb1.pos = Vector$add(
+            Vector$scale(
+                collisionInfo.axis,
+                collisionInfo.overlap * pb2.mass / halfTotal,
+            ),
+            pb1.pos,
+        );
+        pb2.pos = Vector$add(
+            Vector$scale(
+                collisionInfo.axis,
+                -collisionInfo.overlap * pb1.mass / halfTotal,
+            ),
+            pb2.pos,
+        );
+    }
 
-        const isMass1Inf = pb1.mass === Infinity,
-            isMass2Inf = pb2.mass === Infinity;
+    if (isMass1Inf) {
+        pb2.pos = Vector$add(
+            Vector$scale(
+                collisionInfo.axis,
+                -collisionInfo.overlap,
+            ),
+            pb2.pos,
+        );
+    }
 
-        if (isMass1Inf && isMass2Inf) break;
-
-        if (isMass1Inf) {
-            pb2.pos = Vector$add(
-                Vector$scale(
-                    collisionInfo.axis,
-                    -collisionInfo.overlap,
-                ),
-                pb2.pos,
-            );
-            break;
-        }
-
-        if (isMass2Inf) {
-            pb1.pos = Vector$add(
-                Vector$scale(
-                    collisionInfo.axis,
-                    collisionInfo.overlap,
-                ),
-                pb1.pos,
-            );
-            break;
-        }
-    } while (false)
+    if (isMass2Inf) {
+        pb1.pos = Vector$add(
+            Vector$scale(
+                collisionInfo.axis,
+                collisionInfo.overlap,
+            ),
+            pb1.pos,
+        );
+    }
 
     const
         relVel = Vector$subtract(pb1.vel, pb2.vel),
@@ -355,8 +349,8 @@ const EllipticalCollider = {
             pos,
         )),
             newPointsLength = newPoints.length;
-        for (let i = 1; i < newPointsLength; i++)
-            yield [newPoints[i - 1], newPoints[i]];
+        for (let i = 0; i < newPointsLength; i++)
+            yield [newPoints[i], newPoints[(i + 1) % newPointsLength]];
     },
 
     /**
@@ -383,6 +377,7 @@ const EllipticalCollider = {
      * @returns {[min: number, max: number]}
      */
     project(pos, rotation, axis) {
+        // do math to project instead!!
         const projections = this.points.map(p => {
             const pPrime =
                 Vector$add(
@@ -508,13 +503,16 @@ export function* getAxes(c, pos, rot, o, posO, rotO) {
 
     for (const p of o.getPoints(posO, rotO)) {
         const pPrime = Vector$rotate(Vector$subtract(p, center), -c.rotation),
-            // TODO: Fix distance calculations
-            ellipticalDistance = (pPrime.x / c.w) ** 2 + (pPrime.y / c.h) ** 2;
+            angle = Math.atan2(pPrime.y, pPrime.x),
+            distance = Vector$magnitude(pPrime)
+                - Vector$magnitude({
+                    x: Math.cos(angle) / 2 * o.w,
+                    y: Math.sin(angle) / 2 * o.h,
+                });
 
-        if (ellipticalDistance < closestDist) {
-            closestDist = ellipticalDistance;
-            closestPoint = p;
-        }
+        if (closestDist < distance) continue;
+        closestDist = distance;
+        closestPoint = p;
     }
 
     yield Vector$orthogonal(
@@ -553,29 +551,72 @@ export function* getBothAxes(c1, pos1, rotation1, c2, pos2, rotation2) {
  * @returns {[false] | CollisionInfo}
  */
 export function areColliding(c1, pos1, rotation1, c2, pos2, rotation2) {
-    let separationDistance = Infinity,
-        bestAxis = { x: Infinity, y: Infinity };
+    let overlap = Infinity,
+        axis = { x: Infinity, y: Infinity };
 
-    for (const axis of getBothAxes(c1, pos1, rotation1, c2, pos2, rotation2)) {
-        const [min1, max1] = c1.project(pos1, rotation1, axis);
-        const [min2, max2] = c2.project(pos2, rotation2, axis);
+    for (const _axis of getBothAxes(c1, pos1, rotation1, c2, pos2, rotation2)) {
+        const [min1, max1] = c1.project(pos1, rotation1, _axis);
+        const [min2, max2] = c2.project(pos2, rotation2, _axis);
         if (max1 <= min2 || min1 >= max2) return [false];
 
         if (max1 > min2) {
             const distance = min2 - max1;
-            if (Math.abs(distance) < Math.abs(separationDistance)) {
-                separationDistance = distance;
-                bestAxis = axis;
+            if (Math.abs(distance) < Math.abs(overlap)) {
+                overlap = distance;
+                axis = _axis;
             }
         }
 
         if (max2 > min1) {
             const distance = max2 - min1;
-            if (Math.abs(distance) < Math.abs(separationDistance)) {
-                separationDistance = distance;
-                bestAxis = axis;
+            if (Math.abs(distance) < Math.abs(overlap)) {
+                overlap = distance;
+                axis = _axis;
             }
         }
+    }
+
+    if (c1.type === "ellipse") {
+        const axisPrime = Vector$rotate(axis, - c1.rotation - rotation1),
+            collisionPoint1 = Vector$add(
+                Vector$rotate(
+                    Vector$add(
+                        Vector$rotate(
+                            {
+                                x: axisPrime.x * c1.w / 2,
+                                y: axisPrime.y * c1.h / 2,
+                            },
+                            c1.rotation,
+                        ),
+                        c1.center,
+                    ),
+                    rotation1,
+                ),
+                pos1,
+            ),
+            collisionPoint2 = Vector$add(
+                Vector$rotate(
+                    Vector$add(
+                        Vector$rotate(
+                            {
+                                x: -axisPrime.x * c1.w / 2,
+                                y: -axisPrime.y * c1.h / 2,
+                            },
+                            c1.rotation,
+                        ),
+                        c1.center,
+                    ),
+                    rotation1,
+                ),
+                pos1,
+            );
+
+        return {
+            0: true,
+            axis,
+            overlap,
+            collisionPoint: collisionPoint2,
+        };
     }
 
     let smallestDistance = Infinity,
@@ -586,9 +627,7 @@ export function areColliding(c1, pos1, rotation1, c2, pos2, rotation2) {
             const distanceSq = distanceFromPointToLineSquared(p, a, b);
             if (distanceSq > smallestDistance) continue;
 
-            if (
-                collisionPoint && Math.abs(distanceSq - smallestDistance) < .1
-            ) {
+            if (Math.abs(distanceSq - smallestDistance) < .1) {
                 collisionPoint = Vector$scale(
                     Vector$add(collisionPoint, p),
                     .5,
@@ -606,9 +645,7 @@ export function areColliding(c1, pos1, rotation1, c2, pos2, rotation2) {
             const distanceSq = distanceFromPointToLineSquared(p, a, b);
             if (distanceSq > smallestDistance) continue;
 
-            if (
-                collisionPoint && Math.abs(distanceSq - smallestDistance) < .1
-            ) {
+            if (Math.abs(distanceSq - smallestDistance) < .1) {
                 collisionPoint = Vector$scale(
                     Vector$add(collisionPoint, p),
                     .5,
@@ -623,8 +660,8 @@ export function areColliding(c1, pos1, rotation1, c2, pos2, rotation2) {
 
     return {
         0: true,
-        axis: bestAxis,
-        overlap: separationDistance,
+        axis,
+        overlap,
         collisionPoint,
     };
 }
@@ -697,7 +734,7 @@ export const Vector$magnitude = v => Math.sqrt(Vector$magnitudeSquared(v));
  * @param {VectorLike} v
  * @returns {boolean}
  */
-export const Vector$nearZero = v => Vector$magnitudeSquared(v) < 0.01;
+export const Vector$nearZero = v => Vector$magnitudeSquared(v) < 1;
 
 /**
  * Vector$add

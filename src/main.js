@@ -39,7 +39,7 @@ const
             Ellipse2D$new({
                 color: "#00f",
                 w: 30,
-                h: 30,
+                h: 50,
             }),
             Rectangle2D$new({
                 color: "#ff0",
@@ -57,7 +57,7 @@ const
         colliders: [
             EllipticalCollider$new({
                 w: 30,
-                h: 30,
+                h: 50,
             }),
             PolygonCollider$new({
                 points: [
@@ -91,6 +91,7 @@ function update() {
     clearCollisionEvents();
     resolveCollision(myPlayer.physics, myPlayer2.physics);
     resolveCollision(myPlayer.physics, myPlatform.physics);
+    //resolveCollision(myPlatform.physics, myPlayer2.physics);
     resolveCollision(myPlayer2.physics, myPlatform.physics);
 
     Player$update(myPlayer2, dt);
