@@ -1,3 +1,4 @@
+// @ts-check
 // Effects --------------------------------------------------------------------
 const TransformEffect = {
     a: 1,
@@ -6,10 +7,10 @@ const TransformEffect = {
     d: 1,
     e: 0,
     f: 0,
-};
 
-TransformEffect.apply = function(ctx) {
-    ctx.transform(this.a, this.b, this.c, this.d, this.e, this.f);
+    apply(ctx) {
+        ctx.transform(this.a, this.b, this.c, this.d, this.e, this.f);
+    },
 };
 
 export const TransformEffect$new = (params = {}) =>
@@ -54,7 +55,11 @@ const FilterEffect = {
 //export const FilterEffect$new = (params = {}) =>
 //    Object.setPrototypeOf(params, FilterEffect);
 
-// Renders --------------------------------------------------------------------
+/**
+ * Renders --------------------------------------------------------------------
+ * @typedef {{ render(ctx: CanvasRenderingContext2D): void; }} Render
+ */
+
 const Rectangle2D = {
     x: 0,
     y: 0,
@@ -69,9 +74,9 @@ Rectangle2D.render = function(ctx) {
     ctx.save();
     for (const effect of this.effects) effect.apply(ctx);
     ctx.fillStyle = this.color;
-    ctx.translate(this.x, this.y);
+    ctx.translate(this.x | 0, this.y | 0);
     ctx.rotate(this.rotation);
-    ctx.fillRect(-this.w / 2, -this.h / 2, this.w, this.h);
+    ctx.fillRect((-this.w / 2) | 0, (-this.h / 2) | 0, this.w | 0, this.h | 0);
     ctx.restore();
 };
 
@@ -94,10 +99,10 @@ Ellipse2D.render = function(ctx) {
     ctx.fillStyle = this.color;
     ctx.beginPath();
     ctx.ellipse(
-        this.x,
-        this.y,
-        this.w / 2,
-        this.h / 2,
+        this.x | 0,
+        this.y | 0,
+        (this.w / 2) | 0,
+        (this.h / 2) | 0,
         this.rotation,
         0,
         Math.PI * 2,

@@ -1,10 +1,20 @@
+// @ts-check
+/** @type string[] */
 const keys = [];
 
+/**
+ * keydown
+ * @param {KeyboardEvent} e
+ */
 function keydown(e) {
     if (keys.indexOf(e.key) !== -1) return;
     keys.push(e.key);
 }
 
+/**
+ * keyup
+ * @param {KeyboardEvent} e
+ */
 function keyup(e) {
     let index = keys.indexOf(e.key);
     while (index !== -1) {
@@ -23,4 +33,9 @@ export function stopKeys() {
     document.removeEventListener("keyup", keyup);
 }
 
-export const getKey = (key) => keys.indexOf(key) !== -1;
+/**
+ * getKey
+ * @param {string} key
+ * @returns {boolean}
+ */
+export const getKey = key => keys.indexOf(key) !== -1;

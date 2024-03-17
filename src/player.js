@@ -1,48 +1,33 @@
-import {
-    PhysicsBody$new,
-    PhysicsBody$transform,
-    PhysicsBody$update,
-    PolygonCollider$new
-} from './physics';
+// @ts-check
 import { Rectangle2D$new } from './render';
 
-/** @typedef {import('./physics').PhysicsBody} PhysicsBody */
+/**
+ * @typedef {import("./render").Render} Render
+ */
 
 const Player = {
     isGrounded: false,
 
-    /** @type PhysicsBody */
     physics: undefined,
 
     /** @type Render[] */
+    // @ts-ignore
     renders: undefined,
 };
 
 export function Player$render(p, ctx) {
     ctx.save();
-    PhysicsBody$transform(p.physics, ctx);
+    //PhysicsBody$transform(p.physics, ctx);
     for (const render of p.renders) render.render(ctx);
     ctx.restore();
 };
 
 export function Player$update(p, dt) {
-    PhysicsBody$update(p.physics, dt);
+    //PhysicsBody$update(p.physics, dt);
 };
 
-export const Player$Default = (params = {}, physicsParams = {}) =>
+export const Player$new = (params = {}) =>
     Object.setPrototypeOf({
-        physics: PhysicsBody$new({
-            lockRotation: false,
-            colliders: [PolygonCollider$new({
-                points: [
-                    { x: -10, y: -10 },
-                    { x: -10, y: 10 },
-                    { x: 10, y: 10 },
-                    { x: 10, y: -10 },
-                ],
-            })],
-            ...physicsParams,
-        }),
         renders: [Rectangle2D$new()],
         ...params,
     }, Player);
