@@ -1,115 +1,28 @@
 // @ts-check
-// Effects --------------------------------------------------------------------
-const TransformEffect = {
-    a: 1,
-    b: 0,
-    c: 0,
-    d: 1,
-    e: 0,
-    f: 0,
-
-    apply(ctx) {
-        ctx.transform(this.a, this.b, this.c, this.d, this.e, this.f);
-    },
-};
-
-export const TransformEffect$new = (params = {}) =>
-    Object.setPrototypeOf(params, TransformEffect);
-
-// unperformant as hell
-const FilterEffect = {
-    // Defaults!
-    // url: "",
-    // blur: 0,
-    // brightness: 100,
-    // contrast: 100,
-    // dropShadows: [{
-    //     offsetX: 0,
-    //     offsetY: 0,
-    //     blurRadius: 0,
-    //     color: "transparent",
-    // }],
-    // grayscale: 0,
-    // hueRotate: 0,
-    // invert: 0,
-    // opacity: 100,
-    // saturate: 100,
-    // sepia: 0,
-};
-
-//FilterEffect.apply = function(ctx) {
-//    ctx.filter =
-//        (this.url ? `url(${this.url}) ` : "") +
-//        (this.blur ? `blur(${this.blur}px) ` : "") +
-//        (this.brightness ? `brightness(${this.brightness}%) ` : "") +
-//        (this.contrast ? `contrast(${this.contrast}%) ` : "") +
-//        (this.dropShadows.map(d => `drop-shadow(${d.offsetX || 0}px ${d.offsetY || 0}px ${d.blurRadius || 0}px ${d.color || "black"}) `).join("")) +
-//        (this.grayscale ? `grayscale(${this.grayscale}%) ` : "") +
-//        (this.hueRotate ? `hue-rotate(${this.hueRotate}deg) ` : "") +
-//        (this.invert ? `invert(${this.invert}%) ` : "") +
-//        (this.opacity ? `opacity(${this.opacity}%) ` : "") +
-//        (this.saturate ? `saturate(${this.saturate}%) ` : "") +
-//        (this.sepia ? `sepia(${this.sepia}%) ` : "");
-//};
-
-//export const FilterEffect$new = (params = {}) =>
-//    Object.setPrototypeOf(params, FilterEffect);
 
 /**
- * Renders --------------------------------------------------------------------
- * @typedef {{ render(ctx: CanvasRenderingContext2D): void; }} Render
+ * CANVAS_RESOLUTION
+ * @description The width and the height of the canvas before scaling.
  */
+export const CANVAS_RESOLUTION = 1_000;
 
-const Rectangle2D = {
-    x: 0,
-    y: 0,
-    w: 20,
-    h: 20,
-    rotation: 0,
-    color: "red",
-    effects: [],
-};
+/**
+ * fillScreenCanvas
+ * @param {HTMLCanvasElement} canvas
+ * @returns {() => void} Stops the canvas from resizing to fill.
+ */
+export function fillScreenCanvas(canvas) {
+    canvas.width = CANVAS_RESOLUTION;
+    canvas.height = CANVAS_RESOLUTION;
 
-Rectangle2D.render = function(ctx) {
-    ctx.save();
-    for (const effect of this.effects) effect.apply(ctx);
-    ctx.fillStyle = this.color;
-    ctx.translate(this.x | 0, this.y | 0);
-    ctx.rotate(this.rotation);
-    ctx.fillRect((-this.w / 2) | 0, (-this.h / 2) | 0, this.w | 0, this.h | 0);
-    ctx.restore();
-};
+    function resizeCanvas() {
+        const scale = Math.max(window.innerWidth, window.innerHeight)
+            / CANVAS_RESOLUTION + 0.000001;
+        canvas.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    }
 
-export const Rectangle2D$new = (params = {}) =>
-    Object.setPrototypeOf(params, Rectangle2D);
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
 
-const Ellipse2D = {
-    x: 0,
-    y: 0,
-    w: 20,
-    h: 20,
-    rotation: 0,
-    color: "red",
-    effects: [],
-};
-
-Ellipse2D.render = function(ctx) {
-    ctx.save();
-    for (const effect of this.effects) effect.apply(ctx);
-    ctx.fillStyle = this.color;
-    ctx.beginPath();
-    ctx.ellipse(
-        this.x | 0,
-        this.y | 0,
-        (this.w / 2) | 0,
-        (this.h / 2) | 0,
-        this.rotation,
-        0,
-        Math.PI * 2,
-    );
-    ctx.fill();
-    ctx.restore();
-};
-
-export const Ellipse2D$new = (params = {}) =>
-    Object.setPrototypeOf(params, Ellipse2D);
+    return () => window.removeEventListener("resize", resizeCanvas);
+}
