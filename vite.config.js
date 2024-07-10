@@ -1,13 +1,17 @@
 import { defineConfig } from 'vite';
-import path from "path";
+import { resolve } from "path";
 
 export default defineConfig({
-    //esbuild: {
-    //    jsxInject: `import { customElement } from '@/jsx'`
-    //},
     resolve: {
         alias: {
-            "@": path.resolve(__dirname, "./src"),
+            "@": resolve("/src"),
         },
     },
+    esbuild: {
+        jsx: "transform",
+        jsxImportSource: "@",
+        jsxInject: "import { jsx } from '@/jsx'",
+        jsxFactory: "jsx.component",
+        jsxFragment: "jsx.Fragment",
+    }
 })

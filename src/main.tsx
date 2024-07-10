@@ -1,8 +1,5 @@
-import { customElement } from './jsx';
+import { listenToInput, stopListeningToInput } from './input';
 import './style.css'
 
-class HelpMe { }
-<HelpMe />;
-
-function PowerUp() { }
-<PowerUp />;
+listenToInput();
+stopListeningToInput();
