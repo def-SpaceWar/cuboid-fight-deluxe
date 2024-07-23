@@ -22,7 +22,10 @@
 
     /* JSX Config */
     "jsx": "react",
-    "jsxFactory": "customElement",
+    "jsxImportSource": "@",
+    "jsxInject": "import { jsx } from '@/jsx-runtime'",
+    "jsxFactory": "jsx.component",
+    "jsxFragment": "jsx.Fragment",
 
 	/* Path alias */
     "baseUrl": ".",

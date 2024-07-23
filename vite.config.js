@@ -10,8 +10,8 @@ export default defineConfig({
     esbuild: {
         jsx: "transform",
         jsxImportSource: "@",
-        jsxInject: "import { jsx } from '@/jsx'",
-        jsxFactory: "jsx.component",
+        jsxInject: "import { jsx } from '@/jsx-runtime'",
+        jsxFactory: "jsx.element",
         jsxFragment: "jsx.Fragment",
     }
 })

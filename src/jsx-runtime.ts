@@ -1,17 +1,18 @@
 declare global {
     namespace JSX {
-        export type Element = unknown;
+        export type Element = any;
 
         interface ElementAttributeProperty {
-            props: unknown;
+            props: any;
         }
 
-        interface ElemnetChildrenAttribute {
-            children: unknown;
+        interface ElementChildrenAttribute {
+            children: any;
         }
 
         interface IntrinsicElements {
-            [elem: string]: unknown;
+            "a": number;
+            [elem: string]: any;
         }
     }
 }
