@@ -26,6 +26,7 @@ function createProgram(
 ): WebGLProgram {
     const program = gl.createProgram();
     if (!program) throw new Error("Program failed to initialize!");
+
     gl.attachShader(program, vertexShader);
     gl.attachShader(program, fragmentShader);
     gl.linkProgram(program);
@@ -48,28 +49,30 @@ export async function render(canvas: HTMLCanvasElement) {
     const gl = canvas.getContext("webgl2")!;
     if (!gl) throw new Error("WebGL2 failed to initialized!");
 
-    const vertShader = createShader(gl, gameVert, gl.VERTEX_SHADER),
+    const
+        vertShader = createShader(gl, gameVert, gl.VERTEX_SHADER),
         fragShader = createShader(gl, gameFrag, gl.FRAGMENT_SHADER),
-        program = createProgram(gl, vertShader, fragShader);
+        program = createProgram(gl, vertShader, fragShader),
 
-    const getAttrib = (a: string) => gl.getAttribLocation(program, a),
-        getUniform = (u: string) => gl.getUniformLocation(program, u);
+        getAttrib = (a: string) => gl.getAttribLocation(program, a),
+        a_position = getAttrib("a_position"),
+        a_texCoord = getAttrib("a_texCoord"),
 
-    const a_position = getAttrib("a_position"),
-        a_texCoord = getAttrib("a_texCoord");
-    const u_resolution = getUniform("u_resolution"),
+        getUniform = (u: string) => gl.getUniformLocation(program, u),
+        u_resolution = getUniform("u_resolution"),
         u_scale = getUniform("u_scale"),
         u_rotation = getUniform("u_rotation"),
         u_translation = getUniform("u_translation"),
         u_color = getUniform("u_color"),
         u_image = getUniform("u_image"),
-        u_imageTranslation = getUniform("u_imageTranslation");
+        u_imageTranslation = getUniform("u_imageTranslation"),
 
-    const vao = gl.createVertexArray(),
+        vao = gl.createVertexArray(),
         a_positionBuffer = gl.createBuffer(),
-        a_texCoordBuffer = gl.createBuffer();
+        a_texCoordBuffer = gl.createBuffer(),
 
-    const texture = gl.createTexture();
+        texture = gl.createTexture();
+
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -92,7 +95,6 @@ export async function render(canvas: HTMLCanvasElement) {
     gl.useProgram(program);
     gl.bindVertexArray(vao);
     gl.uniform1i(u_image, 0);
-
     function renderLoop() {
         canvas.width = canvas.clientWidth;
         canvas.height = canvas.clientHeight;
