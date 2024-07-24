@@ -28,7 +28,7 @@ export class Vector2D {
         throw new Error("to be implemented...");
     }
 
-    private arr: Float32Array;
+    arr: Float32Array;
     private constructor() { this.arr = new Float32Array(2); }
     get x(): number { return this.arr[0]; }
     set x(x: number) { this.arr[0] = x; }

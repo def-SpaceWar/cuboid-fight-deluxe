@@ -1,5 +1,6 @@
 import gameVert from "./shaders/game.vert?raw";
 import gameFrag from "./shaders/game.frag?raw";
+import defaultImg from "./assets/classes/default.png";
 
 function createShader(
     gl: WebGL2RenderingContext,
@@ -34,7 +35,16 @@ function createProgram(
     throw new Error("Could not link program: " + gl.getProgramInfoLog(program));
 }
 
-export function render(canvas: HTMLCanvasElement) {
+export const loadImage = (imageUrl: string): Promise<HTMLImageElement> =>
+    new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = imageUrl;
+        img.onload = () => resolve(img);
+        img.onerror = e => reject(e);
+    });
+
+export async function render(canvas: HTMLCanvasElement) {
     const gl = canvas.getContext("webgl2")!;
     if (!gl) throw new Error("WebGL2 failed to initialized!");
 
@@ -45,67 +55,174 @@ export function render(canvas: HTMLCanvasElement) {
     const getAttrib = (a: string) => gl.getAttribLocation(program, a),
         getUniform = (u: string) => gl.getUniformLocation(program, u);
 
-    const a_position = getAttrib("a_position");
+    const a_position = getAttrib("a_position"),
+        a_texCoord = getAttrib("a_texCoord");
     const u_resolution = getUniform("u_resolution"),
-    	u_scale = getUniform("u_scale"),
-    	u_rotation = getUniform("u_rotation"),
-    	u_translation = getUniform("u_translation"),
-        u_color = getUniform("u_color");
+        u_scale = getUniform("u_scale"),
+        u_rotation = getUniform("u_rotation"),
+        u_translation = getUniform("u_translation"),
+        u_color = getUniform("u_color"),
+        u_image = getUniform("u_image"),
+        u_imageTranslation = getUniform("u_imageTranslation");
 
-    const positionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    const vao = gl.createVertexArray(),
+        a_positionBuffer = gl.createBuffer(),
+        a_texCoordBuffer = gl.createBuffer();
 
-    const positions = [
-        -10, -20,
-        80, -20,
-        -10, 30,
-        -10, 30,
-        80, -20,
-        80, 30,
-    ];
-    gl.bufferData(
-        gl.ARRAY_BUFFER,
-        new Float32Array(positions),
-        gl.STATIC_DRAW,
-    );
+    const texture = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-    const vao = gl.createVertexArray();
-    {
-        gl.bindVertexArray(vao);
-
-        gl.enableVertexAttribArray(a_position);
-        const size = 2,			// 2 components per iteration
-            type = gl.FLOAT,	// the data is 32bit floats
-            normalize = false,	// don't normalize the data
-            stride = 0,			// 0 = move forward size * sizeof(type) each iteration to get the next position
-            offset = 0;			// start at the beginning of the buffer
-        gl.vertexAttribPointer(
-            a_position,
-            size, type, normalize, stride, offset,
+    function setTexture(img: TexImageSource) {
+        gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.RGBA,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            img
         );
-
-        gl.bindVertexArray(null);
     }
+    const defaultTex = await loadImage(defaultImg);
 
     gl.useProgram(program);
-    let r = 0;
+    gl.bindVertexArray(vao);
+    gl.uniform1i(u_image, 0);
+
     function renderLoop() {
         canvas.width = canvas.clientWidth;
         canvas.height = canvas.clientHeight;
-        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
         gl.clearColor(0, 0, 0, 1);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-
-        gl.bindVertexArray(vao);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.uniform2f(u_resolution, canvas.width, canvas.height);
-        gl.uniform2f(u_scale, r, r);
-        gl.uniform2f(u_rotation, Math.cos(r), Math.sin(r));
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, a_texCoordBuffer);
+        gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array([
+                0, 0,
+                32, 0,
+                0, 32,
+                0, 32,
+                32, 0,
+                32, 32,
+            ]),
+            gl.STATIC_DRAW,
+        );
+        gl.uniform2f(u_imageTranslation, -16, -16);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, a_positionBuffer);
+        gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array([
+                -16, -16,
+                16, -16,
+                -16, 16,
+                -16, 16,
+                16, -16,
+                16, 16,
+            ]),
+            gl.STATIC_DRAW,
+        );
+
+        gl.uniform2f(u_scale, 5, 5);
+        gl.uniform2f(u_rotation, 1, 0);
         gl.uniform2f(u_translation, 0, 0);
-        gl.uniform4f(u_color, r / Math.PI / 2, 0.5, 1 - r / Math.PI / 2, 1);
+        gl.uniform4f(u_color, 1, .3, .4, 1);
+
+        setTexture(defaultTex)
+        gl.enableVertexAttribArray(a_position);
+        gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(a_texCoord);
+        gl.vertexAttribPointer(a_texCoord, 2, gl.FLOAT, false, 0, 0);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-        r += Math.PI / 60;
-        while (r > Math.PI * 2) r -= Math.PI * 2;
+        gl.bindBuffer(gl.ARRAY_BUFFER, a_texCoordBuffer);
+        gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array([
+                0, 0,
+                32, 0,
+                0, 32,
+                0, 32,
+                32, 0,
+                32, 32,
+            ]),
+            gl.STATIC_DRAW,
+        );
+        gl.uniform2f(u_imageTranslation, -16, -16);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, a_positionBuffer);
+        gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array([
+                -16, -16,
+                16, -16,
+                -16, 16,
+                -16, 16,
+                16, -16,
+                16, 16,
+            ]),
+            gl.STATIC_DRAW,
+        );
+
+        gl.uniform2f(u_scale, 5, 5);
+        gl.uniform2f(u_rotation, 1, 0);
+        gl.uniform2f(u_translation, -200, 0);
+        gl.uniform4f(u_color, .25, .45, 1, 1);
+
+        setTexture(defaultTex)
+        gl.enableVertexAttribArray(a_position);
+        gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(a_texCoord);
+        gl.vertexAttribPointer(a_texCoord, 2, gl.FLOAT, false, 0, 0);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, a_texCoordBuffer);
+        gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array([
+                0, 0,
+                32, 0,
+                0, 32,
+                0, 32,
+                32, 0,
+                32, 32,
+            ]),
+            gl.STATIC_DRAW,
+        );
+        gl.uniform2f(u_imageTranslation, -16, -16);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, a_positionBuffer);
+        gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array([
+                -16, -16,
+                16, -16,
+                -16, 16,
+                -16, 16,
+                16, -16,
+                16, 16,
+            ]),
+            gl.STATIC_DRAW,
+        );
+
+        gl.uniform2f(u_scale, 5, 5);
+        gl.uniform2f(u_rotation, 1, 0);
+        gl.uniform2f(u_translation, 200, 0);
+        gl.uniform4f(u_color, .2, 1, .5, 1);
+
+        setTexture(defaultTex)
+        gl.enableVertexAttribArray(a_position);
+        gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(a_texCoord);
+        gl.vertexAttribPointer(a_texCoord, 2, gl.FLOAT, false, 0, 0);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
 
         requestAnimationFrame(renderLoop);
     };

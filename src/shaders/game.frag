@@ -2,10 +2,14 @@
 
 precision highp float;
 
-uniform vec4 u_color;
+in vec2 v_texCoord;
 
-out vec4 o_color;
+uniform vec4 u_color;
+uniform sampler2D u_image;
+uniform vec2 u_imageTranslation;
+
+out vec4 v_color;
 
 void main() {
-    o_color = u_color;
+    v_color = texture(u_image, (v_texCoord - u_imageTranslation) / vec2(textureSize(u_image, 0))) * u_color;
 }
