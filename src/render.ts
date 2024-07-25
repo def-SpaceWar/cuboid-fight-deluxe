@@ -1,5 +1,5 @@
-import gameVert from "./shaders/game.vert?raw";
-import gameFrag from "./shaders/game.frag?raw";
+import mainVert from "./shaders/main.vert?raw";
+import mainFrag from "./shaders/main.frag?raw";
 import { Vector2D } from "./math";
 
 const app = document.getElementById("app")!;
@@ -94,8 +94,8 @@ export async function setupRender() {
     if (!gl) throw new Error("WebGL2 failed to initialized!");
 
     const
-        vertShader = createShader(gameVert, gl.VERTEX_SHADER),
-        fragShader = createShader(gameFrag, gl.FRAGMENT_SHADER),
+        vertShader = createShader(mainVert, gl.VERTEX_SHADER),
+        fragShader = createShader(mainFrag, gl.FRAGMENT_SHADER),
         program = createProgram(vertShader, fragShader),
         vao = gl.createVertexArray(),
         texture = gl.createTexture(),
