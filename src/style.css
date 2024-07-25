@@ -1,5 +1,6 @@
 body {
     margin: 0;
+    background-color: black;
 }
 
 canvas {
@@ -9,4 +10,11 @@ canvas {
     width: 100vw;
     height: 100vh;
     z-index: -1;
+    image-rendering: crisp-edges;
+}
+
+#fps {
+    margin: 0;
+    color: #A23674AA;
+    font-size: 2rem;
 }
