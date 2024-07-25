@@ -44,7 +44,8 @@ let gl: WebGL2RenderingContext,
     u_rotation: WebGLUniformLocation,
     u_translation: WebGLUniformLocation,
     u_color: WebGLUniformLocation,
-    u_image: WebGLUniformLocation;
+    u_image: WebGLUniformLocation,
+    u_noTex: WebGLUniformLocation;
 
 function createShader(
     source: string,
@@ -104,6 +105,8 @@ export async function setupRender() {
 
     gl.useProgram(program);
     gl.bindVertexArray(vao);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     a_position = getAttrib("a_position")!;
     a_positionBuffer = gl.createBuffer()!;
@@ -115,6 +118,7 @@ export async function setupRender() {
     u_translation = getUniform("u_translation")!;
     u_color = getUniform("u_color")!;
     u_image = getUniform("u_image")!;
+    u_noTex = getUniform("u_noTex")!;
 
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -138,7 +142,7 @@ export function clearScreen(color: Color = [0, 0, 0, 0]) {
     gl.uniform2f(u_resolution, gl.canvas.width, gl.canvas.height);
 }
 
-function rectToGL(r: Rectangle): Float32Array {
+export function rectToGL(r: Rectangle): Float32Array {
     return new Float32Array([
         r[0], r[1],
         r[2], r[1],
@@ -154,8 +158,8 @@ const _tint: Color = [1, 1, 1, 1],
     _translation = Vector2D.zero();
 export function drawRect(
     image: TexImageSource,
-    texCoord: Rectangle,
-    rect: Rectangle,
+    texCoord: Float32Array,
+    triangles: Float32Array,
     { scale, rotation, translation, tint }: {
         scale?: Vector2D,
         rotation?: number,
@@ -169,12 +173,12 @@ export function drawRect(
     tint ??= _tint;
 
     gl.bindBuffer(gl.ARRAY_BUFFER, a_positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, rectToGL(rect), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
     gl.enableVertexAttribArray(a_position);
     gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, a_texCoordBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, rectToGL(texCoord), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, texCoord, gl.STATIC_DRAW);
     gl.enableVertexAttribArray(a_texCoord);
     gl.vertexAttribPointer(a_texCoord, 2, gl.FLOAT, false, 0, 0);
     gl.texImage2D(
@@ -190,6 +194,35 @@ export function drawRect(
     gl.uniform2f(u_rotation, Math.cos(rotation), Math.sin(rotation));
     gl.uniform2fv(u_translation, translation.arr);
     gl.uniform4fv(u_color, tint);
+    gl.uniform1ui(u_noTex, 0);
+
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+};
+
+export function fillRect(
+    triangles: Float32Array,
+    { scale, rotation, translation, tint }: {
+        scale?: Vector2D,
+        rotation?: number,
+        translation?: Vector2D,
+        tint?: Color,
+    } = {},
+) {
+    scale ??= _scale;
+    rotation ??= 0;
+    translation ??= _translation;
+    tint ??= _tint;
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, a_positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(a_position);
+    gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
+
+    gl.uniform2fv(u_scale, scale.arr);
+    gl.uniform2f(u_rotation, Math.cos(rotation), Math.sin(rotation));
+    gl.uniform2fv(u_translation, translation.arr);
+    gl.uniform4fv(u_color, tint);
+    gl.uniform1ui(u_noTex, 1);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 };

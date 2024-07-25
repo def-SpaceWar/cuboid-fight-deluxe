@@ -39,6 +39,28 @@ export class Vector2D {
         return Vector2D.xy(this.x, this.y);
     }
 
+    Sx(x: number) {
+        this.x *= x;
+        return this;
+    }
+
+    Sy(y: number) {
+        this.y *= y;
+        return this;
+    }
+
+    Sxy(x: number, y: number) {
+        this.x *= x;
+        this.y *= y;
+        return this;
+    }
+
+    Sxyn(n: number) {
+        this.x *= n;
+        this.y *= n;
+        return this;
+    }
+
     sx(x: number): this {
         this.x = x;
         return this;
