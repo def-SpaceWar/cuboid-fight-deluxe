@@ -13,13 +13,8 @@ type Control
     | MouseButton;
 
 export const Binding = {
-    key(key: string): Keybind {
-        return { type: 'key', key };
-    },
-
-    button(button: number): MouseButton {
-        return { type: 'button', button };
-    },
+    key(key: string): Keybind { return { type: 'key', key }; },
+    button(button: number): MouseButton { return { type: 'button', button }; },
 };
 
 export type Controls = {
@@ -180,5 +175,5 @@ export class Default implements Player {
         this.doubleJumpCount = 2;
     }
 
-    onPlayerCollision(_: Player) {}
+    onPlayerCollision(_: Player) { }
 }

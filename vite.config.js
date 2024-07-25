@@ -7,6 +7,9 @@ export default defineConfig({
             "@": resolve("/src"),
         },
     },
+    build: {
+        target: 'esnext',
+    },
     esbuild: {
         jsx: "transform",
         jsxImportSource: "@",

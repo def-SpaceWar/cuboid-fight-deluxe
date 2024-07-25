@@ -14,12 +14,12 @@ const players: Player[] = [
         Vector2D.xy(-100, -100),
         [1, 0.2, 0.3, 1],
         {
-            left: Binding.key('o'),
-            up: Binding.key('.'),
-            down: Binding.key('e'),
-            right: Binding.key('u'),
-            attack: Binding.key(','),
-            special: Binding.key(';'),
+            left: Binding.key('s'),
+            up: Binding.key('e'),
+            down: Binding.key('d'),
+            right: Binding.key('f'),
+            attack: Binding.key('w'),
+            special: Binding.key('q'),
         },
     ),
 ];
