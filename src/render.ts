@@ -3,7 +3,7 @@ import mainFrag from "./shaders/main.frag?raw";
 import { Vector2D } from "./math";
 
 const app = document.getElementById("app")!;
-const FPS_SAMPLE_AMOUNT = 50;
+const FPS_SAMPLE_AMOUNT = 100;
 
 export function renderLoop(c: () => unknown): () => void;
 export function renderLoop(c: (dt: number) => unknown): () => void;
@@ -29,7 +29,7 @@ export function renderLoop(c: Function) {
         fpsText.innerText = "FPS: " + avgFps().toPrecision(3);
 
         handle = requestAnimationFrame(loop);
-        c(Math.min(dt, 0.5));
+        c(Math.min(dt, 0.05));
     }
     return () => cancelAnimationFrame(handle);
 }

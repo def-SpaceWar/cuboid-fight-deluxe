@@ -1,1 +1,1 @@
-export const DEBUG_HITBOXES = true;
+export const DEBUG_HITBOXES = false;

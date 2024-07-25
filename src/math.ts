@@ -55,7 +55,7 @@ export class Vector2D {
         return this;
     }
 
-    Sxyn(n: number) {
+    Sn(n: number) {
         this.x *= n;
         this.y *= n;
         return this;
