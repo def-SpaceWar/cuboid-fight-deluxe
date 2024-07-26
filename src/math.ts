@@ -28,6 +28,22 @@ export class Vector2D {
         throw new Error("to be implemented...");
     }
 
+    static add(u: Vector2D, v: Vector2D) {
+        return this.xy(u.x + v.x, u.y + v.y);
+    }
+
+    static subtract(u: Vector2D, v: Vector2D) {
+        return this.xy(u.x - v.x, u.y - v.y);
+    }
+
+    static squaredDistance(u: Vector2D, v: Vector2D) {
+        return (u.x - v.x) ** 2 + (u.y - v.y) ** 2;
+    }
+
+    static distance(u: Vector2D, v: Vector2D) {
+        return Math.sqrt(this.squaredDistance(u, v));
+    }
+
     arr: Float32Array;
     private constructor() { this.arr = new Float32Array(2); }
     get x(): number { return this.arr[0]; }

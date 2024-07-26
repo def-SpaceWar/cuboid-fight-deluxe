@@ -9,10 +9,25 @@ import './style.css'
 listenToInput();
 setupRender();
 
-const players: Player[] = [
+const players: Player[] = [];
+players.push(
     new Default(
         Vector2D.xy(-100, -100),
         [1, 0.2, 0.3, 1],
+        {
+            left: Binding.key('ArrowLeft'),
+            up: Binding.key('ArrowUp'),
+            down: Binding.key('ArrowDown'),
+            right: Binding.key('ArrowRight'),
+            attack: Binding.key('/'),
+            special: Binding.key('.'),
+        },
+        1,
+        players,
+    ),
+    new Default(
+        Vector2D.xy(-200, -100),
+        [0, 0.5, 1, 1],
         {
             left: Binding.key('s'),
             up: Binding.key('e'),
@@ -21,14 +36,19 @@ const players: Player[] = [
             attack: Binding.key('w'),
             special: Binding.key('q'),
         },
+        2,
+        players,
     ),
-];
+);
 
 const platforms: Platform[] = [
-    new StonePlatform(Vector2D.xy(0, 200), 200, 15),
+    new StonePlatform(Vector2D.xy(0, 150), 200, 25),
     new GrassPlatform(Vector2D.xy(-100, 300), 500, 45),
     new StonePlatform(Vector2D.xy(500, 50), 150, 15),
     new GrassPlatform(Vector2D.xy(-300, -200), 300, 45),
+    new GrassPlatform(Vector2D.xy(-100, -300), 300, 25),
+    new GrassPlatform(Vector2D.xy(300, -100), 300, 25),
+    new StonePlatform(Vector2D.xy(500, 200), 350, 45),
 ];
 
 const stop = renderLoop((dt: number) => {
@@ -62,7 +82,7 @@ const stop = renderLoop((dt: number) => {
         player.update(dt);
     }
 
-    if (!isPressed("q")) return;
+    if (!isPressed("Enter")) return;
     stopListeningToInput();
     stop();
 });

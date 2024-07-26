@@ -47,13 +47,27 @@ export type Player = {
     jumpPower: number;
     isPhasing: boolean;
 
+    health: number;
+    maxHealth: number;
+    isDead: boolean;
+
+    kbMultiplier: number;
+    damageMultiplier: number;
+    healMultiplier: number;
+
     render(): void;
     update(dt: number): void;
     onPlatformCollision(p: Platform): void;
     onPlayerCollision(p: Player): void;
+
+    takeKb(kb: Vector2D): void;
+    takeDamage(damage: number): void;
+    takeHealing(health: number): void;
 };
 
 const defaultTex = await loadImage(defaultImg),
+    defaultTexCoord = rectToGL([0, 0, 16, 16]),
+    defaultDeadTexCoord = rectToGL([16, 0, 32, 16]),
     defaultTriangles = rectToGL([-25, -25, 25, 25]),
     defaultHitbox = {
         type: 'rect',
@@ -62,10 +76,8 @@ const defaultTex = await loadImage(defaultImg),
         h: 50,
     };
 export class Default implements Player {
-    texCoord = rectToGL([0, 0, 32, 32]);
     visualOffset = Vector2D.zero();
-    visualDiminishConstant = Math.log(1e-4);
-    triangles = defaultTriangles;
+    visualDiminishConstant = -20;
 
     hitbox: RectangleHitbox = defaultHitbox as RectangleHitbox;
     physicsBody;
@@ -80,34 +92,69 @@ export class Default implements Player {
     isPhasing = false;
     phaseTimeout = 0;
 
+    canAttack = true;
+    attackCooldown = 2;
+    attackTimer = 0;
+    attackRange = 100;
+    attackPower = 4;
+    damage = 4;
+    combo = 0;
+    comboCooldown = 0.25;
+    isGroundPounding = false;
+
+    specialTimer = 0;
+    specialCooldown = this.attackCooldown * 2;
+    isSpecialCooldown = false;
+
+    health = 100;
+    maxHealth = 100;
+    isDead = false;
+
+    kbMultiplier = 1;
+    damageMultiplier = 1;
+    healMultiplier = 1;
+
     constructor(
         pos: Vector2D,
         public color: Color,
         public controls: Controls,
-        public name: string = "Default",
-        public playerNumber: number = 0,
-        public teamNumber: number = 0,
+        public playerNumber: number,
+        public allPlayers: Player[],
     ) {
         this.physicsBody = makePhysicsBody({
             pos,
             vel: Vector2D.x(200),
-            xDrag: 0.2,
+            xDrag: 0.04,
             yDrag: 0.2,
         });
     }
 
     render() {
-        drawRect(
-            defaultTex,
-            this.texCoord,
-            this.triangles,
-            {
-                tint: this.color,
-                translation: this.physicsBody.pos
-                    .clone()
-                    .av(this.visualOffset),
-            },
-        );
+        if (this.isDead) {
+            drawRect(
+                defaultTex,
+                defaultDeadTexCoord,
+                defaultTriangles,
+                {
+                    tint: this.color,
+                    translation: this.physicsBody.pos
+                        .clone()
+                        .av(this.visualOffset),
+                },
+            );
+        } else {
+            drawRect(
+                defaultTex,
+                defaultTexCoord,
+                defaultTriangles,
+                {
+                    tint: this.color,
+                    translation: this.physicsBody.pos
+                        .clone()
+                        .av(this.visualOffset),
+                },
+            );
+        }
 
         if (DEBUG_HITBOXES) drawHitbox(
             this.hitbox,
@@ -118,13 +165,29 @@ export class Default implements Player {
 
     update(dt: number) {
         this.physicsBody.vel.y += 2_500 * dt;
+        if (this.isGroundPounding) this.physicsBody.vel.y += 5_000 * dt;
         this.physicsBody.update(dt);
         this.visualOffset.Sn(Math.exp(dt * this.visualDiminishConstant));
 
+        this.attackTimer -= dt;
+        this.specialTimer -= dt;
+        if (!this.isSpecialCooldown) {
+            if (this.attackTimer <= 0) this.canAttack = true;
+        } else if (this.specialTimer <= 0) {
+            this.canAttack = true;
+            this.isSpecialCooldown = false;
+        }
+
+        if (this.isDead) return;
         if (isControlDown(this.controls.left)) this.physicsBody.vel.x -= this.speed * dt;
         if (isControlDown(this.controls.right)) this.physicsBody.vel.x += this.speed * dt;
         if (isControlDown(this.controls.up)) this.jump();
-        if (this.isGrounded && isControlDown(this.controls.down)) this.phase();
+        if (isControlDown(this.controls.down)) {
+            if (this.isGrounded) this.phase();
+            else this.groundPound();
+        }
+        if (isControlDown(this.controls.attack)) this.attack();
+        if (isControlDown(this.controls.special)) this.special();
         this.isGrounded = false;
     }
 
@@ -163,11 +226,16 @@ export class Default implements Player {
             this.stopPhasing();
         }
 
+        if (this.isGroundPounding) {
+            this.isGroundPounding = false;
+            this.attack(true);
+        }
+
         const oldY = this.physicsBody.pos.y;
         this.physicsBody.pos.y = p.pos.y + p.hitbox.offset.y
             - p.hitbox.h / 2 - this.hitbox.h / 2;
         const diff = this.physicsBody.pos.y - oldY;
-        if (Math.abs(diff) > 5) this.visualOffset.y -= diff;
+        if (Math.abs(diff) > 4) this.visualOffset.y -= diff;
         this.physicsBody.vel.y = 0;
 
         this.isGrounded = true;
@@ -176,4 +244,88 @@ export class Default implements Player {
     }
 
     onPlayerCollision(_: Player) { }
+
+    attack(isGroundPound = false) {
+        if (!this.canAttack) return;
+        let hasHit = false;
+
+        for (let i = 0; i < this.allPlayers.length; i++) {
+            const other = this.allPlayers[i];
+            if (other == this || other.isDead) continue;
+            let squaredDistance = Vector2D.squaredDistance(
+                this.physicsBody.pos,
+                other.physicsBody.pos,
+            );
+            if (isGroundPound) squaredDistance /= 4;
+            if (squaredDistance > this.attackRange ** 2) continue;
+            let damage =
+                Math.min(
+                    Math.max(
+                        this.attackRange / Math.sqrt(squaredDistance),
+                        this.damage ** 1.5,
+                    ),
+                    this.damage ** 2.5,
+                );
+            const kb = Vector2D
+                .subtract(other.physicsBody.pos, this.physicsBody.pos)
+                .Sn(
+                    this.attackPower *
+                    (other.maxHealth / other.health) ** 2
+                )
+
+            if (!isGroundPound) damage *= (1 + .5 * this.combo)
+            else {
+                kb.Sn(this.jumpPower / 1000);
+                damage /= 4;
+            }
+
+            other.takeDamage(damage);
+            other.takeKb(kb);
+
+            if (!isGroundPound) {
+                hasHit = true;
+                this.combo++;
+            }
+        }
+
+        if (!hasHit) this.combo = 0;
+        if (isGroundPound) return;
+        this.canAttack = false;
+        this.attackTimer = this.attackCooldown - (this.combo * this.comboCooldown);
+    }
+
+    groundPound() {
+        if (this.isPhasing) return;
+        this.isGroundPounding = true;
+    }
+
+    special() {
+        if (this.attackTimer > 0) return;
+        if (this.specialTimer > 0) return;
+        if (!this.canAttack) return;
+
+        for (let i = 0; i < 5; i++) setTimeout(
+            () => this.takeHealing(4),
+            i * 1000,
+        );
+
+        this.isSpecialCooldown = true;
+        this.specialTimer = this.specialCooldown;
+        this.canAttack = false;
+    }
+
+    takeKb(kb: Vector2D) {
+        this.physicsBody.vel.av(kb.clone().Sn(this.kbMultiplier));
+    }
+
+    takeDamage(damage: number) {
+        this.health -= damage * this.damageMultiplier;
+        if (this.health > 0) return;
+        this.health = 0;
+        this.isDead = true;
+    }
+
+    takeHealing(health: number) {
+        this.health += health * this.healMultiplier;
+    }
 }

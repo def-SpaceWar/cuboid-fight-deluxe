@@ -1,9 +1,9 @@
 import mainVert from "./shaders/main.vert?raw";
 import mainFrag from "./shaders/main.frag?raw";
 import { Vector2D } from "./math";
+import { FPS_SAMPLE_AMOUNT } from "./flags";
 
 const app = document.getElementById("app")!;
-const FPS_SAMPLE_AMOUNT = 100;
 
 export function renderLoop(c: () => unknown): () => void;
 export function renderLoop(c: (dt: number) => unknown): () => void;
@@ -123,8 +123,8 @@ export async function setupRender() {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.uniform1i(u_image, 0);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 }

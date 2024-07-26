@@ -1,4 +1,9 @@
 # TODO
 
-- Get WebGL up and running
-- Make animations using JSX
+- Dynamic Colors
+- Health Bar
+- Attacking
+
+...
+
+- jsx animations?

@@ -7,10 +7,10 @@ export default defineConfig({
             "@": resolve("/src"),
         },
     },
-    build: {
-        target: 'esnext',
-    },
     esbuild: {
+        supported: {
+            'top-level-await': true,
+        },
         jsx: "transform",
         jsxImportSource: "@",
         jsxInject: "import { jsx } from '@/jsx-runtime'",

@@ -2,7 +2,10 @@ import { DEBUG_HITBOXES } from "./flags";
 import { Vector2D } from "./math";
 import { drawHitbox, RectangleHitbox } from "./physics";
 import { Player } from "./player";
-import { fillRect, rectToGL } from "./render";
+import { drawRect, loadImage, rectToGL } from "./render";
+import dirtImg from "./assets/platforms/dirt.png";
+import grassImg from "./assets/platforms/grass.png";
+import stoneImg from "./assets/platforms/stone.png";
 
 export type Platform = {
     pos: Vector2D;
@@ -13,12 +16,34 @@ export type Platform = {
     onCollision(p: Player): void;
 };
 
+const dirtTex = await loadImage(dirtImg),
+    grassTex = await loadImage(grassImg);
 export class GrassPlatform implements Platform {
+    dirtTexCoord: Float32Array;
+    grassTexCoord: Float32Array;
     triangles: Float32Array;
     hitbox: RectangleHitbox;
     isPhaseable = true;
 
     constructor(public pos: Vector2D, w: number, h: number) {
+        {
+            const x = Math.floor(Math.random() * 16),
+                scaleFactor = 4;
+            this.grassTexCoord = rectToGL([
+                x, 0,
+                x + w / scaleFactor, h / scaleFactor,
+            ]);
+        }
+        {
+            const x = Math.floor(Math.random() * 16),
+                y = Math.floor(Math.random() * 16),
+                scaleFactor = 4;
+            this.dirtTexCoord = rectToGL([
+                x, y,
+                x + w / scaleFactor, y + h / scaleFactor,
+            ]);
+        }
+
         this.triangles = rectToGL([
             this.pos.x - w / 2, this.pos.y - h / 2,
             this.pos.x + w / 2, this.pos.y + h / 2,
@@ -31,9 +56,18 @@ export class GrassPlatform implements Platform {
     }
 
     render() {
-        fillRect(
+        drawRect(
+            dirtTex,
+            this.dirtTexCoord,
             this.triangles,
-            { tint: [0, 1, 0, 1] },
+            { tint: [.65, .32, .1, 1] },
+        );
+
+        drawRect(
+            grassTex,
+            this.grassTexCoord,
+            this.triangles,
+            { tint: [.4, 1, .1, 1] },
         );
 
         if (DEBUG_HITBOXES) drawHitbox(
@@ -43,15 +77,25 @@ export class GrassPlatform implements Platform {
         );
     }
 
-    onCollision(_: Player) {}
+    onCollision(_: Player) { }
 }
 
+const stoneTex = await loadImage(stoneImg);
 export class StonePlatform implements Platform {
+    texCoord: Float32Array;
     triangles: Float32Array;
     hitbox: RectangleHitbox;
     isPhaseable = false;
 
     constructor(public pos: Vector2D, w: number, h: number) {
+        const x = Math.floor(Math.random() * 16),
+            y = Math.floor(Math.random() * 16),
+            scaleFactor = 4;
+        this.texCoord = rectToGL([
+            x, y,
+            x + w / scaleFactor, y + h / scaleFactor,
+        ]);
+
         this.triangles = rectToGL([
             this.pos.x - w / 2, this.pos.y - h / 2,
             this.pos.x + w / 2, this.pos.y + h / 2,
@@ -64,9 +108,11 @@ export class StonePlatform implements Platform {
     }
 
     render() {
-        fillRect(
+        drawRect(
+            stoneTex,
+            this.texCoord,
             this.triangles,
-            { tint: [.6, .6, .6, 1] },
+            { tint: [.5, .6, .7, 1] },
         );
 
         if (DEBUG_HITBOXES) drawHitbox(
