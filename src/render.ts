@@ -1,67 +1,8 @@
 import mainVert from "./shaders/main.vert?raw";
 import mainFrag from "./shaders/main.frag?raw";
 import { Vector2D } from "./math";
-import { FPS_SAMPLE_AMOUNT, TPS_SAMPLE_AMOUNT, MIN_DT } from "./flags";
 
 const app = document.getElementById("app")!;
-
-export function renderLoop(c: () => unknown): () => void;
-export function renderLoop(c: (dt: number) => unknown): () => void;
-export function renderLoop(c: Function) {
-    const fpsList = new Float32Array(FPS_SAMPLE_AMOUNT),
-        avgFps = () => {
-            let sum = 0;
-            for (let i = 0; i < FPS_SAMPLE_AMOUNT; i++) sum += fpsList[i];
-            return sum / FPS_SAMPLE_AMOUNT;
-        },
-        fpsText = app.appendChild(document.createElement("p"));
-    fpsText.id = "fps";
-
-    let before = performance.now(),
-        fpsIdx = 0,
-        handle = requestAnimationFrame(loop);
-    function loop(now: DOMHighResTimeStamp) {
-        const dt = (now - before) / 1_000;
-        before = now;
-
-        fpsList[fpsIdx] = 1 / dt;
-        fpsIdx < FPS_SAMPLE_AMOUNT ? fpsIdx++ : fpsIdx = 0;
-        fpsText.innerText = "FPS: " + avgFps().toPrecision(3);
-
-        handle = requestAnimationFrame(loop);
-        c(Math.min(dt, MIN_DT));
-    }
-    return () => cancelAnimationFrame(handle);
-}
-
-export function updateLoop(c: () => unknown): () => void;
-export function updateLoop(c: (dt: number) => unknown): () => void;
-export function updateLoop(c: Function) {
-    const tpsList = new Float32Array(TPS_SAMPLE_AMOUNT),
-        avgTps = () => {
-            let sum = 0;
-            for (let i = 0; i < TPS_SAMPLE_AMOUNT; i++) sum += tpsList[i];
-            return sum / TPS_SAMPLE_AMOUNT;
-        },
-        tpsText = app.appendChild(document.createElement("p"));
-    tpsText.id = "tps";
-
-    let before = performance.now(),
-        tpsIdx = 0;
-    const handle = setInterval(() => {
-        const now = performance.now(),
-            dt = (now - before) / 1_000;
-        before = now;
-
-        tpsList[tpsIdx] = 1 / dt;
-        tpsIdx < FPS_SAMPLE_AMOUNT ? tpsIdx++ : tpsIdx = 0;
-        tpsText.innerText = "TPS: " + avgTps().toPrecision(3);
-
-        c(Math.min(dt, MIN_DT));
-    });
-    return () => clearInterval(handle);
-}
-
 let gl: WebGL2RenderingContext,
     a_position: number,
     a_positionBuffer: WebGLBuffer,
@@ -118,7 +59,10 @@ export const loadImage = (imageUrl: string): Promise<HTMLImageElement> =>
 
 export async function setupRender() {
     gl = app.appendChild(document.createElement("canvas"))
-        .getContext("webgl2")!;
+        .getContext("webgl2", {
+            antialias: false,
+            powerPreference: 'high-performance',
+        })!;
     if (!gl) throw new Error("WebGL2 failed to initialized!");
 
     const
@@ -156,10 +100,10 @@ export async function setupRender() {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 }
 
-export type Color = [r: GLclampf, g: GLclampf, b: GLclampf, a: GLclampf];
-export type Rectangle = [x1: number, y1: number, x2: number, y2: number];
+export type GLColor = [r: GLclampf, g: GLclampf, b: GLclampf, a: GLclampf];
+export type GLRectangle = [x1: number, y1: number, x2: number, y2: number];
 
-export function clearScreen(color: Color = [0, 0, 0, 0]) {
+export function clearScreen(color: GLColor = [0, 0, 0, 0]) {
     gl.canvas.width = (gl.canvas as HTMLCanvasElement).clientWidth;
     gl.canvas.height = (gl.canvas as HTMLCanvasElement).clientHeight;
 
@@ -169,7 +113,7 @@ export function clearScreen(color: Color = [0, 0, 0, 0]) {
     gl.uniform2f(u_resolution, gl.canvas.width, gl.canvas.height);
 }
 
-export function rectToGL(r: Rectangle): Float32Array {
+export function rectToGL(r: GLRectangle): Float32Array {
     return new Float32Array([
         r[0], r[1],
         r[2], r[1],
@@ -180,19 +124,24 @@ export function rectToGL(r: Rectangle): Float32Array {
     ]);
 }
 
-export function fillRect(
+export function fillGeometry(
     triangles: Float32Array,
     { scale, rotation, translation, tint }: {
         scale?: Vector2D,
         rotation?: number,
         translation?: Vector2D,
-        tint?: Color,
+        tint?: GLColor,
     } = {},
 ) {
     scale ??= _scale;
     rotation ??= 0;
     translation ??= _translation;
     tint ??= _tint;
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, a_texCoordBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(a_texCoord);
+    gl.vertexAttribPointer(a_texCoord, 2, gl.FLOAT, false, 0, 0);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, a_positionBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
@@ -205,13 +154,13 @@ export function fillRect(
     gl.uniform4fv(u_color, tint);
     gl.uniform1ui(u_noTex, 1);
 
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.drawArrays(gl.TRIANGLES, 0, triangles.length / 2);
 }
 
-const _tint: Color = [1, 1, 1, 1],
+const _tint: GLColor = [1, 1, 1, 1],
     _scale = Vector2D.xy(1, 1),
     _translation = Vector2D.zero();
-export function drawRect(
+export function drawGeometry(
     image: TexImageSource,
     texCoord: Float32Array,
     triangles: Float32Array,
@@ -228,7 +177,7 @@ export function drawRect(
         scale?: Vector2D,
         rotation?: number,
         translation?: Vector2D,
-        tint?: Color,
+        tint?: GLColor,
         repeatX?: boolean,
         repeatY?: boolean,
         mirroredX?: boolean,
@@ -282,5 +231,70 @@ export function drawRect(
             );
         else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.drawArrays(gl.TRIANGLES, 0, triangles.length / 2);
+}
+
+export class RGBAColor {
+    glColor: GLColor;
+    get r() { return this.glColor[0] }
+    set r(r: number) { this.glColor[0] = r; }
+    get g() { return this.glColor[1] }
+    set g(g: number) { this.glColor[1] = g; }
+    get b() { return this.glColor[2] }
+    set b(b: number) { this.glColor[2] = b; }
+    get a() { return this.glColor[3] }
+    set a(a: number) { this.glColor[3] = a; }
+
+    constructor(r: number, g: number, b: number, a: number = 1) {
+        this.glColor = new Float32Array([r, g, b, a]) as unknown as GLColor;
+    }
+
+    toHSVA(): HSVAColor {
+        const max = Math.max(this.r, this.g, this.b),
+            min = Math.min(this.r, this.g, this.b),
+            d = max - min,
+            s = (max === 0 ? 0 : d / max),
+            v = max;
+        let h: number;
+        switch (max) {
+            case min: h = 0; break;
+            case this.r:
+                h = (this.g - this.b);
+                if (this.g < this.b) h += d * 6;
+                h /= 6 * d;
+                break;
+            case this.g: h = (this.b - this.r) + d * 2; h /= 6 * d; break;
+            case this.b: h = (this.r - this.g) + d * 4; h /= 6 * d; break;
+        }
+        // @ts-ignore
+        return new HSVAColor(h, s, v, this.a);
+    }
+}
+
+export class HSVAColor {
+    constructor(
+        public h: number,
+        public s: number,
+        public v: number,
+        public a: number,
+    ) { }
+
+    toRGBA(): RGBAColor {
+        const i = Math.floor(this.h * 6),
+            f = this.h * 6 - i,
+            p = this.v * (1 - this.s),
+            q = this.v * (1 - f * this.s),
+            t = this.v * (1 - (1 - f) * this.s);
+        let r: number, g: number, b: number;
+        switch (i % 6) {
+            case 0: r = this.v, g = t, b = p; break;
+            case 1: r = q, g = this.v, b = p; break;
+            case 2: r = p, g = this.v, b = t; break;
+            case 3: r = p, g = q, b = this.v; break;
+            case 4: r = t, g = p, b = this.v; break;
+            case 5: r = this.v, g = p, b = q; break;
+        }
+        // @ts-ignore
+        return new RGBAColor(r, g, b, this.a);
+    }
 }

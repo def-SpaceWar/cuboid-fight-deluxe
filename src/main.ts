@@ -3,8 +3,10 @@ import { Vector2D } from './math';
 import { isColliding } from './physics';
 import { GrassPlatform, Platform, StonePlatform } from './platform';
 import { Binding, Default, Player } from './player';
-import { clearScreen, renderLoop, setupRender, updateLoop } from './render';
+import { clearScreen, RGBAColor, setupRender } from './render';
+import { renderLoop, timeout, updateLoop } from './loop';
 import './style.css'
+import { toggleHitboxes } from './flags';
 
 listenToInput();
 setupRender();
@@ -12,8 +14,8 @@ setupRender();
 const players: Player[] = [];
 players.push(
     new Default(
-        Vector2D.xy(-100, -100),
-        [1, 0.2, 0.3, 1],
+        Vector2D.x(-50),
+        new RGBAColor(1, 0.2, 0.3),
         {
             left: Binding.key('ArrowLeft'),
             up: Binding.key('ArrowUp'),
@@ -26,8 +28,8 @@ players.push(
         players,
     ),
     new Default(
-        Vector2D.xy(-200, -100),
-        [0, 0.5, 1, 1],
+        Vector2D.x(375),
+        new RGBAColor(0, 0.5, 1),
         {
             left: Binding.key('s'),
             up: Binding.key('e'),
@@ -57,6 +59,7 @@ const stopRender = renderLoop(() => {
     for (let i = 0; i < players.length; i++) players[i].render();
 });
 
+let canToggleHitboxes = true;
 const stopUpdate = updateLoop((dt: number) => {
     for (let i = 0; i < platforms.length; i++) platforms[i].update(dt);
     for (let i = 0; i < players.length; i++) {
@@ -78,6 +81,12 @@ const stopUpdate = updateLoop((dt: number) => {
             }
         }
         player.update(dt);
+    }
+
+    if (canToggleHitboxes && isPressed("Escape")) {
+        canToggleHitboxes = false;
+        timeout(() => canToggleHitboxes = true, 1);
+        toggleHitboxes();
     }
 
     if (!isPressed("Enter")) return;

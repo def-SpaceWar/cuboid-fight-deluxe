@@ -1,6 +1,6 @@
 body {
     margin: 0;
-    background-color: #5599FF;
+    background-color: #66AAEE;
 }
 
 canvas {
@@ -19,7 +19,7 @@ canvas {
     font-size: 2rem;
     position: absolute;
     left: 1vh;
-    top: 1vh;
+    bottom: 1vh;
 }
 
 #tps {
@@ -28,5 +28,5 @@ canvas {
     font-size: 2rem;
     position: absolute;
     left: 1vh;
-    top: calc(1vh + 2rem);
+    bottom: calc(2vh + 2rem);
 }

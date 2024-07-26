@@ -1,10 +1,11 @@
-import { Color, drawRect, loadImage, rectToGL } from "./render";
+import { GLColor, RGBAColor, drawGeometry, fillGeometry, loadImage, rectToGL } from "./render";
 import defaultImg from "./assets/classes/default.png";
 import { Vector2D } from "./math";
 import { drawHitbox, Hitbox, makePhysicsBody, PhysicsBody, RectangleHitbox } from "./physics";
 import { DEBUG_HITBOXES } from "./flags";
 import { Platform } from "./platform";
 import { isMousePressed, isPressed } from "./input";
+import { clearTimer, timeout, Timer } from "./loop";
 
 type Keybind = { key: string };
 type MouseButton = { button: number };
@@ -37,8 +38,6 @@ export type Player = {
     hitbox: Hitbox;
     physicsBody: PhysicsBody;
 
-    speed: number;
-    airSpeed: number;
     isGrounded: boolean;
     jumpPower: number;
     isPhasing: boolean;
@@ -47,7 +46,13 @@ export type Player = {
     maxHealth: number;
     isDead: boolean;
 
+    speedMultiplier: number;
+    jumpMultiplier: number;
+    abilitySpeedMultiplier: number;
+    attackMultiplier: number;
+    attackRangeMultiplier: number;
     kbMultiplier: number;
+    incomingKbMultiplier: number;
     damageMultiplier: number;
     healMultiplier: number;
 
@@ -74,19 +79,20 @@ const defaultTex = await loadImage(defaultImg),
 export class Default implements Player {
     visualOffset = Vector2D.zero();
     visualDiminishConstant = -20;
+    comboColor: GLColor;
+    specialColor: GLColor;
 
     hitbox: RectangleHitbox = defaultHitbox as RectangleHitbox;
     physicsBody;
 
     speed = 1_000;
-    airSpeed = 1_000; // useless cuz airSpeed is same for Default
-
+    // airSpeed; for other classes
     isGrounded = false;
     jumpPower = 800;
     canJump = true;
     doubleJumpCount = 0;
     isPhasing = false;
-    phaseTimeout = 0;
+    phaseTimeout?: Timer;
 
     canAttack = true;
     attackCooldown = 2;
@@ -106,20 +112,36 @@ export class Default implements Player {
     maxHealth = 100;
     isDead = false;
 
+    speedMultiplier = 1;
+    jumpMultiplier = 1;
+    abilitySpeedMultiplier = 1;
+    attackMultiplier = 1;
+    attackRangeMultiplier = 1;
     kbMultiplier = 1;
+    incomingKbMultiplier = 1;
     damageMultiplier = 1;
     healMultiplier = 1;
 
     constructor(
         pos: Vector2D,
-        public color: Color,
+        public color: RGBAColor,
         public controls: Controls,
         public playerNumber: number,
         public allPlayers: Player[],
     ) {
+        const hsv = color.toHSVA();
+        hsv.s = 1;
+
+        hsv.h += 0.25;
+        if (hsv.h > 1) hsv.h -= 1;
+        this.comboColor = hsv.toRGBA().glColor;
+
+        hsv.h += 0.5;
+        if (hsv.h > 1) hsv.h -= 1;
+        this.specialColor = hsv.toRGBA().glColor;
+
         this.physicsBody = makePhysicsBody({
             pos,
-            vel: Vector2D.x(200),
             xDrag: 0.04,
             yDrag: 0.2,
         });
@@ -127,36 +149,82 @@ export class Default implements Player {
 
     render() {
         if (this.isDead) {
-            drawRect(
+            drawGeometry(
                 defaultTex,
                 defaultDeadTexCoord,
                 defaultTriangles,
                 {
-                    tint: this.color,
+                    tint: this.color.glColor,
                     translation: this.physicsBody.pos
                         .clone()
                         .av(this.visualOffset),
                 },
             );
         } else {
-            drawRect(
+            const translation = this.physicsBody.pos.clone()
+                .av(this.visualOffset);
+            drawGeometry(
                 defaultTex,
                 defaultTexCoord,
                 defaultTriangles,
-                {
-                    tint: this.color,
-                    translation: this.physicsBody.pos
-                        .clone()
-                        .av(this.visualOffset),
-                },
+                { tint: this.color.glColor, translation },
             );
+
+
+            if (this.combo > 0) fillGeometry(
+                rectToGL([
+                    -25 +
+                    50 * (1 -
+                        this.combo * this.comboCooldown /
+                        this.attackCooldown),
+                    -30,
+                    25,
+                    -40,
+                ]),
+                { tint: this.comboColor, translation },
+            );
+
+            if (this.attackTimer > 0) fillGeometry(
+                rectToGL([
+                    -25,
+                    -30,
+                    25 -
+                    50 * (1 -
+                        this.attackTimer / this.attackCooldown),
+                    -40,
+                ]),
+                { tint: this.color.glColor, translation },
+            );
+            else if (this.specialTimer > 0) fillGeometry(
+                rectToGL([
+                    -25, -30,
+                    25 -
+                    50 * (1 - this.specialTimer / this.specialCooldown),
+                    -40,
+                ]),
+                { tint: this.specialColor, translation },
+            );
+            else if (DEBUG_HITBOXES) drawHitbox({
+                type: 'circle',
+                offset: Vector2D.zero(),
+                r: this.attackRange * this.attackRangeMultiplier,
+            }, this.physicsBody.pos, [1, 0, 0, 1]);
         }
 
-        if (DEBUG_HITBOXES) drawHitbox(
-            this.hitbox,
-            this.physicsBody.pos,
-            [0, 1, 0.5, 1],
-        );
+
+        if (DEBUG_HITBOXES) {
+            drawHitbox({
+                type: 'circle',
+                offset: Vector2D.zero(),
+                r: this.attackRange * this.attackRangeMultiplier * Math.SQRT2,
+            }, this.physicsBody.pos, [1, 0, 0, 1]);
+
+            drawHitbox(
+                this.hitbox,
+                this.physicsBody.pos,
+                [0, 1, 0.5, 1],
+            );
+        }
     }
 
     update(dt: number) {
@@ -165,8 +233,8 @@ export class Default implements Player {
         this.physicsBody.update(dt);
         this.visualOffset.Sn(Math.exp(dt * this.visualDiminishConstant));
 
-        this.attackTimer -= dt;
-        this.specialTimer -= dt;
+        this.attackTimer -= dt * this.abilitySpeedMultiplier;
+        this.specialTimer -= dt * this.abilitySpeedMultiplier;
         if (!this.isSpecialCooldown) {
             if (this.attackTimer <= 0) this.canAttack = true;
         } else if (this.specialTimer <= 0) {
@@ -175,8 +243,9 @@ export class Default implements Player {
         }
 
         if (this.isDead) return;
-        if (isControlDown(this.controls.left)) this.physicsBody.vel.x -= this.speed * dt;
-        if (isControlDown(this.controls.right)) this.physicsBody.vel.x += this.speed * dt;
+        const sped = this.speed * this.speedMultiplier * dt;
+        if (isControlDown(this.controls.left)) this.physicsBody.vel.x -= sped;
+        if (isControlDown(this.controls.right)) this.physicsBody.vel.x += sped;
         if (isControlDown(this.controls.up)) this.jump();
         if (isControlDown(this.controls.down)) {
             if (this.isGrounded) this.phase();
@@ -192,7 +261,7 @@ export class Default implements Player {
         this.stopPhasing();
         this.canJump = false;
 
-        let jumpPower: number = this.jumpPower;
+        let jumpPower: number = this.jumpPower * this.jumpMultiplier;
         if (this.isGrounded) {
             jumpPower *= 1.25;
         } else if (this.doubleJumpCount > 0) {
@@ -201,18 +270,17 @@ export class Default implements Player {
 
         this.physicsBody.vel.y = -jumpPower;
         if (this.doubleJumpCount == 0) return;
-        setTimeout(() => this.canJump = true, 200);
+        timeout(() => this.canJump = true, .2);
     }
 
     phase() {
         if (this.isPhasing) return;
         this.isPhasing = true;
-        this.phaseTimeout =
-            setTimeout(() => this.isPhasing = false, 500) as unknown as number;
+        this.phaseTimeout = timeout(() => this.isPhasing = false, .5);
     }
 
     stopPhasing() {
-        clearTimeout(this.phaseTimeout);
+        clearTimer(this.phaseTimeout!);
         this.isPhasing = false;
     }
 
@@ -242,7 +310,8 @@ export class Default implements Player {
     onPlayerCollision(_: Player) { }
 
     attack(isGroundPound = false) {
-        if (!this.canAttack) return;
+        if (isGroundPound) this.combo = 0;
+        else if (!this.canAttack) return;
         let hasHit = false;
 
         for (let i = 0; i < this.allPlayers.length; i++) {
@@ -253,11 +322,16 @@ export class Default implements Player {
                 other.physicsBody.pos,
             );
             if (isGroundPound) squaredDistance /= 2;
-            if (squaredDistance > this.attackRange ** 2) continue;
+            if (squaredDistance > (
+                this.attackRange * this.attackRangeMultiplier
+            ) ** 2) continue;
+            if (!isGroundPound) this.combo++;
+            hasHit = true;
+
             let damage =
                 Math.min(
                     Math.max(
-                        this.attackRange / Math.sqrt(squaredDistance),
+                        this.attackRange / Math.sqrt(squaredDistance) * this.damage,
                         this.damage ** 1.5,
                     ),
                     this.damage ** 2.5,
@@ -275,19 +349,15 @@ export class Default implements Player {
                 damage /= 4;
             }
 
-            other.takeDamage(damage);
-            other.takeKb(kb);
-
-            if (!isGroundPound) {
-                hasHit = true;
-                this.combo++;
-            }
+            other.takeDamage(damage * this.attackMultiplier);
+            other.takeKb(kb.Sn(this.kbMultiplier));
         }
 
-        if (!hasHit) this.combo = 0;
         if (isGroundPound) return;
+        if (!hasHit) this.combo = 0;
         this.canAttack = false;
-        this.attackTimer = this.attackCooldown - (this.combo * this.comboCooldown);
+        this.attackTimer = this.attackCooldown
+            - (this.combo * this.comboCooldown);
     }
 
     groundPound() {
@@ -300,21 +370,19 @@ export class Default implements Player {
         if (this.specialTimer > 0) return;
         if (!this.canAttack) return;
 
-        for (let i = 0; i < 5; i++) setTimeout(
-            () => this.takeHealing(4),
-            i * 1000,
-        );
-
         this.isSpecialCooldown = true;
         this.specialTimer = this.specialCooldown;
         this.canAttack = false;
+
+        for (let i = 0; i < 5; i++) timeout(() => this.takeHealing(4), i);
     }
 
     takeKb(kb: Vector2D) {
-        this.physicsBody.vel.av(kb.clone().Sn(this.kbMultiplier));
+        this.physicsBody.vel.av(kb.clone().Sn(this.incomingKbMultiplier));
     }
 
     takeDamage(damage: number) {
+        console.log(damage);
         this.health -= damage * this.damageMultiplier;
         if (this.health > 0) return;
         this.health = 0;

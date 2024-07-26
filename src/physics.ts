@@ -1,5 +1,6 @@
+import { CIRCLE_ACCURACY } from "./flags";
 import { Vector2D } from "./math";
-import { Color, fillRect, rectToGL } from "./render";
+import { GLColor, fillGeometry, rectToGL } from "./render";
 
 export type RectangleHitbox = {
     type: 'rect';
@@ -60,35 +61,59 @@ export function isColliding(
     }
 }
 
-export function drawHitbox(hitbox: Hitbox, pos: Vector2D, tint: Color) {
+function genCircleGeometry(): Float32Array {
+    const arr: number[] = [];
+    for (let i = 0; i < CIRCLE_ACCURACY; i++) {
+        const angle1 = i * Math.PI / CIRCLE_ACCURACY * 2,
+            angle2 = (i + 1) * Math.PI / CIRCLE_ACCURACY * 2;
+        arr.push(
+            Math.cos(angle1), Math.sin(angle1),
+            0, 0,
+            Math.cos(angle2), Math.sin(angle2),
+        );
+    }
+    return new Float32Array(arr);
+}
+
+const circleGeometry = genCircleGeometry();
+
+export function drawHitbox(hitbox: Hitbox, pos: Vector2D, tint: GLColor) {
     switch (hitbox.type) {
         case "rect":
             const x1 = pos.x - hitbox.w / 2,
                 y1 = pos.y - hitbox.h / 2,
                 x2 = pos.x + hitbox.w / 2,
                 y2 = pos.y + hitbox.h / 2;
-            fillRect(
+            fillGeometry(
                 rectToGL([x1, y1, x2, y2]),
                 { tint: [tint[0], tint[1], tint[2], tint[3] / 5] },
             );
-            fillRect(
+            fillGeometry(
                 rectToGL([x1 - 1, y1 - 1, x2 + 1, y1 + 1]),
                 { tint },
             );
-            fillRect(
+            fillGeometry(
                 rectToGL([x2 - 1, y2 - 1, x2 + 1, y1 + 1]),
                 { tint },
             );
-            fillRect(
+            fillGeometry(
                 rectToGL([x1 - 1, y2 - 1, x2 + 1, y2 + 1]),
                 { tint },
             );
-            fillRect(
+            fillGeometry(
                 rectToGL([x1 - 1, y1 - 1, x1 + 1, y2 + 1]),
                 { tint },
             );
             break;
         case "circle":
+            fillGeometry(
+                circleGeometry,
+                {
+                    tint: [tint[0], tint[1], tint[2], tint[3] / 5],
+                    translation: Vector2D.add(hitbox.offset, pos),
+                    scale: Vector2D.xy(hitbox.r, hitbox.r),
+                },
+            );
             break;
     }
 }

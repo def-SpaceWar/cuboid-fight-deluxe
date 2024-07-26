@@ -2,7 +2,7 @@ import { DEBUG_HITBOXES, TEX_TO_SCREEN_RATIO } from "./flags";
 import { Vector2D } from "./math";
 import { drawHitbox, RectangleHitbox } from "./physics";
 import { Player } from "./player";
-import { Color, drawRect, loadImage, rectToGL } from "./render";
+import { GLColor, drawGeometry, loadImage, rectToGL } from "./render";
 import dirtImg from "./assets/platforms/dirt.png";
 import grassImg from "./assets/platforms/grass.png";
 import stoneImg from "./assets/platforms/stone.png";
@@ -17,9 +17,9 @@ export type Platform = {
 };
 
 const dirtTex = await loadImage(dirtImg),
-    dirtColor: Color = [.6, .3, .1, 1],
+    dirtColor: GLColor = [.6, .3, .1, 1],
     grassTex = await loadImage(grassImg),
-    grassColor: Color = [.3, .93, .1, 1];
+    grassColor: GLColor = [.3, .93, .1, 1];
 export class GrassPlatform implements Platform {
     dirtTexCoord: Float32Array;
     grassTexCoord: Float32Array;
@@ -51,14 +51,14 @@ export class GrassPlatform implements Platform {
     }
 
     render() {
-        drawRect(
+        drawGeometry(
             dirtTex,
             this.dirtTexCoord,
             this.triangles,
             { tint: dirtColor, repeatX: true, repeatY: true },
         );
 
-        drawRect(
+        drawGeometry(
             grassTex,
             this.grassTexCoord,
             this.triangles,
@@ -76,7 +76,7 @@ export class GrassPlatform implements Platform {
 }
 
 const stoneTex = await loadImage(stoneImg),
-    stoneColor: Color = [.5, .6, .7, 1];
+    stoneColor: GLColor = [.5, .6, .7, 1];
 export class StonePlatform implements Platform {
     texCoord: Float32Array;
     triangles: Float32Array;
@@ -103,7 +103,7 @@ export class StonePlatform implements Platform {
     }
 
     render() {
-        drawRect(
+        drawGeometry(
             stoneTex,
             this.texCoord,
             this.triangles,
