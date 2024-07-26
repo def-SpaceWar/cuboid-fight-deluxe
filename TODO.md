@@ -2,6 +2,7 @@
 
 - Health Bars
 - Cooldown Bars (Attack and Special)
+- Particles
 - Attack Credit (takeDamage(damage: number, reason: Reason): void)
 > type Reason = DefaultHit | DefaultGroundPound | Void;
 - Dynamic Colors

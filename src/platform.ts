@@ -1,8 +1,8 @@
-import { DEBUG_HITBOXES } from "./flags";
+import { DEBUG_HITBOXES, TEX_TO_SCREEN_RATIO } from "./flags";
 import { Vector2D } from "./math";
 import { drawHitbox, RectangleHitbox } from "./physics";
 import { Player } from "./player";
-import { drawRect, loadImage, rectToGL } from "./render";
+import { Color, drawRect, loadImage, rectToGL } from "./render";
 import dirtImg from "./assets/platforms/dirt.png";
 import grassImg from "./assets/platforms/grass.png";
 import stoneImg from "./assets/platforms/stone.png";
@@ -17,7 +17,9 @@ export type Platform = {
 };
 
 const dirtTex = await loadImage(dirtImg),
-    grassTex = await loadImage(grassImg);
+    dirtColor: Color = [.6, .3, .1, 1],
+    grassTex = await loadImage(grassImg),
+    grassColor: Color = [.3, .93, .1, 1];
 export class GrassPlatform implements Platform {
     dirtTexCoord: Float32Array;
     grassTexCoord: Float32Array;
@@ -26,23 +28,16 @@ export class GrassPlatform implements Platform {
     isPhaseable = true;
 
     constructor(public pos: Vector2D, w: number, h: number) {
-        {
-            const x = Math.floor(Math.random() * 16),
-                scaleFactor = 4;
-            this.grassTexCoord = rectToGL([
-                x, 0,
-                x + w / scaleFactor, h / scaleFactor,
-            ]);
-        }
-        {
-            const x = Math.floor(Math.random() * 16),
-                y = Math.floor(Math.random() * 16),
-                scaleFactor = 4;
-            this.dirtTexCoord = rectToGL([
-                x, y,
-                x + w / scaleFactor, y + h / scaleFactor,
-            ]);
-        }
+        const x = pos.x % 16 / TEX_TO_SCREEN_RATIO,
+            y = pos.y % 16 / TEX_TO_SCREEN_RATIO;
+        this.grassTexCoord = rectToGL([
+            x, 0,
+            x + w / TEX_TO_SCREEN_RATIO, h / TEX_TO_SCREEN_RATIO,
+        ]);
+        this.dirtTexCoord = rectToGL([
+            x, y,
+            x + w / TEX_TO_SCREEN_RATIO, y + h / TEX_TO_SCREEN_RATIO,
+        ]);
 
         this.triangles = rectToGL([
             this.pos.x - w / 2, this.pos.y - h / 2,
@@ -60,14 +55,14 @@ export class GrassPlatform implements Platform {
             dirtTex,
             this.dirtTexCoord,
             this.triangles,
-            { tint: [.65, .32, .1, 1] },
+            { tint: dirtColor, repeatX: true, repeatY: true },
         );
 
         drawRect(
             grassTex,
             this.grassTexCoord,
             this.triangles,
-            { tint: [.4, 1, .1, 1] },
+            { tint: grassColor, repeatX: true, mirroredX: true },
         );
 
         if (DEBUG_HITBOXES) drawHitbox(
@@ -80,7 +75,8 @@ export class GrassPlatform implements Platform {
     onCollision(_: Player) { }
 }
 
-const stoneTex = await loadImage(stoneImg);
+const stoneTex = await loadImage(stoneImg),
+    stoneColor: Color = [.5, .6, .7, 1];
 export class StonePlatform implements Platform {
     texCoord: Float32Array;
     triangles: Float32Array;
@@ -88,12 +84,11 @@ export class StonePlatform implements Platform {
     isPhaseable = false;
 
     constructor(public pos: Vector2D, w: number, h: number) {
-        const x = Math.floor(Math.random() * 16),
-            y = Math.floor(Math.random() * 16),
-            scaleFactor = 4;
+        const x = pos.x % 16 / TEX_TO_SCREEN_RATIO,
+            y = pos.y % 16 / TEX_TO_SCREEN_RATIO;
         this.texCoord = rectToGL([
             x, y,
-            x + w / scaleFactor, y + h / scaleFactor,
+            x + w / TEX_TO_SCREEN_RATIO, y + h / TEX_TO_SCREEN_RATIO,
         ]);
 
         this.triangles = rectToGL([
@@ -112,7 +107,11 @@ export class StonePlatform implements Platform {
             stoneTex,
             this.texCoord,
             this.triangles,
-            { tint: [.5, .6, .7, 1] },
+            {
+                tint: stoneColor,
+                repeatX: true, repeatY: true,
+                mirroredX: true, mirroredY: true,
+            },
         );
 
         if (DEBUG_HITBOXES) drawHitbox(

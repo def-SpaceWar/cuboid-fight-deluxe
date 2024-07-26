@@ -6,15 +6,15 @@ import { DEBUG_HITBOXES } from "./flags";
 import { Platform } from "./platform";
 import { isMousePressed, isPressed } from "./input";
 
-type Keybind = { type: 'key', key: string };
-type MouseButton = { type: 'button', button: number };
+type Keybind = { key: string };
+type MouseButton = { button: number };
 type Control
     = Keybind
     | MouseButton;
 
 export const Binding = {
-    key(key: string): Keybind { return { type: 'key', key }; },
-    button(button: number): MouseButton { return { type: 'button', button }; },
+    key(key: string): Keybind { return { key }; },
+    button(button: number): MouseButton { return { button }; },
 };
 
 export type Controls = {
@@ -27,14 +27,10 @@ export type Controls = {
 };
 
 function isControlDown(c: Control) {
-    switch (c.type) {
-        case "key":
-            return isPressed(c.key);
-        case "button":
-            return isMousePressed(c.button);
-    }
-
-    throw "invalid control";
+    // @ts-ignore
+    if (c.key) return isPressed(c.key);
+    // @ts-ignore
+    return isMousePressed(c.button);
 }
 
 export type Player = {
@@ -256,7 +252,7 @@ export class Default implements Player {
                 this.physicsBody.pos,
                 other.physicsBody.pos,
             );
-            if (isGroundPound) squaredDistance /= 4;
+            if (isGroundPound) squaredDistance /= 2;
             if (squaredDistance > this.attackRange ** 2) continue;
             let damage =
                 Math.min(

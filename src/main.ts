@@ -3,7 +3,7 @@ import { Vector2D } from './math';
 import { isColliding } from './physics';
 import { GrassPlatform, Platform, StonePlatform } from './platform';
 import { Binding, Default, Player } from './player';
-import { clearScreen, renderLoop, setupRender } from './render';
+import { clearScreen, renderLoop, setupRender, updateLoop } from './render';
 import './style.css'
 
 listenToInput();
@@ -43,23 +43,22 @@ players.push(
 
 const platforms: Platform[] = [
     new StonePlatform(Vector2D.xy(0, 150), 200, 25),
-    new GrassPlatform(Vector2D.xy(-100, 300), 500, 45),
+    new GrassPlatform(Vector2D.xy(-100, 300), 500, 100),
     new StonePlatform(Vector2D.xy(500, 50), 150, 15),
     new GrassPlatform(Vector2D.xy(-300, -200), 300, 45),
-    new GrassPlatform(Vector2D.xy(-100, -300), 300, 25),
-    new GrassPlatform(Vector2D.xy(300, -100), 300, 25),
-    new StonePlatform(Vector2D.xy(500, 200), 350, 45),
+    new GrassPlatform(Vector2D.xy(-100, -300), 300, 35),
+    new GrassPlatform(Vector2D.xy(300, -100), 300, 35),
+    new StonePlatform(Vector2D.xy(500, 300), 350, 200),
 ];
 
-const stop = renderLoop((dt: number) => {
+const stopRender = renderLoop(() => {
     clearScreen();
+    for (let i = 0; i < platforms.length; i++) platforms[i].render();
+    for (let i = 0; i < players.length; i++) players[i].render();
+});
 
-    for (let i = 0; i < platforms.length; i++) {
-        const platform = platforms[i];
-        platform.update(dt);
-        platform.render();
-    }
-
+const stopUpdate = updateLoop((dt: number) => {
+    for (let i = 0; i < platforms.length; i++) platforms[i].update(dt);
     for (let i = 0; i < players.length; i++) {
         const player = players[i];
         if (player.physicsBody.vel.y > 0) {
@@ -78,11 +77,11 @@ const stop = renderLoop((dt: number) => {
                 platform.onCollision(player);
             }
         }
-        player.render();
         player.update(dt);
     }
 
     if (!isPressed("Enter")) return;
     stopListeningToInput();
-    stop();
+    stopRender();
+    stopUpdate();
 });

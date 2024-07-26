@@ -1,7 +1,7 @@
 import mainVert from "./shaders/main.vert?raw";
 import mainFrag from "./shaders/main.frag?raw";
 import { Vector2D } from "./math";
-import { FPS_SAMPLE_AMOUNT } from "./flags";
+import { FPS_SAMPLE_AMOUNT, TPS_SAMPLE_AMOUNT, MIN_DT } from "./flags";
 
 const app = document.getElementById("app")!;
 
@@ -29,9 +29,37 @@ export function renderLoop(c: Function) {
         fpsText.innerText = "FPS: " + avgFps().toPrecision(3);
 
         handle = requestAnimationFrame(loop);
-        c(Math.min(dt, 0.05));
+        c(Math.min(dt, MIN_DT));
     }
     return () => cancelAnimationFrame(handle);
+}
+
+export function updateLoop(c: () => unknown): () => void;
+export function updateLoop(c: (dt: number) => unknown): () => void;
+export function updateLoop(c: Function) {
+    const tpsList = new Float32Array(TPS_SAMPLE_AMOUNT),
+        avgTps = () => {
+            let sum = 0;
+            for (let i = 0; i < TPS_SAMPLE_AMOUNT; i++) sum += tpsList[i];
+            return sum / TPS_SAMPLE_AMOUNT;
+        },
+        tpsText = app.appendChild(document.createElement("p"));
+    tpsText.id = "tps";
+
+    let before = performance.now(),
+        tpsIdx = 0;
+    const handle = setInterval(() => {
+        const now = performance.now(),
+            dt = (now - before) / 1_000;
+        before = now;
+
+        tpsList[tpsIdx] = 1 / dt;
+        tpsIdx < FPS_SAMPLE_AMOUNT ? tpsIdx++ : tpsIdx = 0;
+        tpsText.innerText = "TPS: " + avgTps().toPrecision(3);
+
+        c(Math.min(dt, MIN_DT));
+    });
+    return () => clearInterval(handle);
 }
 
 let gl: WebGL2RenderingContext,
@@ -123,8 +151,7 @@ export async function setupRender() {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.uniform1i(u_image, 0);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 }
@@ -153,6 +180,34 @@ export function rectToGL(r: Rectangle): Float32Array {
     ]);
 }
 
+export function fillRect(
+    triangles: Float32Array,
+    { scale, rotation, translation, tint }: {
+        scale?: Vector2D,
+        rotation?: number,
+        translation?: Vector2D,
+        tint?: Color,
+    } = {},
+) {
+    scale ??= _scale;
+    rotation ??= 0;
+    translation ??= _translation;
+    tint ??= _tint;
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, a_positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(a_position);
+    gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
+
+    gl.uniform2fv(u_scale, scale.arr);
+    gl.uniform2f(u_rotation, Math.cos(rotation), Math.sin(rotation));
+    gl.uniform2fv(u_translation, translation.arr);
+    gl.uniform4fv(u_color, tint);
+    gl.uniform1ui(u_noTex, 1);
+
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+}
+
 const _tint: Color = [1, 1, 1, 1],
     _scale = Vector2D.xy(1, 1),
     _translation = Vector2D.zero();
@@ -160,11 +215,24 @@ export function drawRect(
     image: TexImageSource,
     texCoord: Float32Array,
     triangles: Float32Array,
-    { scale, rotation, translation, tint }: {
+    {
+        scale,
+        rotation,
+        translation,
+        tint,
+        repeatX,
+        repeatY,
+        mirroredX,
+        mirroredY,
+    }: {
         scale?: Vector2D,
         rotation?: number,
         translation?: Vector2D,
         tint?: Color,
+        repeatX?: boolean,
+        repeatY?: boolean,
+        mirroredX?: boolean,
+        mirroredY?: boolean,
     } = {},
 ) {
     scale ??= _scale;
@@ -196,33 +264,23 @@ export function drawRect(
     gl.uniform4fv(u_color, tint);
     gl.uniform1ui(u_noTex, 0);
 
+    if (repeatX)
+        if (mirroredX)
+            gl.texParameteri(
+                gl.TEXTURE_2D,
+                gl.TEXTURE_WRAP_S,
+                gl.MIRRORED_REPEAT,
+            );
+        else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    if (repeatY)
+        if (mirroredY)
+            gl.texParameteri(
+                gl.TEXTURE_2D,
+                gl.TEXTURE_WRAP_T,
+                gl.MIRRORED_REPEAT,
+            );
+        else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+    else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
-};
-
-export function fillRect(
-    triangles: Float32Array,
-    { scale, rotation, translation, tint }: {
-        scale?: Vector2D,
-        rotation?: number,
-        translation?: Vector2D,
-        tint?: Color,
-    } = {},
-) {
-    scale ??= _scale;
-    rotation ??= 0;
-    translation ??= _translation;
-    tint ??= _tint;
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, a_positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(a_position);
-    gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
-
-    gl.uniform2fv(u_scale, scale.arr);
-    gl.uniform2f(u_rotation, Math.cos(rotation), Math.sin(rotation));
-    gl.uniform2fv(u_translation, translation.arr);
-    gl.uniform4fv(u_color, tint);
-    gl.uniform1ui(u_noTex, 1);
-
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-};
+}

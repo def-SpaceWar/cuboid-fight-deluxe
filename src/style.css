@@ -21,3 +21,12 @@ canvas {
     left: 1vh;
     top: 1vh;
 }
+
+#tps {
+    margin: 0;
+    color: #FF0000AA;
+    font-size: 2rem;
+    position: absolute;
+    left: 1vh;
+    top: calc(1vh + 2rem);
+}
