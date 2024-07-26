@@ -1,9 +1,11 @@
 # TODO
 
+- Health Bars
+- Cooldown Bars (Attack and Special)
+- Attack Credit (takeDamage(damage: number, reason: Reason): void)
+> type Reason = DefaultHit | DefaultGroundPound | Void;
 - Dynamic Colors
-- Health Bar
-- Attacking
 
 ...
 
-- jsx animations?
+- jsx animations? (or for something else)
