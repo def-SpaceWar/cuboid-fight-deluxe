@@ -28,20 +28,28 @@ export class Vector2D {
         throw new Error("to be implemented...");
     }
 
-    static add(u: Vector2D, v: Vector2D) {
+    static add(u: Vector2D, v: Vector2D): Vector2D {
         return this.xy(u.x + v.x, u.y + v.y);
     }
 
-    static subtract(u: Vector2D, v: Vector2D) {
+    static subtract(u: Vector2D, v: Vector2D): Vector2D {
         return this.xy(u.x - v.x, u.y - v.y);
     }
 
-    static squaredDistance(u: Vector2D, v: Vector2D) {
+    static squaredDistance(u: Vector2D, v: Vector2D): number {
         return (u.x - v.x) ** 2 + (u.y - v.y) ** 2;
     }
 
-    static distance(u: Vector2D, v: Vector2D) {
+    static distance(u: Vector2D, v: Vector2D): number {
         return Math.sqrt(this.squaredDistance(u, v));
+    }
+
+    static squaredMagnitude(v: Vector2D) {
+        return v.x * v.x + v.y * v.y;
+    }
+
+    static magnitude(v: Vector2D) {
+        return Math.sqrt(this.squaredMagnitude(v));
     }
 
     arr: Float32Array;

@@ -1,11 +1,8 @@
 # TODO
 
-- Health Bars
-- Cooldown Bars (Attack and Special)
-- Particles
-- Attack Credit (takeDamage(damage: number, reason: Reason): void)
-> type Reason = DefaultHit | DefaultGroundPound | Void;
-- Dynamic Colors
+- Particles (moving, jump, ground pound, attk, etc.)
+- Attack Credit: takeDamage(damage: number, isCrit: boolean, reason: Reason)
+> type Reason = 'default_hit' | 'default_groundPound' | 'void';
 
 ...
 

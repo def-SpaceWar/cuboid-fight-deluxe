@@ -2,7 +2,7 @@ import { DEBUG_HITBOXES, TEX_TO_SCREEN_RATIO } from "./flags";
 import { Vector2D } from "./math";
 import { drawHitbox, RectangleHitbox } from "./physics";
 import { Player } from "./player";
-import { GLColor, drawGeometry, loadImage, rectToGL } from "./render";
+import { GLColor, drawGeometry, loadImage, rectToGeometry } from "./render";
 import dirtImg from "./assets/platforms/dirt.png";
 import grassImg from "./assets/platforms/grass.png";
 import stoneImg from "./assets/platforms/stone.png";
@@ -30,16 +30,16 @@ export class GrassPlatform implements Platform {
     constructor(public pos: Vector2D, w: number, h: number) {
         const x = pos.x % 16 / TEX_TO_SCREEN_RATIO,
             y = pos.y % 16 / TEX_TO_SCREEN_RATIO;
-        this.grassTexCoord = rectToGL([
+        this.grassTexCoord = rectToGeometry([
             x, 0,
             x + w / TEX_TO_SCREEN_RATIO, h / TEX_TO_SCREEN_RATIO,
         ]);
-        this.dirtTexCoord = rectToGL([
+        this.dirtTexCoord = rectToGeometry([
             x, y,
             x + w / TEX_TO_SCREEN_RATIO, y + h / TEX_TO_SCREEN_RATIO,
         ]);
 
-        this.triangles = rectToGL([
+        this.triangles = rectToGeometry([
             this.pos.x - w / 2, this.pos.y - h / 2,
             this.pos.x + w / 2, this.pos.y + h / 2,
         ]);
@@ -86,12 +86,12 @@ export class StonePlatform implements Platform {
     constructor(public pos: Vector2D, w: number, h: number) {
         const x = pos.x % 16 / TEX_TO_SCREEN_RATIO,
             y = pos.y % 16 / TEX_TO_SCREEN_RATIO;
-        this.texCoord = rectToGL([
+        this.texCoord = rectToGeometry([
             x, y,
             x + w / TEX_TO_SCREEN_RATIO, y + h / TEX_TO_SCREEN_RATIO,
         ]);
 
-        this.triangles = rectToGL([
+        this.triangles = rectToGeometry([
             this.pos.x - w / 2, this.pos.y - h / 2,
             this.pos.x + w / 2, this.pos.y + h / 2,
         ]);
@@ -122,6 +122,6 @@ export class StonePlatform implements Platform {
     }
 
     onCollision(p: Player) {
-        p;
+        p; // generate particles!!
     }
 }

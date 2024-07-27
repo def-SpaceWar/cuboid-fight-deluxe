@@ -41,6 +41,34 @@ players.push(
         2,
         players,
     ),
+    //new Default(
+    //    Vector2D.x(475),
+    //    new RGBAColor(0.2, 1, .3),
+    //    {
+    //        left: Binding.key('aa'),
+    //        up: Binding.key('aa'),
+    //        down: Binding.key('aa'),
+    //        right: Binding.key('aa'),
+    //        attack: Binding.key('aa'),
+    //        special: Binding.key('aa'),
+    //    },
+    //    3,
+    //    players,
+    //),
+    //new Default(
+    //    Vector2D.x(-200),
+    //    new RGBAColor(1, .8, .3),
+    //    {
+    //        left: Binding.key('aa'),
+    //        up: Binding.key('aa'),
+    //        down: Binding.key('aa'),
+    //        right: Binding.key('aa'),
+    //        attack: Binding.key('aa'),
+    //        special: Binding.key('aa'),
+    //    },
+    //    4,
+    //    players,
+    //),
 );
 
 const platforms: Platform[] = [
@@ -85,7 +113,7 @@ const stopUpdate = updateLoop((dt: number) => {
 
     if (canToggleHitboxes && isPressed("Escape")) {
         canToggleHitboxes = false;
-        timeout(() => canToggleHitboxes = true, 1);
+        timeout(() => canToggleHitboxes = true, .2);
         toggleHitboxes();
     }
 

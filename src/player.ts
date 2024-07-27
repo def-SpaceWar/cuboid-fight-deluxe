@@ -1,4 +1,4 @@
-import { GLColor, RGBAColor, drawGeometry, fillGeometry, loadImage, rectToGL } from "./render";
+import { GLColor, RGBAColor, drawGeometry, fillGeometry, loadImage, rectToGeometry } from "./render";
 import defaultImg from "./assets/classes/default.png";
 import { Vector2D } from "./math";
 import { drawHitbox, Hitbox, makePhysicsBody, PhysicsBody, RectangleHitbox } from "./physics";
@@ -6,6 +6,7 @@ import { DEBUG_HITBOXES } from "./flags";
 import { Platform } from "./platform";
 import { isMousePressed, isPressed } from "./input";
 import { clearTimer, timeout, Timer } from "./loop";
+import { createTextParticle, createTextRender } from "./particle";
 
 type Keybind = { key: string };
 type MouseButton = { button: number };
@@ -34,7 +35,14 @@ function isControlDown(c: Control) {
     return isMousePressed(c.button);
 }
 
-export type Player = {
+const PLAYER_HEALTH_COORDS = {
+    1: Vector2D.xy(20, 20),
+    2: Vector2D.xy(20, 105),
+    3: Vector2D.xy(20, 190),
+    4: Vector2D.xy(20, 275),
+};
+export interface Player {
+    playerNumber: 1 | 2 | 3 | 4;
     hitbox: Hitbox;
     physicsBody: PhysicsBody;
 
@@ -45,6 +53,7 @@ export type Player = {
     health: number;
     maxHealth: number;
     isDead: boolean;
+    combo: number;
 
     speedMultiplier: number;
     jumpMultiplier: number;
@@ -62,20 +71,26 @@ export type Player = {
     onPlayerCollision(p: Player): void;
 
     takeKb(kb: Vector2D): void;
-    takeDamage(damage: number): void;
+    takeDamage(damage: number, isCrit: boolean): void;
     takeHealing(health: number): void;
 };
 
 const defaultTex = await loadImage(defaultImg),
-    defaultTexCoord = rectToGL([0, 0, 16, 16]),
-    defaultDeadTexCoord = rectToGL([16, 0, 32, 16]),
-    defaultTriangles = rectToGL([-25, -25, 25, 25]),
+    defaultTexCoord = rectToGeometry([0, 0, 16, 16]),
+    defaultDeadTexCoord = rectToGeometry([16, 0, 32, 16]),
+    defaultGeometry = rectToGeometry([-25, -25, 25, 25]),
     defaultHitbox = {
         type: 'rect',
         offset: Vector2D.zero(),
         w: 50,
         h: 50,
-    };
+    },
+    defaultHealthBorderGeometry = rectToGeometry([0, 0, 200, 65]),
+    defaultHealthBorderColor: GLColor = [.3, .3, .3, 1],
+    defaultHealthBgGeometry = rectToGeometry([10, 10, 190, 55]),
+    defaultDamageColor = new RGBAColor(1.5, 0.3, 0.5),
+    defaultHealColor = new RGBAColor(0.5, 1.5, 0.3),
+    defaultMaxKb = 3_000;
 export class Default implements Player {
     visualOffset = Vector2D.zero();
     visualDiminishConstant = -20;
@@ -95,6 +110,7 @@ export class Default implements Player {
     phaseTimeout?: Timer;
 
     canAttack = true;
+    canPressAttackKey = true;
     attackCooldown = 2;
     attackTimer = 0;
     attackRange = 100;
@@ -111,6 +127,8 @@ export class Default implements Player {
     health = 100;
     maxHealth = 100;
     isDead = false;
+    healthText: Text;
+    removeHealthText: () => void;
 
     speedMultiplier = 1;
     jumpMultiplier = 1;
@@ -126,7 +144,7 @@ export class Default implements Player {
         pos: Vector2D,
         public color: RGBAColor,
         public controls: Controls,
-        public playerNumber: number,
+        public playerNumber: 1 | 2 | 3 | 4,
         public allPlayers: Player[],
     ) {
         const hsv = color.toHSVA();
@@ -145,14 +163,57 @@ export class Default implements Player {
             xDrag: 0.04,
             yDrag: 0.2,
         });
+
+        const { elem, remove } = createTextRender(
+            "",
+            "player-health",
+            40,
+            PLAYER_HEALTH_COORDS[this.playerNumber],
+            true,
+        );
+        this.healthText = elem.appendChild(
+            document.createTextNode(this.health.toPrecision(3))
+        );
+        this.removeHealthText = remove;
     }
 
     render() {
+        this.healthText.textContent = this.health.toPrecision(3);
+        fillGeometry(
+            defaultHealthBorderGeometry,
+            {
+                tint: defaultHealthBorderColor,
+                isTopLeft: true,
+                translation: PLAYER_HEALTH_COORDS[this.playerNumber],
+            },
+        );
+        fillGeometry(
+            defaultHealthBgGeometry,
+            {
+                tint: this.color.darken(1.5).glColor,
+                isTopLeft: true,
+                translation: PLAYER_HEALTH_COORDS[this.playerNumber],
+            },
+        );
+        fillGeometry(
+            rectToGeometry([
+                10,
+                10,
+                10 + 180 * (this.health / this.maxHealth),
+                55,
+            ]),
+            {
+                tint: this.color.glColor,
+                isTopLeft: true,
+                translation: PLAYER_HEALTH_COORDS[this.playerNumber],
+            },
+        );
+
         if (this.isDead) {
             drawGeometry(
                 defaultTex,
                 defaultDeadTexCoord,
-                defaultTriangles,
+                defaultGeometry,
                 {
                     tint: this.color.glColor,
                     translation: this.physicsBody.pos
@@ -163,16 +224,16 @@ export class Default implements Player {
         } else {
             const translation = this.physicsBody.pos.clone()
                 .av(this.visualOffset);
+
             drawGeometry(
                 defaultTex,
                 defaultTexCoord,
-                defaultTriangles,
+                defaultGeometry,
                 { tint: this.color.glColor, translation },
             );
 
-
             if (this.combo > 0) fillGeometry(
-                rectToGL([
+                rectToGeometry([
                     -25 +
                     50 * (1 -
                         this.combo * this.comboCooldown /
@@ -185,7 +246,7 @@ export class Default implements Player {
             );
 
             if (this.attackTimer > 0) fillGeometry(
-                rectToGL([
+                rectToGeometry([
                     -25,
                     -30,
                     25 -
@@ -196,7 +257,7 @@ export class Default implements Player {
                 { tint: this.color.glColor, translation },
             );
             else if (this.specialTimer > 0) fillGeometry(
-                rectToGL([
+                rectToGeometry([
                     -25, -30,
                     25 -
                     50 * (1 - this.specialTimer / this.specialCooldown),
@@ -209,22 +270,19 @@ export class Default implements Player {
                 offset: Vector2D.zero(),
                 r: this.attackRange * this.attackRangeMultiplier,
             }, this.physicsBody.pos, [1, 0, 0, 1]);
-        }
 
-
-        if (DEBUG_HITBOXES) {
-            drawHitbox({
+            if (DEBUG_HITBOXES) drawHitbox({
                 type: 'circle',
                 offset: Vector2D.zero(),
                 r: this.attackRange * this.attackRangeMultiplier * Math.SQRT2,
             }, this.physicsBody.pos, [1, 0, 0, 1]);
-
-            drawHitbox(
-                this.hitbox,
-                this.physicsBody.pos,
-                [0, 1, 0.5, 1],
-            );
         }
+
+        if (DEBUG_HITBOXES) drawHitbox(
+            this.hitbox,
+            this.physicsBody.pos,
+            [0, 1, 0.5, 1],
+        );
     }
 
     update(dt: number) {
@@ -251,7 +309,8 @@ export class Default implements Player {
             if (this.isGrounded) this.phase();
             else this.groundPound();
         }
-        if (isControlDown(this.controls.attack)) this.attack();
+        if (this.canPressAttackKey && isControlDown(this.controls.attack))
+            this.attack();
         if (isControlDown(this.controls.special)) this.special();
         this.isGrounded = false;
     }
@@ -313,6 +372,8 @@ export class Default implements Player {
         if (isGroundPound) this.combo = 0;
         else if (!this.canAttack) return;
         let hasHit = false;
+        this.canPressAttackKey = false;
+        timeout(() => this.canPressAttackKey = true, .15);
 
         for (let i = 0; i < this.allPlayers.length; i++) {
             const other = this.allPlayers[i];
@@ -328,28 +389,31 @@ export class Default implements Player {
             if (!isGroundPound) this.combo++;
             hasHit = true;
 
-            let damage =
-                Math.min(
-                    Math.max(
-                        this.attackRange / Math.sqrt(squaredDistance) * this.damage,
-                        this.damage ** 1.5,
-                    ),
-                    this.damage ** 2.5,
-                );
+            let damage = Math.max(
+                this.attackRange / Math.sqrt(squaredDistance) * this.damage,
+                this.damage ** 1.5,
+            ), isCrit = false;
+            if (damage >= this.damage ** 2.5)
+                isCrit = true, damage = this.damage ** 2.5;
+
             const kb = Vector2D
                 .subtract(other.physicsBody.pos, this.physicsBody.pos)
                 .Sn(
                     this.attackPower *
                     (other.maxHealth / other.health) ** 2
-                )
+                ),
+                squaredMagnitude = Vector2D.squaredMagnitude(kb);
 
+            if (squaredMagnitude > defaultMaxKb ** 2)
+                kb.Sn(defaultMaxKb / Math.sqrt(squaredMagnitude));
             if (!isGroundPound) damage *= (1 + .5 * this.combo)
             else {
                 kb.Sn(this.jumpPower / 1000);
                 damage /= 4;
             }
 
-            other.takeDamage(damage * this.attackMultiplier);
+            other.combo = 0;
+            other.takeDamage(damage * this.attackMultiplier, isCrit);
             other.takeKb(kb.Sn(this.kbMultiplier));
         }
 
@@ -374,22 +438,51 @@ export class Default implements Player {
         this.specialTimer = this.specialCooldown;
         this.canAttack = false;
 
-        for (let i = 0; i < 5; i++) timeout(() => this.takeHealing(4), i);
+        if (this.health >= this.maxHealth) return;
+        for (let i = 0; i < 5; i++) timeout(() => {
+            this.takeHealing(Math.min(this.maxHealth - this.health, 4));
+        }, i);
     }
 
     takeKb(kb: Vector2D) {
         this.physicsBody.vel.av(kb.clone().Sn(this.incomingKbMultiplier));
     }
 
-    takeDamage(damage: number) {
-        console.log(damage);
+    takeDamage(damage: number, isCrit: boolean) {
         this.health -= damage * this.damageMultiplier;
+        this.color.pulse(defaultDamageColor, .25);
+
+        if (isCrit) createTextParticle(
+            `-${damage.toPrecision(3)}`,
+            "critical-damage",
+            Math.floor(damage / 4) + 75,
+            this.physicsBody.pos,
+            .5 + Math.log10(damage),
+        );
+        else createTextParticle(
+            `-${damage.toPrecision(3)}`,
+            "damage",
+            Math.floor(damage / 4) + 50,
+            this.physicsBody.pos,
+            Math.log10(damage) / 2,
+        );
+
         if (this.health > 0) return;
         this.health = 0;
         this.isDead = true;
     }
 
     takeHealing(health: number) {
+        if (this.isDead) return;
         this.health += health * this.healMultiplier;
+        this.color.pulse(defaultHealColor, .25);
+
+        createTextParticle(
+            `${health.toPrecision(3)}`,
+            "heal",
+            Math.floor(health / 4) + 50,
+            this.physicsBody.pos,
+            Math.log10(health) / 2,
+        );
     }
 }

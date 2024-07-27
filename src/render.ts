@@ -1,6 +1,8 @@
 import mainVert from "./shaders/main.vert?raw";
 import mainFrag from "./shaders/main.frag?raw";
 import { Vector2D } from "./math";
+import { CIRCLE_ACCURACY, PULSE_ANIM_STEPS } from "./flags";
+import { clearTimer, repeatedTimeout } from "./loop";
 
 const app = document.getElementById("app")!;
 let gl: WebGL2RenderingContext,
@@ -12,6 +14,7 @@ let gl: WebGL2RenderingContext,
     u_scale: WebGLUniformLocation,
     u_rotation: WebGLUniformLocation,
     u_translation: WebGLUniformLocation,
+    u_topLeft: WebGLUniformLocation,
     u_color: WebGLUniformLocation,
     u_image: WebGLUniformLocation,
     u_noTex: WebGLUniformLocation;
@@ -88,6 +91,7 @@ export async function setupRender() {
     u_scale = getUniform("u_scale")!;
     u_rotation = getUniform("u_rotation")!;
     u_translation = getUniform("u_translation")!;
+    u_topLeft = getUniform("u_topLeft")!;
     u_color = getUniform("u_color")!;
     u_image = getUniform("u_image")!;
     u_noTex = getUniform("u_noTex")!;
@@ -113,7 +117,47 @@ export function clearScreen(color: GLColor = [0, 0, 0, 0]) {
     gl.uniform2f(u_resolution, gl.canvas.width, gl.canvas.height);
 }
 
-export function rectToGL(r: GLRectangle): Float32Array {
+export function circleToLines({ x, y }: Vector2D, r: number): Float32Array {
+    const arr: number[] = [];
+    for (let i = 0; i < CIRCLE_ACCURACY; i++) {
+        const angle1 = i * Math.PI / CIRCLE_ACCURACY * 2,
+            angle2 = (i + 1) * Math.PI / CIRCLE_ACCURACY * 2;
+        arr.push(
+            x + r * Math.cos(angle1), y + r * Math.sin(angle1),
+            x + r * Math.cos(angle2), y + r * Math.sin(angle2),
+        );
+    }
+    return new Float32Array(arr);
+}
+
+export function circleToGeometry({ x, y }: Vector2D, r: number): Float32Array {
+    const arr: number[] = [];
+    for (let i = 0; i < CIRCLE_ACCURACY; i++) {
+        const angle1 = i * Math.PI / CIRCLE_ACCURACY * 2,
+            angle2 = (i + 1) * Math.PI / CIRCLE_ACCURACY * 2;
+        arr.push(
+            x + r * Math.cos(angle1), y + r * Math.sin(angle1),
+            x, y,
+            x + r * Math.cos(angle2), y + r * Math.sin(angle2),
+        );
+    }
+    return new Float32Array(arr);
+}
+
+export function rectToLines(r: GLRectangle): Float32Array {
+    return new Float32Array([
+        r[0], r[1],
+        r[0], r[3],
+        r[0], r[3],
+        r[2], r[3],
+        r[2], r[3],
+        r[2], r[1],
+        r[2], r[1],
+        r[0], r[1],
+    ]);
+}
+
+export function rectToGeometry(r: GLRectangle): Float32Array {
     return new Float32Array([
         r[0], r[1],
         r[2], r[1],
@@ -124,42 +168,78 @@ export function rectToGL(r: GLRectangle): Float32Array {
     ]);
 }
 
-export function fillGeometry(
-    triangles: Float32Array,
-    { scale, rotation, translation, tint }: {
+const _tint: GLColor = [1, 1, 1, 1],
+    _scale = Vector2D.xy(1, 1),
+    _translation = Vector2D.zero();
+
+export function fillLines(
+    lines: Float32Array,
+    { scale, rotation, translation, isTopLeft, tint }: {
         scale?: Vector2D,
         rotation?: number,
         translation?: Vector2D,
+        isTopLeft?: boolean,
         tint?: GLColor,
     } = {},
 ) {
     scale ??= _scale;
     rotation ??= 0;
     translation ??= _translation;
+    isTopLeft ??= false;
     tint ??= _tint;
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, a_texCoordBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, a_positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, lines, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(a_position);
+    gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(a_texCoord);
     gl.vertexAttribPointer(a_texCoord, 2, gl.FLOAT, false, 0, 0);
+
+    gl.uniform2fv(u_scale, scale.arr);
+    gl.uniform2f(u_rotation, Math.cos(rotation), Math.sin(rotation));
+    gl.uniform2fv(u_translation, translation.arr);
+    // @ts-ignore
+    gl.uniform1ui(u_topLeft, isTopLeft + 0);
+    gl.uniform4fv(u_color, tint);
+    gl.uniform1ui(u_noTex, 1);
+
+    gl.drawArrays(gl.LINES, 0, lines.length / 2);
+}
+
+export function fillGeometry(
+    triangles: Float32Array,
+    { scale, rotation, translation, isTopLeft, tint }: {
+        scale?: Vector2D,
+        rotation?: number,
+        translation?: Vector2D,
+        isTopLeft?: boolean,
+        tint?: GLColor,
+    } = {},
+) {
+    scale ??= _scale;
+    rotation ??= 0;
+    translation ??= _translation;
+    isTopLeft ??= false;
+    tint ??= _tint;
 
     gl.bindBuffer(gl.ARRAY_BUFFER, a_positionBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
     gl.enableVertexAttribArray(a_position);
     gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(a_texCoord);
+    gl.vertexAttribPointer(a_texCoord, 2, gl.FLOAT, false, 0, 0);
 
     gl.uniform2fv(u_scale, scale.arr);
     gl.uniform2f(u_rotation, Math.cos(rotation), Math.sin(rotation));
     gl.uniform2fv(u_translation, translation.arr);
+    // @ts-ignore
+    gl.uniform1ui(u_topLeft, isTopLeft + 0);
     gl.uniform4fv(u_color, tint);
     gl.uniform1ui(u_noTex, 1);
 
     gl.drawArrays(gl.TRIANGLES, 0, triangles.length / 2);
 }
 
-const _tint: GLColor = [1, 1, 1, 1],
-    _scale = Vector2D.xy(1, 1),
-    _translation = Vector2D.zero();
 export function drawGeometry(
     image: TexImageSource,
     texCoord: Float32Array,
@@ -168,6 +248,7 @@ export function drawGeometry(
         scale,
         rotation,
         translation,
+        isTopLeft,
         tint,
         repeatX,
         repeatY,
@@ -177,6 +258,7 @@ export function drawGeometry(
         scale?: Vector2D,
         rotation?: number,
         translation?: Vector2D,
+        isTopLeft?: boolean,
         tint?: GLColor,
         repeatX?: boolean,
         repeatY?: boolean,
@@ -187,6 +269,7 @@ export function drawGeometry(
     scale ??= _scale;
     rotation ??= 0;
     translation ??= _translation;
+    isTopLeft ??= false;
     tint ??= _tint;
 
     gl.bindBuffer(gl.ARRAY_BUFFER, a_positionBuffer);
@@ -210,6 +293,8 @@ export function drawGeometry(
     gl.uniform2fv(u_scale, scale.arr);
     gl.uniform2f(u_rotation, Math.cos(rotation), Math.sin(rotation));
     gl.uniform2fv(u_translation, translation.arr);
+    // @ts-ignore
+    gl.uniform1ui(u_topLeft, isTopLeft + 0);
     gl.uniform4fv(u_color, tint);
     gl.uniform1ui(u_noTex, 0);
 
@@ -268,6 +353,41 @@ export class RGBAColor {
         }
         // @ts-ignore
         return new HSVAColor(h, s, v, this.a);
+    }
+
+    darken(amount: number) {
+        return new RGBAColor(
+            this.r / amount,
+            this.g / amount,
+            this.b / amount,
+            this.a,
+        );
+    }
+
+    pulse(from: RGBAColor, time: number) {
+        const differenceR = this.r - from.r,
+            differenceG = this.g - from.g,
+            differenceB = this.b - from.b,
+            differenceA = this.a - from.a;
+
+        this.r = from.r;
+        this.g = from.g;
+        this.b = from.b;
+        this.a = from.a;
+
+        let step = 0;
+        const timer = repeatedTimeout(() => {
+            if (step == PULSE_ANIM_STEPS) {
+                clearTimer(timer);
+                return;
+            }
+
+            this.r += differenceR / PULSE_ANIM_STEPS;
+            this.g += differenceG / PULSE_ANIM_STEPS;
+            this.b += differenceB / PULSE_ANIM_STEPS;
+            this.a += differenceA / PULSE_ANIM_STEPS;
+            step++;
+        }, time / PULSE_ANIM_STEPS);
     }
 }
 

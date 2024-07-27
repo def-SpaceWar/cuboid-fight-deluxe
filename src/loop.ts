@@ -10,8 +10,11 @@ export function renderLoop(c: Function) {
             for (let i = 0; i < FPS_SAMPLE_AMOUNT; i++) sum += fpsList[i];
             return sum / FPS_SAMPLE_AMOUNT;
         },
-        fpsText = app.appendChild(document.createElement("p"));
+        fpsText = app.appendChild(document.createElement("p")),
+        fpsTextNode = document.createTextNode("");
     fpsText.id = "fps";
+    fpsText.innerText = "FPS: ";
+    fpsText.appendChild(fpsTextNode);
 
     let before = performance.now(),
         fpsIdx = 0,
@@ -22,7 +25,7 @@ export function renderLoop(c: Function) {
 
         fpsList[fpsIdx] = 1 / dt;
         fpsIdx < FPS_SAMPLE_AMOUNT ? fpsIdx++ : fpsIdx = 0;
-        fpsText.innerText = "FPS: " + avgFps().toPrecision(3);
+        fpsTextNode.textContent = avgFps().toPrecision(3);
 
         handle = requestAnimationFrame(loop);
         c(Math.min(dt, MIN_DT));
@@ -39,8 +42,11 @@ export function updateLoop(c: Function) {
             for (let i = 0; i < TPS_SAMPLE_AMOUNT; i++) sum += tpsList[i];
             return sum / TPS_SAMPLE_AMOUNT;
         },
-        tpsText = app.appendChild(document.createElement("p"));
+        tpsText = app.appendChild(document.createElement("p")),
+        tpsTextNode = document.createTextNode("");
     tpsText.id = "tps";
+    tpsText.innerText = "TPS: ";
+    tpsText.appendChild(tpsTextNode);
 
     let before = performance.now(),
         tpsIdx = 0;
@@ -51,7 +57,7 @@ export function updateLoop(c: Function) {
 
         tpsList[tpsIdx] = 1 / dt;
         tpsIdx < FPS_SAMPLE_AMOUNT ? tpsIdx++ : tpsIdx = 0;
-        tpsText.innerText = "TPS: " + avgTps().toPrecision(3);
+        tpsTextNode.textContent = avgTps().toPrecision(3);
 
         const dtPrime = Math.min(dt, MIN_DT);
         c(dtPrime);
@@ -60,7 +66,9 @@ export function updateLoop(c: Function) {
     return () => clearInterval(handle);
 }
 
-export type Timer = [c: Function, t: number];
+export type Timer
+    = [c: Function, t: number]
+    | [c: Function, t: number, repeat: true, _t: number];
 const timers: Timer[] = [];
 
 function tickTimers(dt: number) {
@@ -69,6 +77,11 @@ function tickTimers(dt: number) {
         timer[1] -= dt;
         if (timer[1] > 0) continue;
         timer[0]();
+        if (timer[2]) {
+            // @ts-ignore
+            timer[1] = timer[3];
+            continue;
+        }
         timers.splice(i, 1);
         i--;
     }
@@ -76,6 +89,12 @@ function tickTimers(dt: number) {
 
 export function timeout(c: Function, t: number) {
     const timer: Timer = [c, t];
+    timers.push(timer)
+    return timer;
+}
+
+export function repeatedTimeout(c: Function, t: number) {
+    const timer: Timer = [c, t, true, t];
     timers.push(timer)
     return timer;
 }
