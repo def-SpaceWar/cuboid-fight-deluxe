@@ -1,4 +1,4 @@
-import { GLColor, RGBAColor, drawGeometry, fillGeometry, loadImage, rectToGeometry } from "./render";
+import { GLColor, RGBAColor, drawGeometry, fillGeometry, loadImage, rectToGeometry, createTextTemporary, createTextRender } from "./render";
 import defaultImg from "./assets/classes/default.png";
 import { Vector2D } from "./math";
 import { drawHitbox, Hitbox, makePhysicsBody, PhysicsBody, RectangleHitbox } from "./physics";
@@ -6,7 +6,6 @@ import { DEBUG_HITBOXES } from "./flags";
 import { Platform } from "./platform";
 import { isMousePressed, isPressed } from "./input";
 import { clearTimer, timeout, Timer } from "./loop";
-import { createTextParticle, createTextRender } from "./particle";
 
 type Keybind = { key: string };
 type MouseButton = { button: number };
@@ -167,8 +166,11 @@ export class Default implements Player {
         const { elem, remove } = createTextRender(
             "",
             "player-health",
-            40,
-            PLAYER_HEALTH_COORDS[this.playerNumber],
+            50,
+            Vector2D.add(
+                PLAYER_HEALTH_COORDS[this.playerNumber],
+                Vector2D.xy(15, 34),
+            ),
             true,
         );
         this.healthText = elem.appendChild(
@@ -452,19 +454,19 @@ export class Default implements Player {
         this.health -= damage * this.damageMultiplier;
         this.color.pulse(defaultDamageColor, .25);
 
-        if (isCrit) createTextParticle(
+        if (isCrit) createTextTemporary(
             `-${damage.toPrecision(3)}`,
             "critical-damage",
             Math.floor(damage / 4) + 75,
             this.physicsBody.pos,
             .5 + Math.log10(damage),
         );
-        else createTextParticle(
+        else createTextTemporary(
             `-${damage.toPrecision(3)}`,
             "damage",
             Math.floor(damage / 4) + 50,
             this.physicsBody.pos,
-            Math.log10(damage) / 2,
+            .2 + Math.log10(damage) / 2,
         );
 
         if (this.health > 0) return;
@@ -477,12 +479,12 @@ export class Default implements Player {
         this.health += health * this.healMultiplier;
         this.color.pulse(defaultHealColor, .25);
 
-        createTextParticle(
+        createTextTemporary(
             `${health.toPrecision(3)}`,
             "heal",
             Math.floor(health / 4) + 50,
             this.physicsBody.pos,
-            Math.log10(health) / 2,
+            .2 + Math.log10(health) / 2,
         );
     }
 }

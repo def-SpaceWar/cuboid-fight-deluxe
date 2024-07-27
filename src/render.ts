@@ -2,7 +2,7 @@ import mainVert from "./shaders/main.vert?raw";
 import mainFrag from "./shaders/main.frag?raw";
 import { Vector2D } from "./math";
 import { CIRCLE_ACCURACY, PULSE_ANIM_STEPS } from "./flags";
-import { clearTimer, repeatedTimeout } from "./loop";
+import { clearTimer, repeatedTimeout, timeout } from "./loop";
 
 const app = document.getElementById("app")!;
 let gl: WebGL2RenderingContext,
@@ -417,4 +417,52 @@ export class HSVAColor {
         // @ts-ignore
         return new RGBAColor(r, g, b, this.a);
     }
+}
+
+export function createTextTemporary(
+    text: string,
+    className: string,
+    fontSize: number,
+    pos: Vector2D,
+    lifetime: number,
+    isTopLeft: boolean = false,
+) {
+    const elem = app.appendChild(document.createElement("p"));
+    elem.innerText = text;
+    elem.className = className;
+    elem.style.fontSize = `${fontSize | 0}px`;
+    if (isTopLeft) {
+        elem.style.left = `${pos.x | 0}px`;
+        elem.style.top = `${pos.y | 0}px`;
+    } else {
+        elem.style.left = `calc(50vw + ${pos.x | 0}px)`;
+        elem.style.top = `calc(50vh + ${pos.y | 0}px)`;
+    }
+    elem.style.animationDuration = `${lifetime}s`;
+    elem.style.opacity = "0";
+    timeout(() => app.removeChild(elem), lifetime);
+}
+
+export function createTextRender(
+    text: string,
+    className: string,
+    fontSize: number,
+    pos: Vector2D,
+    isTopLeft: boolean = false,
+) {
+    const elem = app.appendChild(document.createElement("p"));
+    elem.innerText = text;
+    elem.className = className;
+    elem.style.fontSize = `${fontSize}px`;
+    if (isTopLeft) {
+        elem.style.left = `${pos.x | 0}px`;
+        elem.style.top = `${pos.y | 0}px`;
+    } else {
+        elem.style.left = `calc(50vw + ${pos.x | 0}px)`;
+        elem.style.top = `calc(50vh + ${pos.y | 0}px)`;
+    }
+    return {
+        elem,
+        remove: () => app.removeChild(elem),
+    };
 }
