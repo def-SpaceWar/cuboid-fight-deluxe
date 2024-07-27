@@ -235,9 +235,9 @@ export class Default implements Player {
             if (this.combo > 0) fillGeometry(
                 rectToGeometry([
                     -25 +
-                    50 * (1 -
+                    50 * (Math.max(0, 1 -
                         this.combo * this.comboCooldown /
-                        this.attackCooldown),
+                        this.attackCooldown)),
                     -30,
                     25,
                     -40,
