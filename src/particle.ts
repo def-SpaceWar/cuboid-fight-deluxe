@@ -1,5 +1,10 @@
 export type Particle
-    = { type: 'draw' }
+    // no collider,
+    // anim(t: number): void (render as function of time),
+    // lifetime: number,
+    = { type: 'static' }
+    // collider, pos, vel,
+    // lifetime: number,
     | { type: 'physics' };
 const particles: Particle[] = [];
 
