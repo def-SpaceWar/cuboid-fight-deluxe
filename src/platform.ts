@@ -1,6 +1,6 @@
 import { DEBUG_HITBOXES, TEX_TO_SCREEN_RATIO } from "./flags";
 import { Vector2D } from "./math";
-import { drawHitbox, RectangleHitbox } from "./physics";
+import { drawHitbox, isColliding, RectangleHitbox } from "./physics";
 import { Player } from "./player";
 import { GLColor, drawGeometry, loadImage, rectToGeometry } from "./render";
 import dirtImg from "./assets/platforms/dirt.png";
@@ -15,6 +15,33 @@ export type Platform = {
     render(): void;
     onCollision(p: Player): void;
 };
+
+export function resolvePlatformPlayerCollisions(
+    platforms: Platform[],
+    players: Player[],
+    dt: number,
+) {
+    for (let i = 0; i < players.length; i++) {
+        const player = players[i];
+        if (player.physicsBody.vel.y > 0) {
+            for (let j = 0; j < platforms.length; j++) {
+                const platform = platforms[j];
+                if (
+                    player.physicsBody.pos.y >
+                    platform.pos.y + platform.hitbox.offset.y
+                ) continue;
+                if (!isColliding(
+                    player.physicsBody.pos, player.hitbox,
+                    platform.pos, platform.hitbox,
+                )) continue;
+
+                player.onPlatformCollision(platform);
+                platform.onCollision(player);
+            }
+        }
+        player.update(dt);
+    }
+}
 
 const dirtTex = await loadImage(dirtImg),
     dirtColor: GLColor = [.6, .3, .1, 1],

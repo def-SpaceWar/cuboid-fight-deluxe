@@ -400,7 +400,7 @@ export class HSVAColor {
     ) { }
 
     toRGBA(): RGBAColor {
-        const i = Math.floor(this.h * 6),
+        const i = (this.h * 6) | 0,
             f = this.h * 6 - i,
             p = this.v * (1 - this.s),
             q = this.v * (1 - f * this.s),
@@ -424,7 +424,7 @@ export function createTextTemporary(
     className: string,
     fontSize: number,
     pos: Vector2D,
-    lifetime: number,
+    lifespan: number,
     isTopLeft: boolean = false,
 ) {
     const elem = app.appendChild(document.createElement("p"));
@@ -438,9 +438,9 @@ export function createTextTemporary(
         elem.style.left = `calc(50vw + ${pos.x | 0}px)`;
         elem.style.top = `calc(50vh + ${pos.y | 0}px)`;
     }
-    elem.style.animationDuration = `${lifetime}s`;
+    elem.style.animationDuration = `${lifespan}s`;
     elem.style.opacity = "0";
-    timeout(() => app.removeChild(elem), lifetime);
+    timeout(() => app.removeChild(elem), lifespan);
 }
 
 export function createTextRender(

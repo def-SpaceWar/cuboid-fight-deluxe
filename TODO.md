@@ -8,6 +8,8 @@
 - Sounds
 - Attack Credit: takeDamage(damage: number, isCrit: boolean, reason: Reason)
 > type Reason = 'default_hit' | 'default_groundPound' | 'void';
+- Upgrade System
+> Default: either choose up to +50% crit chance or up to -25% attack cooldown.
 
 ...
 

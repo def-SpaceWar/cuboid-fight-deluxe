@@ -1,26 +1,19 @@
-export type Particle
-    // no collider,
-    // anim(t: number): void (render as function of time),
-    // lifetime: number,
-    = { type: 'static' }
-    // collider, pos, vel,
-    // lifetime: number,
-    | { type: 'physics' };
-const particles: Particle[] = [];
+import { Platform } from "./platform";
 
-export function updateParticles(dt: number) {
-    throw "not implemented yet";
-    dt;
-    for (let i = 0; i < particles.length; i++) {
-        const particle = particles[i];
-        particle;
-    }
+export interface Particle {
+    lifespan: number;
+    render(dt: number): void;
+    onPlatformCollision(p: Platform): void;
 }
 
-export function renderParticles() {
-    throw "not implemented yet";
+export const particles: Particle[] = [];
+
+export function renderParticles(dt: number) {
     for (let i = 0; i < particles.length; i++) {
         const particle = particles[i];
-        particle;
+        particle.render(dt);
+        particle.lifespan -= dt;
+        if (particle.lifespan > 0) continue;
+        particles.splice(i, 1);
     }
 }

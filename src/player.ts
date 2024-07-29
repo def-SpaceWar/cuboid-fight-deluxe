@@ -34,12 +34,15 @@ function isControlDown(c: Control) {
     return isMousePressed(c.button);
 }
 
-const PLAYER_HEALTH_COORDS = {
-    1: Vector2D.xy(20, 20),
-    2: Vector2D.xy(20, 105),
-    3: Vector2D.xy(20, 190),
-    4: Vector2D.xy(20, 275),
-};
+const
+    PLAYER_HEALTH_COORDS = {
+        1: Vector2D.xy(20, 20),
+        2: Vector2D.xy(20, 105),
+        3: Vector2D.xy(20, 190),
+        4: Vector2D.xy(20, 275),
+    },
+    PLAYER_DAMAGE_COLOR = new RGBAColor(1.5, 0.3, 0.5),
+    HEAL_COLOR = new RGBAColor(0.5, 1.5, 0.3);
 export interface Player {
     playerNumber: 1 | 2 | 3 | 4;
     hitbox: Hitbox;
@@ -64,7 +67,7 @@ export interface Player {
     damageMultiplier: number;
     healMultiplier: number;
 
-    render(): void;
+    render(dt: number): void;
     update(dt: number): void;
     onPlatformCollision(p: Platform): void;
     onPlayerCollision(p: Player): void;
@@ -87,8 +90,7 @@ const defaultTex = await loadImage(defaultImg),
     defaultHealthBorderGeometry = rectToGeometry([0, 0, 200, 65]),
     defaultHealthBorderColor: GLColor = [.3, .3, .3, 1],
     defaultHealthBgGeometry = rectToGeometry([10, 10, 190, 55]),
-    defaultDamageColor = new RGBAColor(1.5, 0.3, 0.5),
-    defaultHealColor = new RGBAColor(0.5, 1.5, 0.3),
+    defaultHealAnimConstant = Math.log(1e-16),
     defaultMaxKb = 3_000;
 export class Default implements Player {
     visualOffset = Vector2D.zero();
@@ -123,6 +125,7 @@ export class Default implements Player {
     specialCooldown = this.attackCooldown * 2;
     isSpecialCooldown = false;
 
+    animHealth = 100;
     health = 100;
     maxHealth = 100;
     isDead = false;
@@ -179,7 +182,10 @@ export class Default implements Player {
         this.removeHealthText = remove;
     }
 
-    render() {
+    render(dt: number) {
+        this.animHealth += (this.health - this.animHealth) *
+            Math.exp(dt * defaultHealAnimConstant);
+
         this.healthText.textContent = this.health.toPrecision(3);
         fillGeometry(
             defaultHealthBorderGeometry,
@@ -201,7 +207,7 @@ export class Default implements Player {
             rectToGeometry([
                 10,
                 10,
-                10 + 180 * (this.health / this.maxHealth),
+                10 + 180 * (this.animHealth / this.maxHealth),
                 55,
             ]),
             {
@@ -400,23 +406,16 @@ export class Default implements Player {
 
             const kb = Vector2D
                 .subtract(other.physicsBody.pos, this.physicsBody.pos)
-                .Sn(
-                    this.attackPower *
-                    (other.maxHealth / other.health) ** 2
-                ),
-                squaredMagnitude = Vector2D.squaredMagnitude(kb);
+                .Sn(this.attackPower);
 
-            if (squaredMagnitude > defaultMaxKb ** 2)
-                kb.Sn(defaultMaxKb / Math.sqrt(squaredMagnitude));
-            if (!isGroundPound) damage *= (1 + .5 * this.combo)
-            else {
+            if (isGroundPound) {
                 kb.Sn(this.jumpPower / 1000);
                 damage /= 4;
-            }
+            } else damage *= (1 + .5 * this.combo);
 
             other.combo = 0;
-            other.takeDamage(damage * this.attackMultiplier, isCrit);
             other.takeKb(kb.Sn(this.kbMultiplier));
+            other.takeDamage(damage * this.attackMultiplier, isCrit);
         }
 
         if (isGroundPound) return;
@@ -447,24 +446,28 @@ export class Default implements Player {
     }
 
     takeKb(kb: Vector2D) {
-        this.physicsBody.vel.av(kb.clone().Sn(this.incomingKbMultiplier));
+        kb.Sn((this.maxHealth / this.health) ** 2)
+        const squaredMagnitude = Vector2D.squaredMagnitude(kb);
+        if (squaredMagnitude > defaultMaxKb ** 2)
+            kb.Sn(defaultMaxKb / Math.sqrt(squaredMagnitude));
+        this.physicsBody.vel.av(kb.Sn(this.incomingKbMultiplier));
     }
 
     takeDamage(damage: number, isCrit: boolean) {
         this.health -= damage * this.damageMultiplier;
-        this.color.pulse(defaultDamageColor, .25);
+        this.color.pulse(PLAYER_DAMAGE_COLOR, .25);
 
         if (isCrit) createTextTemporary(
-            `-${damage.toPrecision(3)}`,
+            `${damage.toPrecision(3)}`,
             "critical-damage",
-            Math.floor(damage / 4) + 75,
+            ((damage / 4) + 75) | 0,
             this.physicsBody.pos,
             .5 + Math.log10(damage),
         );
         else createTextTemporary(
-            `-${damage.toPrecision(3)}`,
+            `${damage.toPrecision(3)}`,
             "damage",
-            Math.floor(damage / 4) + 50,
+            ((damage / 4) + 50) | 0,
             this.physicsBody.pos,
             .2 + Math.log10(damage) / 2,
         );
@@ -477,12 +480,12 @@ export class Default implements Player {
     takeHealing(health: number) {
         if (this.isDead) return;
         this.health += health * this.healMultiplier;
-        this.color.pulse(defaultHealColor, .25);
+        this.color.pulse(HEAL_COLOR, .25);
 
         createTextTemporary(
             `${health.toPrecision(3)}`,
             "heal",
-            Math.floor(health / 4) + 50,
+            ((health / 4) + 50) | 0,
             this.physicsBody.pos,
             .2 + Math.log10(health) / 2,
         );

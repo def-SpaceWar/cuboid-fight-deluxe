@@ -1,12 +1,12 @@
 import { isPressed, listenToInput, stopListeningToInput } from './input';
 import { Vector2D } from './math';
-import { isColliding } from './physics';
-import { GrassPlatform, Platform, StonePlatform } from './platform';
+import { GrassPlatform, Platform, resolvePlatformPlayerCollisions, StonePlatform } from './platform';
 import { Binding, Default, Player } from './player';
 import { clearScreen, RGBAColor, setupRender } from './render';
 import { renderLoop, timeout, updateLoop } from './loop';
 import './style.css'
 import { toggleHitboxes } from './flags';
+import { renderParticles } from './particle';
 
 listenToInput();
 setupRender();
@@ -41,34 +41,36 @@ players.push(
         2,
         players,
     ),
-    //new Default(
-    //    Vector2D.x(475),
-    //    new RGBAColor(0.2, 1, .3),
-    //    {
-    //        left: Binding.key('aa'),
-    //        up: Binding.key('aa'),
-    //        down: Binding.key('aa'),
-    //        right: Binding.key('aa'),
-    //        attack: Binding.key('aa'),
-    //        special: Binding.key('aa'),
-    //    },
-    //    3,
-    //    players,
-    //),
-    //new Default(
-    //    Vector2D.x(-200),
-    //    new RGBAColor(1, .8, .3),
-    //    {
-    //        left: Binding.key('aa'),
-    //        up: Binding.key('aa'),
-    //        down: Binding.key('aa'),
-    //        right: Binding.key('aa'),
-    //        attack: Binding.key('aa'),
-    //        special: Binding.key('aa'),
-    //    },
-    //    4,
-    //    players,
-    //),
+    /*
+    new Default(
+        Vector2D.x(475),
+        new RGBAColor(0.2, 1, .3),
+        {
+            left: Binding.key('aa'),
+            up: Binding.key('aa'),
+            down: Binding.key('aa'),
+            right: Binding.key('aa'),
+            attack: Binding.key('aa'),
+            special: Binding.key('aa'),
+        },
+        3,
+        players,
+    ),
+    new Default(
+        Vector2D.x(-200),
+        new RGBAColor(1, .8, .3),
+        {
+            left: Binding.key('aa'),
+            up: Binding.key('aa'),
+            down: Binding.key('aa'),
+            right: Binding.key('aa'),
+            attack: Binding.key('aa'),
+            special: Binding.key('aa'),
+        },
+        4,
+        players,
+    ),
+    */
 );
 
 const platforms: Platform[] = [
@@ -81,35 +83,17 @@ const platforms: Platform[] = [
     new StonePlatform(Vector2D.xy(500, 300), 350, 200),
 ];
 
-const stopRender = renderLoop(() => {
+const stopRender = renderLoop((dt: number) => {
     clearScreen();
     for (let i = 0; i < platforms.length; i++) platforms[i].render();
-    for (let i = 0; i < players.length; i++) players[i].render();
+    for (let i = 0; i < players.length; i++) players[i].render(dt);
+    renderParticles(dt);
 });
 
 let canToggleHitboxes = true;
 const stopUpdate = updateLoop((dt: number) => {
     for (let i = 0; i < platforms.length; i++) platforms[i].update(dt);
-    for (let i = 0; i < players.length; i++) {
-        const player = players[i];
-        if (player.physicsBody.vel.y > 0) {
-            for (let j = 0; j < platforms.length; j++) {
-                const platform = platforms[j];
-                if (
-                    player.physicsBody.pos.y >
-                    platform.pos.y + platform.hitbox.offset.y
-                ) continue;
-                if (!isColliding(
-                    player.physicsBody.pos, player.hitbox,
-                    platform.pos, platform.hitbox,
-                )) continue;
-
-                player.onPlatformCollision(platform);
-                platform.onCollision(player);
-            }
-        }
-        player.update(dt);
-    }
+    resolvePlatformPlayerCollisions(platforms, players, dt);
 
     if (canToggleHitboxes && isPressed("Escape")) {
         canToggleHitboxes = false;
