@@ -334,6 +334,14 @@ export class RGBAColor {
         this.glColor = new Float32Array([r, g, b, a]) as unknown as GLColor;
     }
 
+    toCSS(): string {
+        const r = (this.r * 255) | 0,
+            g = (this.g * 255) | 0,
+            b = (this.b * 255) | 0,
+            a = (this.a * 255) | 0;
+        return `rgba(${r}, ${g}, ${b}, ${a})`;
+    }
+
     toHSVA(): HSVAColor {
         const max = Math.max(this.r, this.g, this.b),
             min = Math.min(this.r, this.g, this.b),

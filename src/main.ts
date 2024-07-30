@@ -1,17 +1,16 @@
-import { isPressed, listenToInput, stopListeningToInput } from './input';
+import { listenToInput } from './input';
 import { Vector2D } from './math';
-import { GrassPlatform, Platform, resolvePlatformPlayerCollisions, StonePlatform } from './platform';
 import { Binding, Default, Player } from './player';
-import { clearScreen, RGBAColor, setupRender } from './render';
-import { renderLoop, timeout, updateLoop } from './loop';
+import { RGBAColor, setupRender } from './render';
+import { Map1 } from './map';
 import './style.css'
-import { toggleHitboxes } from './flags';
-import { renderParticles } from './particle';
 
 listenToInput();
 setupRender();
 
-const players: Player[] = [];
+const players: Player[] = [],
+    scene = new Map1({ type: 'stock', lives: 4, teams: false });
+
 players.push(
     new Default(
         Vector2D.x(-50),
@@ -26,6 +25,7 @@ players.push(
         },
         1,
         players,
+        scene,
     ),
     new Default(
         Vector2D.x(375),
@@ -40,6 +40,7 @@ players.push(
         },
         2,
         players,
+        scene,
     ),
     /*
     new Default(
@@ -55,6 +56,7 @@ players.push(
         },
         3,
         players,
+        gamemode,
     ),
     new Default(
         Vector2D.x(-200),
@@ -69,40 +71,9 @@ players.push(
         },
         4,
         players,
+        gamemode,
     ),
     */
 );
 
-const platforms: Platform[] = [
-    new StonePlatform(Vector2D.xy(0, 150), 200, 25),
-    new GrassPlatform(Vector2D.xy(-100, 300), 500, 100),
-    new StonePlatform(Vector2D.xy(500, 50), 150, 15),
-    new GrassPlatform(Vector2D.xy(-300, -200), 300, 45),
-    new GrassPlatform(Vector2D.xy(-100, -300), 300, 35),
-    new GrassPlatform(Vector2D.xy(300, -100), 300, 35),
-    new StonePlatform(Vector2D.xy(500, 300), 350, 200),
-];
-
-const stopRender = renderLoop((dt: number) => {
-    clearScreen();
-    for (let i = 0; i < platforms.length; i++) platforms[i].render();
-    for (let i = 0; i < players.length; i++) players[i].render(dt);
-    renderParticles(dt);
-});
-
-let canToggleHitboxes = true;
-const stopUpdate = updateLoop((dt: number) => {
-    for (let i = 0; i < platforms.length; i++) platforms[i].update(dt);
-    resolvePlatformPlayerCollisions(platforms, players, dt);
-
-    if (canToggleHitboxes && isPressed("Escape")) {
-        canToggleHitboxes = false;
-        timeout(() => canToggleHitboxes = true, .2);
-        toggleHitboxes();
-    }
-
-    if (!isPressed("Enter")) return;
-    stopListeningToInput();
-    stopRender();
-    stopUpdate();
-});
+await scene.run(players);

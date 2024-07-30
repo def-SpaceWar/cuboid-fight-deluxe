@@ -1,5 +1,6 @@
 # TODO
 
+- Make respawning
 - Whenever a player moves, their z-index/rendering order should be on top
 > so dead players that just happen to be last don't get rendered on top of
 > other players.

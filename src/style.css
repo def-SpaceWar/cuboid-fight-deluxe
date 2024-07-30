@@ -114,7 +114,7 @@ canvas {
     }
 }
 
-.player-health {
+.player-ui {
     margin: 0;
     position: absolute;
     color: #444;

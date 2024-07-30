@@ -19,7 +19,6 @@ export type Platform = {
 export function resolvePlatformPlayerCollisions(
     platforms: Platform[],
     players: Player[],
-    dt: number,
 ) {
     for (let i = 0; i < players.length; i++) {
         const player = players[i];
@@ -39,7 +38,6 @@ export function resolvePlatformPlayerCollisions(
                 platform.onCollision(player);
             }
         }
-        player.update(dt);
     }
 }
 
