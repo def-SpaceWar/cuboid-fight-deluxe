@@ -62,7 +62,7 @@ export function updateLoop(c: Function) {
         const dtPrime = Math.min(dt, MIN_DT);
         c(dtPrime);
         tickTimers(dtPrime);
-    });
+    }, 1);
     return () => clearInterval(handle);
 }
 

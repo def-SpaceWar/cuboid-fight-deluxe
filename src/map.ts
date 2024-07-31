@@ -10,10 +10,13 @@ import { toggleHitboxes } from "./flags";
 
 export interface GameMap {
     readonly gamemode: Gamemode;
+    getRespawnPoint(): Vector2D;
     run(players: Player[]): Promise<void>;
 }
 
 export class Map1 implements GameMap {
+    constructor(public gamemode: Gamemode) { }
+
     platforms = [
         new StonePlatform(Vector2D.xy(0, 150), 200, 25),
         new GrassPlatform(Vector2D.xy(-100, 300), 500, 100),
@@ -24,10 +27,20 @@ export class Map1 implements GameMap {
         new StonePlatform(Vector2D.xy(500, 300), 350, 200),
     ];
 
-    constructor(public gamemode: Gamemode) { }
+    respawnPoints = [
+        Vector2D.x(-50),
+        Vector2D.x(375),
+        Vector2D.x(475),
+        Vector2D.x(-200),
+    ];
+
+    getRespawnPoint(): Vector2D {
+        return this.respawnPoints[(Math.random() * 4) | 0];
+    }
 
     async run(players: Player[]) {
-        // set players' spawn points
+        for (let i = 0; i < players.length; i++) players[i].physicsBody.pos
+            .av(this.respawnPoints[players[i].playerNumber - 1]);
 
         return new Promise<void>(resolve => {
             const stopRender = renderLoop((dt: number) => {

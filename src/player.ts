@@ -63,7 +63,7 @@ export interface Player {
     controls: Controls;
     playerNumber: PlayerNumber;
     allPlayers: Player[];
-    scene: GameMap;
+    map: GameMap;
 
     hitbox: Hitbox;
     physicsBody: PhysicsBody;
@@ -186,12 +186,11 @@ export class Default implements Player {
     healMultiplier = 1;
 
     constructor(
-        pos: Vector2D,
         public color: RGBAColor,
         public controls: Controls,
         public playerNumber: 1 | 2 | 3 | 4,
         public allPlayers: Player[],
-        public scene: GameMap,
+        public map: GameMap,
     ) {
         const hsv = color.toHSVA();
         hsv.s = 1;
@@ -205,7 +204,6 @@ export class Default implements Player {
         this.specialColor = hsv.toRGBA().glColor;
 
         this.physicsBody = makePhysicsBody({
-            pos,
             xDrag: 0.04,
             yDrag: 0.2,
         });
@@ -244,7 +242,7 @@ export class Default implements Player {
             this.removeKillsText = remove;
         }
 
-        if (this.scene.gamemode.type == "deathmatch") {
+        if (this.map.gamemode.displayDeathsOrLives == "deaths") {
             const { elem, remove } = createTextRender(
                 "",
                 "player-ui",
@@ -260,7 +258,7 @@ export class Default implements Player {
             );
             this.removeDeathsText = remove;
         } else {
-            this.lives = this.scene.gamemode.lives;
+            this.lives = this.map.gamemode.lives;
             const { elem, remove } = createTextRender(
                 "",
                 "player-ui",
@@ -363,7 +361,12 @@ export class Default implements Player {
         this.animHealth += (this.health - this.animHealth) *
             Math.exp(dt * defaultUiAnimConstant);
 
-        this.healthText.textContent = this.health.toPrecision(3);
+        if (this.health > 0)
+            if (this.health < 0.01)
+                this.healthText.textContent = this.health.toExponential(2);
+            else this.healthText.textContent = this.health.toPrecision(3);
+        else this.healthText.textContent = "0";
+
         this.killsText.textContent = this.kills.toFixed(0);
 
         fillGeometry(
@@ -409,7 +412,7 @@ export class Default implements Player {
             },
         );
 
-        if (this.scene.gamemode.type == "deathmatch") {
+        if (this.map.gamemode.displayDeathsOrLives == "deaths") {
             this.deathsText!.textContent = this.deaths.toFixed(0);
 
             fillGeometry(
@@ -425,7 +428,7 @@ export class Default implements Player {
                 rectToGeometry([
                     65,
                     10,
-                    65 + 52 * Math.min(this.kills / this.scene.gamemode.kills, 1),
+                    65 + 52 * Math.min(this.kills / this.map.gamemode.kills, 1),
                     55,
                 ]),
                 {
@@ -490,7 +493,7 @@ export class Default implements Player {
                 rectToGeometry([
                     185,
                     10,
-                    185 + 52 * Math.min(this.lives / this.scene.gamemode.lives, 1),
+                    185 + 52 * Math.min(this.lives / this.map.gamemode.lives, 1),
                     55,
                 ]),
                 {
@@ -657,6 +660,17 @@ export class Default implements Player {
         }, i);
     }
 
+    respawn() {
+        timeout(() => {
+            const spawnPoint = this.map.getRespawnPoint(),
+                diff = Vector2D.subtract(this.physicsBody.pos, spawnPoint);
+            this.visualOffset.av(diff);
+            this.isDead = false;
+            this.health = this.maxHealth;
+            this.physicsBody.pos.av(diff.Sn(-1));
+        }, 2);
+    }
+
     takeKb(kb: Vector2D) {
         kb.Sn((this.maxHealth / this.health) ** 2)
         const squaredMagnitude = Vector2D.squaredMagnitude(kb);
@@ -687,10 +701,17 @@ export class Default implements Player {
 
             if (this.health > 0) return;
             this.health = 0;
-            this.isDead = true;
             if (this.lives > 0) this.lives -= 1;
+
             reason.player.kills += 1;
             this.deaths += 1;
+            this.isDead = true;
+
+            if (
+                this.map.gamemode.displayDeathsOrLives == 'deaths' ||
+                (this.map.gamemode.displayDeathsOrLives == 'lives' &&
+                    this.lives > 0)
+            ) this.respawn();
         }
     }
 

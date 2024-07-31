@@ -117,7 +117,7 @@ canvas {
 .player-ui {
     margin: 0;
     position: absolute;
-    color: #444;
-    opacity: 70%;
+    color: #AAA;
+    mix-blend-mode: multiply;
     transform: translateY(-50%);
 }
