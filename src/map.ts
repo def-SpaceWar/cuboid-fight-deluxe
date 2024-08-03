@@ -7,15 +7,15 @@ import { renderParticles } from "./particle";
 import { isPressed, listenToInput, stopListeningToInput } from "./input";
 import { renderLoop, timeout, updateLoop } from "./loop";
 import { toggleHitboxes } from "./flags";
+import { MainMenu, Scene } from "./scene";
 
-export interface GameMap {
+export interface GameMap extends Scene {
     readonly gamemode: Gamemode;
     getRespawnPoint(): Vector2D;
-    run(): Promise<GameMap>;
 }
 
 export class Map1 implements GameMap {
-    gamemode: Gamemode;
+    readonly gamemode: Gamemode;
     constructor() { this.gamemode = getGamemode(); }
 
     platforms = [
@@ -52,10 +52,10 @@ export class Map1 implements GameMap {
 
         let gameOver = false;
 
-        return new Promise<GameMap>(resolve => {
+        return await new Promise<Scene>(resolve => {
             const stopRender = renderLoop((dt: number) => {
                 const platforms = this.platforms;
-                clearScreen();
+                clearScreen([.7, .85, 1, 1]);
 
                 for (let i = 0; i < platforms.length; i++)
                     platforms[i].render();
@@ -67,10 +67,6 @@ export class Map1 implements GameMap {
 
                 for (let i = 0; i < players.length; i++)
                     players[i].renderUi(dt);
-
-                if (gameOver) {
-                    // render stuff
-                }
             });
 
             let canToggleHitboxes = true;
@@ -118,8 +114,7 @@ export class Map1 implements GameMap {
                             stopRender();
                             stopUpdate();
                             removeEndScreen();
-                            alert("No main menu yet.");
-                            // resolve(new MainMenu()); or smth like that
+                            resolve(new MainMenu());
                         }
                     );
                 }, 2);

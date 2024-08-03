@@ -1,6 +1,7 @@
 # TODO
 
 - Add leaderboard on end screen (table element prob)
+- Add camera (update vertex shader)
 - Add damage zones/platforms
 > Use for dying offscreen
 > Use in the map as reddish pulsing damaging platforms

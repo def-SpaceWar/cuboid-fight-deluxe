@@ -31,6 +31,7 @@ export function renderLoop(c: Function) {
         c(Math.min(dt, MIN_DT));
     }
     return () => {
+        fpsTextNode.remove();
         fpsText.remove();
         cancelAnimationFrame(handle);
     }
@@ -67,6 +68,7 @@ export function updateLoop(c: Function) {
         tickTimers(dtPrime);
     }, 1);
     return () => {
+        tpsTextNode.remove();
         tpsText.remove();
         clearInterval(handle);
     }

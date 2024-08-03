@@ -1,13 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Handjet:wght@100..900&display=swap');
 
 * {
+    font-family: "Handjet";
 	transition: all .2s ease-in-out;
 }
 
 body {
-    font-family: "Handjet";
     margin: 0;
-    background-color: #9BC;
+    background-color: black;
 }
 
 canvas {
@@ -18,6 +18,22 @@ canvas {
     height: 100vh;
     z-index: -1;
     image-rendering: crisp-edges;
+}
+
+#start-game {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #55DD11;
+    border: none;
+    font-size: 4rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
+
+#start-game:hover {
+    background-color: #77FF33;
 }
 
 #fps {
@@ -167,7 +183,6 @@ canvas {
 }
 
 .end-screen button {
-    font-family: "Handjet";
     font-size: 2.5rem;
     border: none;
     width: fit-content;

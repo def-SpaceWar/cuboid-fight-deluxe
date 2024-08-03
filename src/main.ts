@@ -1,11 +1,10 @@
 import { setupRender } from './render';
-import { GameMap, Map1 } from './map';
+import { Scene, MainMenu } from './scene';
 import './style.css'
 
 setupRender();
 
-const startingMap = new Map1();
 for (
-    let map: GameMap = startingMap;
-    map = await map.run();
+    let scene: Scene = new MainMenu();
+    scene = await scene.run();
 );
