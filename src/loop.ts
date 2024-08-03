@@ -30,7 +30,10 @@ export function renderLoop(c: Function) {
         handle = requestAnimationFrame(loop);
         c(Math.min(dt, MIN_DT));
     }
-    return () => cancelAnimationFrame(handle);
+    return () => {
+        app.removeChild(fpsText);
+        cancelAnimationFrame(handle);
+    }
 }
 
 export function updateLoop(c: () => unknown): () => void;
@@ -63,7 +66,10 @@ export function updateLoop(c: Function) {
         c(dtPrime);
         tickTimers(dtPrime);
     }, 1);
-    return () => clearInterval(handle);
+    return () => {
+        app.removeChild(tpsText);
+        clearInterval(handle);
+    }
 }
 
 export type Timer

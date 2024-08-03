@@ -1,10 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Handjet:wght@100..900&display=swap');
 
+* {
+	transition: all .2s ease-in-out;
+}
+
 body {
     font-family: "Handjet";
     margin: 0;
     background-color: #9BC;
-    transition: all .2s ease-in-out;
 }
 
 canvas {
@@ -24,6 +27,7 @@ canvas {
     position: absolute;
     left: 1vh;
     bottom: 1vh;
+    z-index: 9999;
 }
 
 #tps {
@@ -33,6 +37,7 @@ canvas {
     position: absolute;
     left: 1vh;
     bottom: calc(2vh + 2rem);
+    z-index: 9999;
 }
 
 .heal {
@@ -120,4 +125,61 @@ canvas {
     color: #AAA;
     mix-blend-mode: multiply;
     transform: translateY(-50%);
+}
+
+.end-screen-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #0000;
+    z-index: 1;
+    backdrop-filter: blur(4px);
+    animation: fade-in 1s;
+}
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.end-screen {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    min-width: 60%;
+    min-height: 60%;
+    transform: translate(-50%, -50%);
+    background-color: #4444;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.end-screen * {
+    color: #444;
+}
+
+.end-screen h1 {
+    font-size: 4rem;
+}
+
+.end-screen button {
+    font-family: "Handjet";
+    font-size: 2.5rem;
+    border: none;
+    width: fit-content;
+    margin-left: 50%;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    transform: translateX(-50%);
+    background-color: #888;
+}
+
+.end-screen button:hover {
+    background-color: #AAA;
 }

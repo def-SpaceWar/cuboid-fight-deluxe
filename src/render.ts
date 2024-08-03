@@ -3,8 +3,11 @@ import mainFrag from "./shaders/main.frag?raw";
 import { Vector2D } from "./math";
 import { CIRCLE_ACCURACY, PULSE_ANIM_STEPS } from "./flags";
 import { clearTimer, repeatedTimeout, timeout } from "./loop";
+import { Winner } from "./gamemode";
 
 const app = document.getElementById("app")!;
+export let canvas: HTMLCanvasElement;
+
 let gl: WebGL2RenderingContext,
     a_position: number,
     a_positionBuffer: WebGLBuffer,
@@ -61,7 +64,7 @@ export const loadImage = (imageUrl: string): Promise<HTMLImageElement> =>
     });
 
 export async function setupRender() {
-    gl = app.appendChild(document.createElement("canvas"))
+    gl = app.appendChild(canvas = document.createElement("canvas"))
         .getContext("webgl2", {
             antialias: false,
             powerPreference: 'high-performance',
@@ -108,13 +111,13 @@ export type GLColor = [r: GLclampf, g: GLclampf, b: GLclampf, a: GLclampf];
 export type GLRectangle = [x1: number, y1: number, x2: number, y2: number];
 
 export function clearScreen(color: GLColor = [0, 0, 0, 0]) {
-    gl.canvas.width = (gl.canvas as HTMLCanvasElement).clientWidth;
-    gl.canvas.height = (gl.canvas as HTMLCanvasElement).clientHeight;
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
 
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.clearColor(...color);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.uniform2f(u_resolution, gl.canvas.width, gl.canvas.height);
+    gl.uniform2f(u_resolution, canvas.width, canvas.height);
 }
 
 export function circleToLines({ x, y }: Vector2D, r: number): Float32Array {
@@ -397,6 +400,32 @@ export class RGBAColor {
             step++;
         }, time / PULSE_ANIM_STEPS);
     }
+
+    pulseFromGL(from: GLColor, time: number) {
+        const differenceR = this.r - from[0],
+            differenceG = this.g - from[1],
+            differenceB = this.b - from[2],
+            differenceA = this.a - from[3];
+
+        this.r = from[0];
+        this.g = from[1];
+        this.b = from[2];
+        this.a = from[3];
+
+        let step = 0;
+        const timer = repeatedTimeout(() => {
+            if (step == PULSE_ANIM_STEPS) {
+                clearTimer(timer);
+                return;
+            }
+
+            this.r += differenceR / PULSE_ANIM_STEPS;
+            this.g += differenceG / PULSE_ANIM_STEPS;
+            this.b += differenceB / PULSE_ANIM_STEPS;
+            this.a += differenceA / PULSE_ANIM_STEPS;
+            step++;
+        }, time / PULSE_ANIM_STEPS);
+    }
 }
 
 export class HSVAColor {
@@ -473,4 +502,51 @@ export function createTextRender(
         elem,
         remove: () => app.removeChild(elem),
     };
+}
+
+export function createEndScreen(
+    winnerData: Winner,
+    restart: () => void,
+    next: () => void,
+) {
+    const endScreenContainer = app.appendChild(document.createElement("div"));
+    endScreenContainer.className = "end-screen-container";
+
+    const endScreen = endScreenContainer.appendChild(
+        document.createElement("center")
+    );
+    endScreen.className = "end-screen";
+
+    const header = endScreen.appendChild(document.createElement("h1"));
+    switch (winnerData.type) {
+        case "none":
+            header.innerText = "Undecided";
+            break;
+        case "player":
+            const span = header.appendChild(document.createElement("span"));
+            span.innerText = `[P${winnerData.player.number}] `
+                + winnerData.player.name;
+            span.style.color = winnerData.player.color.toCSS();
+            header.appendChild(document.createTextNode(" Won!"));
+            break;
+        case "players":
+        default:
+            header.innerText = "Not Implemented Yet!";
+    }
+
+    {
+        const button = endScreen.appendChild(document.createElement("button"));
+        button.innerText = "Restart";
+        button.onclick = restart;
+    }
+
+    endScreen.appendChild(document.createElement("br"));
+
+    {
+        const button = endScreen.appendChild(document.createElement("button"));
+        button.innerText = "Continue";
+        button.onclick = next;
+    }
+
+    return () => app.removeChild(endScreenContainer);
 }

@@ -3,7 +3,7 @@ import defaultImg from "./assets/classes/default.png";
 import { GLColor, RGBAColor, drawGeometry, fillGeometry, loadImage, rectToGeometry, createTextTemporary, createTextRender } from "./render";
 import { Vector2D } from "./math";
 import { drawHitbox, Hitbox, makePhysicsBody, PhysicsBody, RectangleHitbox } from "./physics";
-import { DEBUG_HITBOXES } from "./flags";
+import { DAMAGE_COLOR, DEBUG_HITBOXES, HEAL_COLOR } from "./flags";
 import { Platform } from "./platform";
 import { isMousePressed, isPressed } from "./input";
 import { clearTimer, timeout, Timer } from "./loop";
@@ -43,8 +43,7 @@ const
         3: Vector2D.xy(20, 190),
         4: Vector2D.xy(20, 275),
     },
-    playerDamageColor = new RGBAColor(1.5, 0.3, 0.5),
-    playerHealColor = new RGBAColor(0.5, 1.5, 0.3),
+
     iconTex = await loadImage(iconImg),
     killIcon = rectToGeometry([0, 0, 12, 12]),
     deathsIcon = rectToGeometry([12, 0, 24, 12]),
@@ -60,8 +59,10 @@ export type DamageReason
         type: 'environment',
     };
 export interface Player {
+    color: RGBAColor;
     controls: Controls;
-    playerNumber: PlayerNumber;
+    number: PlayerNumber;
+    name: string;
     allPlayers: Player[];
     map: GameMap;
 
@@ -103,6 +104,73 @@ export interface Player {
 
     onDestroy(): void;
 };
+
+export function getPlayers(map: GameMap): Player[] {
+    const players: Player[] = [];
+    players.push(
+        new Default(
+            new RGBAColor(1, .2, .3),
+            {
+                left: Binding.key('ArrowLeft'),
+                up: Binding.key('ArrowUp'),
+                down: Binding.key('ArrowDown'),
+                right: Binding.key('ArrowRight'),
+                attack: Binding.key('/'),
+                special: Binding.key('.'),
+            },
+            1,
+            "Mafia",
+            players,
+            map,
+        ),
+        new Default(
+            new RGBAColor(0, .5, 1),
+            {
+                left: Binding.key('s'),
+                up: Binding.key('e'),
+                down: Binding.key('d'),
+                right: Binding.key('f'),
+                attack: Binding.key('w'),
+                special: Binding.key('q'),
+            },
+            2,
+            "Guardian",
+            players,
+            map,
+        ),
+        //new Default(
+        //    new RGBAColor(.2, 1, .3),
+        //    {
+        //        left: Binding.key('aa'),
+        //        up: Binding.key('aa'),
+        //        down: Binding.key('aa'),
+        //        right: Binding.key('aa'),
+        //        attack: Binding.key('aa'),
+        //        special: Binding.key('aa'),
+        //    },
+        //    3,
+        //    "Villager",
+        //    players,
+        //    map,
+        //),
+        //new Default(
+        //    new RGBAColor(1, .8, .3),
+        //    {
+        //        left: Binding.key('aa'),
+        //        up: Binding.key('aa'),
+        //        down: Binding.key('aa'),
+        //        right: Binding.key('aa'),
+        //        attack: Binding.key('aa'),
+        //        special: Binding.key('aa'),
+        //    },
+        //    4,
+        //    "Mayor",
+        //    players,
+        //    map,
+        //),
+    );
+    return players;
+}
 
 const defaultTex = await loadImage(defaultImg),
     defaultTexCoord = rectToGeometry([0, 0, 16, 16]),
@@ -188,7 +256,8 @@ export class Default implements Player {
     constructor(
         public color: RGBAColor,
         public controls: Controls,
-        public playerNumber: 1 | 2 | 3 | 4,
+        public number: 1 | 2 | 3 | 4,
+        public name: string,
         public allPlayers: Player[],
         public map: GameMap,
     ) {
@@ -214,7 +283,7 @@ export class Default implements Player {
                 "player-ui",
                 50,
                 Vector2D.add(
-                    playerUiCoords[this.playerNumber],
+                    playerUiCoords[this.number],
                     Vector2D.xy(262, 34),
                 ),
                 true,
@@ -231,7 +300,7 @@ export class Default implements Player {
                 "player-ui",
                 50,
                 Vector2D.add(
-                    playerUiCoords[this.playerNumber],
+                    playerUiCoords[this.number],
                     Vector2D.xy(70, 34),
                 ),
                 true,
@@ -248,7 +317,7 @@ export class Default implements Player {
                 "player-ui",
                 50,
                 Vector2D.add(
-                    playerUiCoords[this.playerNumber],
+                    playerUiCoords[this.number],
                     Vector2D.xy(190, 34),
                 ),
                 true,
@@ -264,7 +333,7 @@ export class Default implements Player {
                 "player-ui",
                 50,
                 Vector2D.add(
-                    playerUiCoords[this.playerNumber],
+                    playerUiCoords[this.number],
                     Vector2D.xy(190, 34),
                 ),
                 true,
@@ -355,7 +424,7 @@ export class Default implements Player {
 
     renderUi(dt: number) {
         const tint = this.color.glColor,
-            translation = playerUiCoords[this.playerNumber],
+            translation = playerUiCoords[this.number],
             darkened = this.color.darken(1.5).glColor;
 
         this.animHealth += (this.health - this.animHealth) *
@@ -681,7 +750,7 @@ export class Default implements Player {
 
     takeDamage(damage: number, reason: DamageReason) {
         this.health -= damage * this.damageMultiplier;
-        this.color.pulse(playerDamageColor, .25);
+        this.color.pulseFromGL(DAMAGE_COLOR, .25);
 
         if (reason.type == 'player') {
             if (reason.isCrit) createTextTemporary(
@@ -718,7 +787,7 @@ export class Default implements Player {
     takeHealing(health: number) {
         if (this.isDead) return;
         this.health += health * this.healMultiplier;
-        this.color.pulse(playerHealColor, .25);
+        this.color.pulseFromGL(HEAL_COLOR, .25);
 
         createTextTemporary(
             `${health.toPrecision(3)}`,

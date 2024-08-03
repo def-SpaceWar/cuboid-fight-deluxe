@@ -1,21 +1,22 @@
-import { Player } from "./player";
-import { Gamemode } from "./gamemode";
+import { getPlayers } from "./player";
+import { Gamemode, getGamemode } from "./gamemode";
 import { GrassPlatform, resolvePlatformPlayerCollisions, StonePlatform } from "./platform";
 import { Vector2D } from "./math";
-import { clearScreen } from "./render";
+import { clearScreen, createEndScreen } from "./render";
 import { renderParticles } from "./particle";
-import { isPressed } from "./input";
+import { isPressed, listenToInput, stopListeningToInput } from "./input";
 import { renderLoop, timeout, updateLoop } from "./loop";
 import { toggleHitboxes } from "./flags";
 
 export interface GameMap {
     readonly gamemode: Gamemode;
     getRespawnPoint(): Vector2D;
-    run(players: Player[]): Promise<void>;
+    run(): Promise<GameMap>;
 }
 
 export class Map1 implements GameMap {
-    constructor(public gamemode: Gamemode) { }
+    gamemode: Gamemode;
+    constructor() { this.gamemode = getGamemode(); }
 
     platforms = [
         new StonePlatform(Vector2D.xy(0, 150), 200, 25),
@@ -38,11 +39,20 @@ export class Map1 implements GameMap {
         return this.respawnPoints[(Math.random() * 4) | 0];
     }
 
-    async run(players: Player[]) {
-        for (let i = 0; i < players.length; i++) players[i].physicsBody.pos
-            .av(this.respawnPoints[players[i].playerNumber - 1]);
+    async run() {
+        listenToInput();
+        const players = getPlayers(this);
 
-        return new Promise<void>(resolve => {
+        for (let i = 0; i < players.length; i++) {
+            const player = players[i];
+            player.map = this;
+            player.physicsBody.pos
+                .av(this.respawnPoints[players[i].number - 1]);
+        }
+
+        let gameOver = false;
+
+        return new Promise<GameMap>(resolve => {
             const stopRender = renderLoop((dt: number) => {
                 const platforms = this.platforms;
                 clearScreen();
@@ -57,6 +67,10 @@ export class Map1 implements GameMap {
 
                 for (let i = 0; i < players.length; i++)
                     players[i].renderUi(dt);
+
+                if (gameOver) {
+                    // render stuff
+                }
             });
 
             let canToggleHitboxes = true;
@@ -76,16 +90,34 @@ export class Map1 implements GameMap {
                     toggleHitboxes();
                 }
 
-                if (!isPressed("Enter")) return;
-                // if (!gamemode.isGameOver(players)) return;
+                if (gameOver) return;
+                if (!(gameOver = this.gamemode.isGameOver(players))) return;
 
-                for (let i = 0; i < players.length; i++)
-                    players[i].onDestroy();
+                timeout(() => {
+                    stopListeningToInput();
+                    const removeEndScreen = createEndScreen(
+                        this.gamemode.getWinnerData(players),
+                        () => {
+                            for (let i = 0; i < players.length; i++)
+                                players[i].onDestroy();
 
-                stopRender();
-                stopUpdate();
-                resolve();
-                // resolve(gamemode.winner(players));
+                            stopRender();
+                            stopUpdate();
+                            removeEndScreen();
+                            resolve(new Map1());
+                        },
+                        () => {
+                            for (let i = 0; i < players.length; i++)
+                                players[i].onDestroy();
+
+                            stopRender();
+                            stopUpdate();
+                            removeEndScreen();
+                            alert("No main menu yet.");
+                            // resolve(new MainMenu()); or smth like that
+                        }
+                    );
+                }, 2);
             });
         });
     }

@@ -1,3 +1,5 @@
+import { GLColor } from "./render";
+
 /** The amount of previous dts to sample for FPS */
 export const FPS_SAMPLE_AMOUNT = 25;
 
@@ -22,3 +24,9 @@ export const CIRCLE_ACCURACY = 32;
 
 /** Amount of steps to animate a color pulse */
 export const PULSE_ANIM_STEPS = 20;
+
+/** Color for damage */
+export const DAMAGE_COLOR: GLColor = [1.5, 0.3, 0.5, 1];
+
+/** Color for healing */
+export const HEAL_COLOR: GLColor = [0.5, 1.5, 0.3, 1];
