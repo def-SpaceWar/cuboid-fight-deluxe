@@ -3,7 +3,7 @@ import { Player } from "./player";
 export type Gamemode = KillsGamemode | LivesGamemode;
 
 export function getGamemode(): Gamemode {
-    return new Deathmatch(4);
+    return new Stock(3);
 }
 
 export type Winner
@@ -16,22 +16,23 @@ export type Winner
 
 export interface GamemodeBase {
     readonly isTeamMode: boolean;
+    readonly secondDisplay: 'deaths' | 'lives';
     isGameOver(players: Player[]): boolean;
     getWinnerData(players: Player[]): Winner;
 }
 
 export interface KillsGamemode extends GamemodeBase {
-    readonly displayDeathsOrLives: 'deaths';
+    readonly secondDisplay: 'deaths';
     readonly kills: number;
 }
 
 export interface LivesGamemode extends GamemodeBase {
-    readonly displayDeathsOrLives: 'lives';
+    readonly secondDisplay: 'lives';
     readonly lives: number;
 }
 
 export class Deathmatch implements KillsGamemode {
-    readonly displayDeathsOrLives = 'deaths';
+    readonly secondDisplay = 'deaths';
     readonly isTeamMode = false;
     constructor(public readonly kills: number) { }
 
@@ -57,7 +58,7 @@ export class Deathmatch implements KillsGamemode {
 }
 
 export class Stock implements LivesGamemode {
-    readonly displayDeathsOrLives = 'lives';
+    readonly secondDisplay = 'lives';
     readonly isTeamMode = false;
     constructor(public readonly lives: number) { }
 

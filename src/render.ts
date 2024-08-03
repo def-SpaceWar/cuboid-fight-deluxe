@@ -477,7 +477,7 @@ export function createTextTemporary(
     }
     elem.style.animationDuration = `${lifespan}s`;
     elem.style.opacity = "0";
-    timeout(() => app.removeChild(elem), lifespan);
+    timeout(() => elem.remove(), lifespan);
 }
 
 export function createTextRender(
@@ -500,11 +500,12 @@ export function createTextRender(
     }
     return {
         elem,
-        remove: () => app.removeChild(elem),
+        remove: () => elem.remove(),
     };
 }
 
 export function createEndScreen(
+    numPlayers: number,
     winnerData: Winner,
     restart: () => void,
     next: () => void,
@@ -530,8 +531,53 @@ export function createEndScreen(
             header.appendChild(document.createTextNode(" Won!"));
             break;
         case "players":
-        default:
-            header.innerText = "Not Implemented Yet!";
+            if (winnerData.players.length >= numPlayers)
+                header.innerText = "Everyone won!?";
+            else switch (winnerData.players.length) {
+                case 2:
+                    {
+                        const span =
+                            header.appendChild(document.createElement("span"));
+                        span.innerText = `[P${winnerData.players[0].number}] `
+                            + winnerData.players[0].name;
+                        span.style.color = winnerData.players[0].color.toCSS();
+                    }
+                    header.appendChild(document.createTextNode(" and "));
+                    {
+                        const span =
+                            header.appendChild(document.createElement("span"));
+                        span.innerText = `[P${winnerData.players[1].number}] `
+                            + winnerData.players[1].name;
+                        span.style.color = winnerData.players[1].color.toCSS();
+                    }
+                    header.appendChild(document.createTextNode(" Won!"));
+                    break;
+                case 3:
+                    {
+                        const span =
+                            header.appendChild(document.createElement("span"));
+                        span.innerText = `[P${winnerData.players[0].number}] `
+                            + winnerData.players[0].name;
+                        span.style.color = winnerData.players[0].color.toCSS();
+                    }
+                    header.appendChild(document.createTextNode(", "));
+                    {
+                        const span =
+                            header.appendChild(document.createElement("span"));
+                        span.innerText = `[P${winnerData.players[1].number}] `
+                            + winnerData.players[1].name;
+                        span.style.color = winnerData.players[1].color.toCSS();
+                    }
+                    header.appendChild(document.createTextNode(", and "));
+                    {
+                        const span =
+                            header.appendChild(document.createElement("span"));
+                        span.innerText = `[P${winnerData.players[2].number}] `
+                            + winnerData.players[2].name;
+                        span.style.color = winnerData.players[2].color.toCSS();
+                    }
+                    header.appendChild(document.createTextNode(" Won!"));
+            }
     }
 
     {
@@ -540,13 +586,11 @@ export function createEndScreen(
         button.onclick = restart;
     }
 
-    endScreen.appendChild(document.createElement("br"));
-
     {
         const button = endScreen.appendChild(document.createElement("button"));
         button.innerText = "Continue";
         button.onclick = next;
     }
 
-    return () => app.removeChild(endScreenContainer);
+    return () => endScreenContainer.remove();
 }

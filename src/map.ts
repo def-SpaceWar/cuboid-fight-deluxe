@@ -41,7 +41,7 @@ export class Map1 implements GameMap {
 
     async run() {
         listenToInput();
-        const players = getPlayers(this);
+        let players = getPlayers(this);
 
         for (let i = 0; i < players.length; i++) {
             const player = players[i];
@@ -96,10 +96,13 @@ export class Map1 implements GameMap {
                 timeout(() => {
                     stopListeningToInput();
                     const removeEndScreen = createEndScreen(
+                        players.length,
                         this.gamemode.getWinnerData(players),
                         () => {
                             for (let i = 0; i < players.length; i++)
                                 players[i].onDestroy();
+                            // @ts-ignore
+                            players = null;
 
                             stopRender();
                             stopUpdate();
@@ -109,6 +112,8 @@ export class Map1 implements GameMap {
                         () => {
                             for (let i = 0; i < players.length; i++)
                                 players[i].onDestroy();
+                            // @ts-ignore
+                            players = null;
 
                             stopRender();
                             stopUpdate();

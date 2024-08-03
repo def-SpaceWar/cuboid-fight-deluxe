@@ -134,7 +134,7 @@ export function getPlayers(map: GameMap): Player[] {
                 special: Binding.key('q'),
             },
             2,
-            "Guardian",
+            "Innocent",
             players,
             map,
         ),
@@ -311,7 +311,7 @@ export class Default implements Player {
             this.removeKillsText = remove;
         }
 
-        if (this.map.gamemode.displayDeathsOrLives == "deaths") {
+        if (this.map.gamemode.secondDisplay == "deaths") {
             const { elem, remove } = createTextRender(
                 "",
                 "player-ui",
@@ -481,7 +481,7 @@ export class Default implements Player {
             },
         );
 
-        if (this.map.gamemode.displayDeathsOrLives == "deaths") {
+        if (this.map.gamemode.secondDisplay == "deaths") {
             this.deathsText!.textContent = this.deaths.toFixed(0);
 
             fillGeometry(
@@ -777,8 +777,8 @@ export class Default implements Player {
             this.isDead = true;
 
             if (
-                this.map.gamemode.displayDeathsOrLives == 'deaths' ||
-                (this.map.gamemode.displayDeathsOrLives == 'lives' &&
+                this.map.gamemode.secondDisplay == 'deaths' ||
+                (this.map.gamemode.secondDisplay == 'lives' &&
                     this.lives > 0)
             ) this.respawn();
         }
@@ -803,5 +803,9 @@ export class Default implements Player {
         this.removeKillsText();
         if (this.removeDeathsText) this.removeDeathsText();
         if (this.removeLivesText) this.removeLivesText();
+        // @ts-ignore
+        this.map = null;
+        // @ts-ignore
+        this.players = null;
     }
 }
