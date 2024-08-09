@@ -9,7 +9,7 @@ export interface Scene {
 
 export class MainMenu implements Scene {
     run() {
-        clearScreen([.3, .3, .3, 1]);
+        clearScreen();
         const button = app.appendChild(document.createElement("button"));
         button.id = "start-game";
         button.innerText = "Start Game";

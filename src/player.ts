@@ -1,9 +1,9 @@
-import iconImg from "./assets/ui_icons.png";
+import iconsImg from "./assets/ui/icons.png";
 import defaultImg from "./assets/classes/default.png";
 import { GLColor, RGBAColor, drawGeometry, fillGeometry, loadImage, rectToGeometry, createTextTemporary, createTextRender } from "./render";
 import { Vector2D } from "./math";
 import { drawHitbox, Hitbox, makePhysicsBody, PhysicsBody, RectangleHitbox } from "./physics";
-import { DAMAGE_COLOR, DEBUG_HITBOXES, HEAL_COLOR } from "./flags";
+import { DAMAGE_COLOR, DEBUG_HITBOXES, HEAL_COLOR, KILL_CREDIT_TIME } from "./flags";
 import { Platform } from "./platform";
 import { isMousePressed, isPressed } from "./input";
 import { clearTimer, timeout, Timer } from "./loop";
@@ -44,7 +44,7 @@ const
         4: Vector2D.xy(20, 275),
     },
 
-    iconTex = await loadImage(iconImg),
+    iconTex = await loadImage(iconsImg),
     killIcon = rectToGeometry([0, 0, 12, 12]),
     deathsIcon = rectToGeometry([12, 0, 24, 12]),
     livesIcon = rectToGeometry([24, 0, 36, 12]);
@@ -54,6 +54,14 @@ export type DamageReason
         type: 'player',
         player: Player,
         isCrit: boolean,
+    }
+    | {
+        type: 'environment',
+    };
+export type HealReason
+    = {
+        type: 'player',
+        player: Player,
     }
     | {
         type: 'environment',
@@ -82,6 +90,9 @@ export interface Player {
     deaths: number;
     lives: number;
 
+    lastHit?: Player;
+    lastHitTimer?: Timer;
+
     speedMultiplier: number;
     jumpMultiplier: number;
     abilitySpeedMultiplier: number;
@@ -100,7 +111,7 @@ export interface Player {
 
     takeKb(kb: Vector2D): void;
     takeDamage(damage: number, reason: DamageReason): void;
-    takeHealing(health: number): void;
+    takeHealing(health: number, reason: HealReason): void;
 
     onDestroy(): void;
 };
@@ -242,6 +253,9 @@ export class Default implements Player {
     lives = 0;
     livesText?: Text;
     removeLivesText?: () => void;
+
+    lastHit?: Player;
+    lastHitTimer?: Timer;
 
     speedMultiplier = 1;
     jumpMultiplier = 1;
@@ -724,9 +738,13 @@ export class Default implements Player {
         this.canAttack = false;
 
         if (this.health >= this.maxHealth) return;
-        for (let i = 0; i < 5; i++) timeout(() => {
-            this.takeHealing(Math.min(this.maxHealth - this.health, 4));
-        }, i);
+        for (let i = 0; i < 5; i++) timeout(
+            () => this.takeHealing(
+                Math.min(this.maxHealth - this.health, 4),
+                { type: 'player', player: this },
+            ),
+            i,
+        );
     }
 
     respawn() {
@@ -768,34 +786,48 @@ export class Default implements Player {
                 .2 + Math.log10(damage) / 2,
             );
 
-            if (this.health > 0) return;
-            this.health = 0;
-            if (this.lives > 0) this.lives -= 1;
-
-            reason.player.kills += 1;
-            this.deaths += 1;
-            this.isDead = true;
-
-            if (
-                this.map.gamemode.secondDisplay == 'deaths' ||
-                (this.map.gamemode.secondDisplay == 'lives' &&
-                    this.lives > 0)
-            ) this.respawn();
+            this.lastHit = reason.player;
+            if (this.lastHitTimer) clearTimer(this.lastHitTimer);
+            this.lastHitTimer = timeout(
+                () => this.lastHit = undefined,
+                KILL_CREDIT_TIME,
+            );
         }
+
+        if (this.health > 0) return;
+        this.health = 0;
+        if (this.lives > 0) this.lives -= 1;
+
+        if (this.lastHit) {
+            this.lastHit.kills += 1;
+            this.lastHit = undefined;
+        }
+        if (this.lastHitTimer) clearTimer(this.lastHitTimer);
+
+        this.deaths += 1;
+        this.isDead = true;
+
+        if (
+            this.map.gamemode.secondDisplay == 'deaths' ||
+            (this.map.gamemode.secondDisplay == 'lives' &&
+                this.lives > 0)
+        ) this.respawn();
     }
 
-    takeHealing(health: number) {
+    takeHealing(health: number, reason: HealReason) {
         if (this.isDead) return;
         this.health += health * this.healMultiplier;
         this.color.pulseFromGL(HEAL_COLOR, .25);
 
-        createTextTemporary(
-            `${health.toPrecision(3)}`,
-            "heal",
-            ((health / 4) + 50) | 0,
-            this.physicsBody.pos,
-            .2 + Math.log10(health) / 2,
-        );
+        if (reason.type == "player") {
+            createTextTemporary(
+                `${health.toPrecision(3)}`,
+                "heal",
+                ((health / 4) + 50) | 0,
+                this.physicsBody.pos,
+                .2 + Math.log10(health) / 2,
+            );
+        }
     }
 
     onDestroy() {

@@ -108,6 +108,14 @@ export async function setupRender() {
 }
 
 export type GLColor = [r: GLclampf, g: GLclampf, b: GLclampf, a: GLclampf];
+
+export function glColorToCSS(c: GLColor) {
+    const r = c[0] * 255,
+        g = c[1] * 255,
+        b = c[2] * 255;
+    return `rgba(${r | 0},${g | 0},${b | 0},${c[3]})`;
+}
+
 export type GLRectangle = [x1: number, y1: number, x2: number, y2: number];
 
 export function clearScreen(color: GLColor = [0, 0, 0, 0]) {
@@ -128,6 +136,7 @@ export function circleToLines({ x, y }: Vector2D, r: number): Float32Array {
         arr.push(
             x + r * Math.cos(angle1), y + r * Math.sin(angle1),
             x + r * Math.cos(angle2), y + r * Math.sin(angle2),
+            0, 1,
         );
     }
     return new Float32Array(arr);
@@ -142,6 +151,7 @@ export function circleToGeometry({ x, y }: Vector2D, r: number): Float32Array {
             x + r * Math.cos(angle1), y + r * Math.sin(angle1),
             x, y,
             x + r * Math.cos(angle2), y + r * Math.sin(angle2),
+            0, 1,
         );
     }
     return new Float32Array(arr);
@@ -149,25 +159,25 @@ export function circleToGeometry({ x, y }: Vector2D, r: number): Float32Array {
 
 export function rectToLines(r: GLRectangle): Float32Array {
     return new Float32Array([
-        r[0], r[1],
-        r[0], r[3],
-        r[0], r[3],
-        r[2], r[3],
-        r[2], r[3],
-        r[2], r[1],
-        r[2], r[1],
-        r[0], r[1],
+        r[0], r[1], 0, 1,
+        r[0], r[3], 0, 1,
+        r[0], r[3], 0, 1,
+        r[2], r[3], 0, 1,
+        r[2], r[3], 0, 1,
+        r[2], r[1], 0, 1,
+        r[2], r[1], 0, 1,
+        r[0], r[1], 0, 1,
     ]);
 }
 
 export function rectToGeometry(r: GLRectangle): Float32Array {
     return new Float32Array([
-        r[0], r[1],
-        r[2], r[1],
-        r[0], r[3],
-        r[0], r[3],
-        r[2], r[1],
-        r[2], r[3],
+        r[0], r[1], 0, 1,
+        r[2], r[1], 0, 1,
+        r[0], r[3], 0, 1,
+        r[0], r[3], 0, 1,
+        r[2], r[1], 0, 1,
+        r[2], r[3], 0, 1,
     ]);
 }
 
@@ -194,9 +204,9 @@ export function fillLines(
     gl.bindBuffer(gl.ARRAY_BUFFER, a_positionBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, lines, gl.STATIC_DRAW);
     gl.enableVertexAttribArray(a_position);
-    gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(a_position, 4, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(a_texCoord);
-    gl.vertexAttribPointer(a_texCoord, 2, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(a_texCoord, 4, gl.FLOAT, false, 0, 0);
 
     gl.uniform2fv(u_scale, scale.arr);
     gl.uniform2f(u_rotation, Math.cos(rotation), Math.sin(rotation));
@@ -206,7 +216,7 @@ export function fillLines(
     gl.uniform4fv(u_color, tint);
     gl.uniform1ui(u_noTex, 1);
 
-    gl.drawArrays(gl.LINES, 0, lines.length / 2);
+    gl.drawArrays(gl.LINES, 0, lines.length / 4);
 }
 
 export function fillGeometry(
@@ -228,9 +238,9 @@ export function fillGeometry(
     gl.bindBuffer(gl.ARRAY_BUFFER, a_positionBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
     gl.enableVertexAttribArray(a_position);
-    gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(a_position, 4, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(a_texCoord);
-    gl.vertexAttribPointer(a_texCoord, 2, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(a_texCoord, 4, gl.FLOAT, false, 0, 0);
 
     gl.uniform2fv(u_scale, scale.arr);
     gl.uniform2f(u_rotation, Math.cos(rotation), Math.sin(rotation));
@@ -240,7 +250,7 @@ export function fillGeometry(
     gl.uniform4fv(u_color, tint);
     gl.uniform1ui(u_noTex, 1);
 
-    gl.drawArrays(gl.TRIANGLES, 0, triangles.length / 2);
+    gl.drawArrays(gl.TRIANGLES, 0, triangles.length / 4);
 }
 
 export function drawGeometry(
@@ -278,12 +288,12 @@ export function drawGeometry(
     gl.bindBuffer(gl.ARRAY_BUFFER, a_positionBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
     gl.enableVertexAttribArray(a_position);
-    gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(a_position, 4, gl.FLOAT, false, 0, 0);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, a_texCoordBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, texCoord, gl.STATIC_DRAW);
     gl.enableVertexAttribArray(a_texCoord);
-    gl.vertexAttribPointer(a_texCoord, 2, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(a_texCoord, 4, gl.FLOAT, false, 0, 0);
     gl.texImage2D(
         gl.TEXTURE_2D,
         0,
@@ -319,7 +329,7 @@ export function drawGeometry(
             );
         else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.drawArrays(gl.TRIANGLES, 0, triangles.length / 2);
+    gl.drawArrays(gl.TRIANGLES, 0, triangles.length / 4);
 }
 
 export class RGBAColor {
@@ -507,6 +517,7 @@ export function createTextRender(
 export function createEndScreen(
     numPlayers: number,
     winnerData: Winner,
+    leaderboardTable: HTMLTableElement,
     restart: () => void,
     next: () => void,
 ) {
@@ -579,6 +590,8 @@ export function createEndScreen(
                     header.appendChild(document.createTextNode(" Won!"));
             }
     }
+
+    endScreen.appendChild(leaderboardTable);
 
     {
         const button = endScreen.appendChild(document.createElement("button"));

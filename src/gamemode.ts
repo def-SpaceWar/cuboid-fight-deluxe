@@ -19,6 +19,7 @@ export interface GamemodeBase {
     readonly secondDisplay: 'deaths' | 'lives';
     isGameOver(players: Player[]): boolean;
     getWinnerData(players: Player[]): Winner;
+    getLeaderboardTable(players: Player[]): HTMLTableElement;
 }
 
 export interface KillsGamemode extends GamemodeBase {
@@ -55,7 +56,64 @@ export class Deathmatch implements KillsGamemode {
         }
         return { type: 'players', players: winners };
     }
+
+    getLeaderboardTable(players: Player[]): HTMLTableElement {
+        const table = document.createElement("table");
+        {
+            const row = table.appendChild(document.createElement("tr"));
+            {
+                const cell = row.appendChild(document.createElement("td"));
+                cell.innerText = "Player";
+            }
+            {
+                const cell = row.appendChild(document.createElement("td"));
+                cell.innerText = "Kills";
+            }
+            {
+                const cell = row.appendChild(document.createElement("td"));
+                cell.innerText = "Deaths";
+            }
+        }
+
+        const sortedPlayers: Player[] = [];
+        for (let i = 0; i < players.length; i++) {
+            sortedPlayers.push(players[i]);
+            for (let j = 1; j < sortedPlayers.length; j++) {
+                const left = sortedPlayers[j - 1],
+                    right = sortedPlayers[j];
+                if (
+                    right.kills > left.kills ||
+                    (right.kills == left.kills && right.deaths < left.deaths)
+                ) {
+                    sortedPlayers[j - 1] = right;
+                    sortedPlayers[j] = left;
+                    if (j > 2) j -= 2;
+                }
+            }
+        }
+
+        for (let i = 0; i < sortedPlayers.length; i++) {
+            const player = sortedPlayers[i],
+                row = table.appendChild(document.createElement("tr"));
+            row.style.color = player.color.toCSS();
+            {
+                const cell = row.appendChild(document.createElement("td"));
+                cell.innerText = player.name;
+            }
+            {
+                const cell = row.appendChild(document.createElement("td"));
+                cell.innerText = player.kills.toFixed(0);
+            }
+            {
+                const cell = row.appendChild(document.createElement("td"));
+                cell.innerText = player.deaths.toFixed(0);
+            }
+        }
+
+        return table;
+    }
 }
+
 
 export class Stock implements LivesGamemode {
     readonly secondDisplay = 'lives';
@@ -71,18 +129,74 @@ export class Stock implements LivesGamemode {
     }
 
     getWinnerData(players: Player[]): Winner {
-        let alivePlayers: Player[] = [];
+        let winners: Player[] = [];
         for (let i = 0; i < players.length; i++) {
             const player = players[i];
             if (player.lives <= 0) continue;
-            alivePlayers.push(player);
+            winners.push(player);
         }
-        switch (alivePlayers.length) {
+        switch (winners.length) {
             case 0:
                 return { type: 'none' };
             case 1:
-                return { type: 'player', player: alivePlayers[0] };
+                return { type: 'player', player: winners[0] };
         }
-        return { type: 'players', players: alivePlayers };
+        return { type: 'players', players: winners };
+    }
+
+    getLeaderboardTable(players: Player[]): HTMLTableElement {
+        const table = document.createElement("table");
+        {
+            const row = table.appendChild(document.createElement("tr"));
+            {
+                const cell = row.appendChild(document.createElement("td"));
+                cell.innerText = "Player";
+            }
+            {
+                const cell = row.appendChild(document.createElement("td"));
+                cell.innerText = "Kills";
+            }
+            {
+                const cell = row.appendChild(document.createElement("td"));
+                cell.innerText = "Lives";
+            }
+        }
+
+        const sortedPlayers: Player[] = [];
+        for (let i = 0; i < players.length; i++) {
+            sortedPlayers.push(players[i]);
+            for (let j = 1; j < sortedPlayers.length; j++) {
+                const left = sortedPlayers[j - 1],
+                    right = sortedPlayers[j];
+                if (
+                    right.lives > left.lives ||
+                    (right.lives == left.lives && right.kills > left.kills)
+                ) {
+                    sortedPlayers[j - 1] = right;
+                    sortedPlayers[j] = left;
+                    if (j > 2) j -= 2;
+                }
+            }
+        }
+
+        for (let i = 0; i < sortedPlayers.length; i++) {
+            const player = sortedPlayers[i],
+                row = table.appendChild(document.createElement("tr"));
+            row.style.color = player.color.toCSS();
+            {
+                const cell = row.appendChild(document.createElement("td"));
+                cell.innerText = player.name;
+            }
+            {
+                const cell = row.appendChild(document.createElement("td"));
+                cell.innerText = player.kills.toFixed(0);
+            }
+            {
+                const cell = row.appendChild(document.createElement("td"));
+                cell.innerText = player.lives.toFixed(0);
+            }
+        }
+
+        return table;
     }
 }

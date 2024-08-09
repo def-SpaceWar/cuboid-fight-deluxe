@@ -18,6 +18,9 @@ canvas {
     height: 100vh;
     z-index: -1;
     image-rendering: crisp-edges;
+    background-image: url("/backgrounds/bg1.png");
+    background-size: cover;
+    background-position: center, center;
 }
 
 #start-game {
@@ -176,6 +179,9 @@ canvas {
 
 .end-screen * {
     color: #444;
+    margin: 0;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
 }
 
 .end-screen h1 {
@@ -187,8 +193,6 @@ canvas {
     border: none;
     width: fit-content;
     margin-left: 50%;
-    margin-top: 1rem;
-    margin-bottom: 1rem;
     padding-left: 1rem;
     padding-right: 1rem;
     transform: translateX(-50%);
@@ -197,4 +201,18 @@ canvas {
 
 .end-screen button:hover {
     background-color: #AAA;
+}
+
+.end-screen table {
+    font-size: 3rem;
+    color: inherit;
+}
+
+.end-screen table tr {
+    color: inherit;
+}
+
+.end-screen table tr td {
+    color: inherit;
+    padding-left: 2rem;
 }

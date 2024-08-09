@@ -14,18 +14,19 @@ export interface GameMap extends Scene {
     getRespawnPoint(): Vector2D;
 }
 
+const map1LightAngle = 7 * Math.PI / 11;
 export class Map1 implements GameMap {
     readonly gamemode: Gamemode;
     constructor() { this.gamemode = getGamemode(); }
 
     platforms = [
-        new StonePlatform(Vector2D.xy(0, 150), 200, 25),
-        new GrassPlatform(Vector2D.xy(-100, 300), 500, 100),
-        new StonePlatform(Vector2D.xy(500, 50), 150, 15),
-        new GrassPlatform(Vector2D.xy(-300, -200), 300, 45),
-        new GrassPlatform(Vector2D.xy(-100, -300), 300, 35),
-        new GrassPlatform(Vector2D.xy(300, -100), 300, 35),
-        new StonePlatform(Vector2D.xy(500, 300), 350, 200),
+        new StonePlatform(Vector2D.xy(0, 150), 200, 25, map1LightAngle),
+        new GrassPlatform(Vector2D.xy(-100, 300), 500, 100, map1LightAngle),
+        new StonePlatform(Vector2D.xy(500, 50), 150, 15, map1LightAngle),
+        new GrassPlatform(Vector2D.xy(-300, -200), 300, 45, map1LightAngle),
+        new GrassPlatform(Vector2D.xy(-100, -300), 300, 35, map1LightAngle),
+        new GrassPlatform(Vector2D.xy(300, -100), 300, 35, map1LightAngle),
+        new StonePlatform(Vector2D.xy(500, 300), 350, 200, map1LightAngle),
     ];
 
     respawnPoints = [
@@ -55,8 +56,10 @@ export class Map1 implements GameMap {
         return await new Promise<Scene>(resolve => {
             const stopRender = renderLoop((dt: number) => {
                 const platforms = this.platforms;
-                clearScreen([.7, .85, 1, 1]);
+                clearScreen();
 
+                for (let i = 0; i < platforms.length; i++)
+                    platforms[i].renderShadow();
                 for (let i = 0; i < platforms.length; i++)
                     platforms[i].render();
 
@@ -94,6 +97,7 @@ export class Map1 implements GameMap {
                     const removeEndScreen = createEndScreen(
                         players.length,
                         this.gamemode.getWinnerData(players),
+                        this.gamemode.getLeaderboardTable(players),
                         () => {
                             for (let i = 0; i < players.length; i++)
                                 players[i].onDestroy();

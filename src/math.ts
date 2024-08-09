@@ -23,9 +23,7 @@ export class Vector2D {
     }
 
     static polar(r: number, theta: number): Vector2D {
-        r;
-        theta;
-        throw new Error("to be implemented...");
+        return this.xy(r * Math.cos(theta), r * Math.sin(theta));
     }
 
     static add(u: Vector2D, v: Vector2D): Vector2D {

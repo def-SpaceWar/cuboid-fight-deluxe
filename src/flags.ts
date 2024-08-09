@@ -30,3 +30,6 @@ export const DAMAGE_COLOR: GLColor = [1.5, 0.3, 0.5, 1];
 
 /** Color for healing */
 export const HEAL_COLOR: GLColor = [0.5, 1.5, 0.3, 1];
+
+/** How long in seconds someone can get kill credit after hitting a player */
+export const KILL_CREDIT_TIME = 15;
