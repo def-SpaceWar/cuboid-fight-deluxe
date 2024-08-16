@@ -1,6 +1,7 @@
 # TODO
 
 - Add basic lighting/shadows (players should have them too)
+- remove u_topLeft and use actual HTML elements for UI!
 - Add damage zones/platforms
 > Use for dying offscreen
 > Use in the map as reddish pulsing damaging platforms

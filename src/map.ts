@@ -1,8 +1,9 @@
+import map1BgImg from "./assets/backgrounds/bg1.png";
 import { getPlayers } from "./player";
 import { Gamemode, getGamemode } from "./gamemode";
 import { GrassPlatform, resolvePlatformPlayerCollisions, StonePlatform } from "./platform";
 import { Vector2D } from "./math";
-import { clearScreen, createEndScreen } from "./render";
+import { clearScreen, composeDisplay, createEndScreen, defaultRectColor, drawGeometry, loadImage, rectToGeometry, renderLighting } from "./render";
 import { renderParticles } from "./particle";
 import { isPressed, listenToInput, stopListeningToInput } from "./input";
 import { renderLoop, timeout, updateLoop } from "./loop";
@@ -14,19 +15,21 @@ export interface GameMap extends Scene {
     getRespawnPoint(): Vector2D;
 }
 
-const map1LightAngle = 7 * Math.PI / 11;
+const map1BgTex = await loadImage(map1BgImg),
+    map1BgTexCoords = rectToGeometry([0, 0, 480, 270]),
+    map1BgGeometry = rectToGeometry([-960, -540, 960, 540]);
 export class Map1 implements GameMap {
     readonly gamemode: Gamemode;
     constructor() { this.gamemode = getGamemode(); }
 
     platforms = [
-        new StonePlatform(Vector2D.xy(0, 150), 200, 25, map1LightAngle),
-        new GrassPlatform(Vector2D.xy(-100, 300), 500, 100, map1LightAngle),
-        new StonePlatform(Vector2D.xy(500, 50), 150, 15, map1LightAngle),
-        new GrassPlatform(Vector2D.xy(-300, -200), 300, 45, map1LightAngle),
-        new GrassPlatform(Vector2D.xy(-100, -300), 300, 35, map1LightAngle),
-        new GrassPlatform(Vector2D.xy(300, -100), 300, 35, map1LightAngle),
-        new StonePlatform(Vector2D.xy(500, 300), 350, 200, map1LightAngle),
+        new StonePlatform(Vector2D.xy(0, 150), 200, 25),
+        new GrassPlatform(Vector2D.xy(-100, 300), 500, 100),
+        new StonePlatform(Vector2D.xy(500, 50), 150, 15),
+        new GrassPlatform(Vector2D.xy(-300, -200), 300, 45),
+        new GrassPlatform(Vector2D.xy(-100, -300), 300, 35),
+        new GrassPlatform(Vector2D.xy(300, -100), 300, 35),
+        new StonePlatform(Vector2D.xy(500, 300), 350, 200),
     ];
 
     respawnPoints = [
@@ -48,18 +51,22 @@ export class Map1 implements GameMap {
             const player = players[i];
             player.map = this;
             player.physicsBody.pos
-                .av(this.respawnPoints[players[i].number - 1]);
+                .av(this.respawnPoints[player.number - 1]);
         }
 
-        let gameOver = false;
-
         return await new Promise<Scene>(resolve => {
-            const stopRender = renderLoop((dt: number) => {
-                const platforms = this.platforms;
-                clearScreen();
+            let gameOver = false;
+            const platforms = this.platforms;
 
-                for (let i = 0; i < platforms.length; i++)
-                    platforms[i].renderShadow();
+            const stopRender = renderLoop((dt: number) => {
+                clearScreen();
+                drawGeometry(
+                    map1BgTex,
+                    map1BgTexCoords,
+                    map1BgGeometry,
+                    defaultRectColor,
+                );
+
                 for (let i = 0; i < platforms.length; i++)
                     platforms[i].render();
 
@@ -67,6 +74,14 @@ export class Map1 implements GameMap {
                     players[i].render(dt);
 
                 renderParticles(dt);
+
+                renderLighting(
+                    [.3, .3, .3, 1],
+                    [],
+                    [],
+                );
+
+                composeDisplay();
 
                 for (let i = 0; i < players.length; i++)
                     players[i].renderUi(dt);

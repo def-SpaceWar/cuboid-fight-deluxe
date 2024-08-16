@@ -1,6 +1,6 @@
 import iconsImg from "./assets/ui/icons.png";
 import defaultImg from "./assets/classes/default.png";
-import { GLColor, RGBAColor, drawGeometry, fillGeometry, loadImage, rectToGeometry, createTextTemporary, createTextRender } from "./render";
+import { GLColor, RGBAColor, drawGeometry, fillGeometry, loadImage, rectToGeometry, createTextTemporary, createTextRender, defaultRectColor } from "./render";
 import { Vector2D } from "./math";
 import { drawHitbox, Hitbox, makePhysicsBody, PhysicsBody, RectangleHitbox } from "./physics";
 import { DAMAGE_COLOR, DEBUG_HITBOXES, HEAL_COLOR, KILL_CREDIT_TIME } from "./flags";
@@ -365,6 +365,7 @@ export class Default implements Player {
                 defaultTex,
                 defaultDeadTexCoord,
                 defaultGeometry,
+                defaultRectColor,
                 {
                     tint: this.color.glColor,
                     translation: this.physicsBody.pos
@@ -380,6 +381,7 @@ export class Default implements Player {
                 defaultTex,
                 defaultTexCoord,
                 defaultGeometry,
+                defaultRectColor,
                 { tint: this.color.glColor, translation },
             );
 
@@ -393,6 +395,7 @@ export class Default implements Player {
                     25,
                     -40,
                 ]),
+                defaultRectColor,
                 { tint: this.comboColor, translation },
             );
 
@@ -405,6 +408,7 @@ export class Default implements Player {
                         this.attackTimer / this.attackCooldown),
                     -40,
                 ]),
+                defaultRectColor,
                 { tint: this.color.glColor, translation },
             );
             else if (this.specialTimer > 0) fillGeometry(
@@ -414,6 +418,7 @@ export class Default implements Player {
                     50 * (1 - this.specialTimer / this.specialCooldown),
                     -40,
                 ]),
+                defaultRectColor,
                 { tint: this.specialColor, translation },
             );
             else if (DEBUG_HITBOXES) drawHitbox({
@@ -454,18 +459,18 @@ export class Default implements Player {
 
         fillGeometry(
             defaultUiBorder,
+            defaultRectColor,
             {
                 tint: defaultUiBorderColor,
-                isTopLeft: true,
                 translation,
             },
         );
 
         fillGeometry(
             defaultHealthBarBg,
+            defaultRectColor,
             {
                 tint: darkened,
-                isTopLeft: true,
                 translation,
             },
         );
@@ -477,9 +482,9 @@ export class Default implements Player {
                 257 + 180 * (this.animHealth / this.maxHealth),
                 55,
             ]),
+                defaultRectColor,
             {
                 tint,
-                isTopLeft: true,
                 translation,
             },
         );
@@ -488,9 +493,9 @@ export class Default implements Player {
             iconTex,
             killIcon,
             defaultKillIcon,
+                defaultRectColor,
             {
                 tint,
-                isTopLeft: true,
                 translation,
             },
         );
@@ -500,9 +505,9 @@ export class Default implements Player {
 
             fillGeometry(
                 defaultKillBarBg,
+                defaultRectColor,
                 {
                     tint: darkened,
-                    isTopLeft: true,
                     translation,
                 },
             );
@@ -514,9 +519,9 @@ export class Default implements Player {
                     65 + 52 * Math.min(this.kills / this.map.gamemode.kills, 1),
                     55,
                 ]),
+                defaultRectColor,
                 {
                     tint,
-                    isTopLeft: true,
                     translation,
                 },
             );
@@ -525,18 +530,18 @@ export class Default implements Player {
                 iconTex,
                 deathsIcon,
                 defaultDeathsOrLivesIcon,
+                defaultRectColor,
                 {
                     tint,
-                    isTopLeft: true,
                     translation,
                 },
             );
 
             fillGeometry(
                 defaultDeathsOrLivesBarBg,
+                defaultRectColor,
                 {
                     tint,
-                    isTopLeft: true,
                     translation,
                 },
             );
@@ -545,9 +550,9 @@ export class Default implements Player {
 
             fillGeometry(
                 defaultKillBarBg,
+                defaultRectColor,
                 {
                     tint,
-                    isTopLeft: true,
                     translation,
                 },
             );
@@ -556,18 +561,18 @@ export class Default implements Player {
                 iconTex,
                 livesIcon,
                 defaultDeathsOrLivesIcon,
+                defaultRectColor,
                 {
                     tint,
-                    isTopLeft: true,
                     translation,
                 },
             );
 
             fillGeometry(
                 defaultDeathsOrLivesBarBg,
+                defaultRectColor,
                 {
                     tint: darkened,
-                    isTopLeft: true,
                     translation,
                 },
             );
@@ -579,9 +584,9 @@ export class Default implements Player {
                     185 + 52 * Math.min(this.lives / this.map.gamemode.lives, 1),
                     55,
                 ]),
+                defaultRectColor,
                 {
                     tint,
-                    isTopLeft: true,
                     translation,
                 },
             );

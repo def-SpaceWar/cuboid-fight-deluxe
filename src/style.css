@@ -18,9 +18,7 @@ canvas {
     height: 100vh;
     z-index: -1;
     image-rendering: crisp-edges;
-    background-image: url("/backgrounds/bg1.png");
-    background-size: cover;
-    background-position: center, center;
+    background-color: black;
 }
 
 #start-game {

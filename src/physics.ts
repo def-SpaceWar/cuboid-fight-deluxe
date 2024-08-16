@@ -1,5 +1,5 @@
 import { Vector2D } from "./math";
-import { GLColor, circleToGeometry, circleToLines, fillGeometry, fillLines, rectToGeometry, rectToLines } from "./render";
+import { GLColor, circleToGeometry, circleToLines, defaultCircleColor, defaultCircleLinesColor, defaultRectColor, defaultRectLinesColor, fillGeometry, fillLines, rectToGeometry, rectToLines } from "./render";
 
 export type RectangleHitbox = {
     type: 'rect';
@@ -72,22 +72,32 @@ export function drawHitbox(hitbox: Hitbox, pos: Vector2D, tint: GLColor) {
                 y2 = pos.y + hitbox.h / 2;
             fillGeometry(
                 rectToGeometry([x1, y1, x2, y2]),
+                defaultRectColor,
                 { tint: [tint[0], tint[1], tint[2], tint[3] / 5] },
             );
-            fillLines(rectToLines([x1, y1, x2, y2]), { tint });
+            fillLines(
+                rectToLines([x1, y1, x2, y2]),
+                defaultRectLinesColor,
+                { tint },
+            );
             break;
         case "circle":
             const translation = Vector2D.add(hitbox.offset, pos),
                 scale = Vector2D.xy(hitbox.r, hitbox.r);
             fillGeometry(
                 circleGeometry,
+                defaultCircleColor,
                 {
                     tint: [tint[0], tint[1], tint[2], tint[3] / 5],
                     translation,
                     scale,
                 },
             );
-            fillLines(circleLines, { tint, translation, scale })
+            fillLines(
+                circleLines,
+                defaultCircleLinesColor,
+                { tint, translation, scale },
+            );
             break;
     }
 }

@@ -1,14 +1,15 @@
 #version 300 es
 
 in vec4 a_position;
+in vec4 a_color;
 in vec4 a_texCoord;
 
 uniform vec2 u_resolution;
 uniform vec2 u_translation;
 uniform vec2 u_rotation;
 uniform vec2 u_scale;
-uniform bool u_topLeft;
 
+out vec4 v_color;
 out vec2 v_texCoord;
 
 vec2 rotate(vec2 v, vec2 r) {
@@ -16,16 +17,11 @@ vec2 rotate(vec2 v, vec2 r) {
 }
 
 void main() {
-    vec2 position = rotate(a_position.xy * u_scale, u_rotation)
-            + u_translation;
-    vec4 clipspacePosition = vec4(position, a_position.zw)
-            / vec4(u_resolution, 1, 1) * vec4(2, -2, 1, 1);
-
-    if (u_topLeft) {
-        gl_Position = clipspacePosition - vec4(1, -1, 0, 0);
-    } else {
-        gl_Position = clipspacePosition;
-    }
-
+    gl_Position = vec4(
+            (rotate(a_position.xy * u_scale, u_rotation) + u_translation)
+                * vec2(2, 2) / u_resolution,
+            a_position.zw
+        );
+    v_color = a_color;
     v_texCoord = a_texCoord.xy;
 }

@@ -1,6 +1,11 @@
 import mainVert from "./shaders/main.vert?raw";
 import mainFrag from "./shaders/main.frag?raw";
+import lightingVert from "./shaders/lighting.vert?raw";
+import lightingFrag from "./shaders/lighting.frag?raw";
+import composeVert from "./shaders/compose.vert?raw";
+import composeFrag from "./shaders/compose.frag?raw";
 import { Vector2D } from "./math";
+import { Hitbox } from "./physics";
 import { CIRCLE_ACCURACY, PULSE_ANIM_STEPS } from "./flags";
 import { clearTimer, repeatedTimeout, timeout } from "./loop";
 import { Winner } from "./gamemode";
@@ -9,18 +14,39 @@ const app = document.getElementById("app")!;
 export let canvas: HTMLCanvasElement;
 
 let gl: WebGL2RenderingContext,
-    a_position: number,
-    a_positionBuffer: WebGLBuffer,
-    a_texCoord: number,
-    a_texCoordBuffer: WebGLBuffer,
-    u_resolution: WebGLUniformLocation,
-    u_scale: WebGLUniformLocation,
-    u_rotation: WebGLUniformLocation,
-    u_translation: WebGLUniformLocation,
-    u_topLeft: WebGLUniformLocation,
-    u_color: WebGLUniformLocation,
-    u_image: WebGLUniformLocation,
-    u_noTex: WebGLUniformLocation;
+    positionBuffer: WebGLBuffer,
+    colorBuffer: WebGLBuffer,
+    texCoordBuffer: WebGLBuffer,
+    main_texture: WebGLTexture,
+
+    mainProgram: WebGLProgram,
+    main_a_position: number,
+    main_a_color: number,
+    main_a_texCoord: number,
+    main_u_resolution: WebGLUniformLocation,
+    main_u_scale: WebGLUniformLocation,
+    main_u_rotation: WebGLUniformLocation,
+    main_u_translation: WebGLUniformLocation,
+    main_u_color: WebGLUniformLocation,
+    main_u_image: WebGLUniformLocation,
+    main_u_noTex: WebGLUniformLocation,
+
+    lightingProgram: WebGLProgram,
+    lighting_a_position: number,
+    lighting_a_color: number,
+    lighting_u_resolution: WebGLUniformLocation,
+    lighting_u_color: WebGLUniformLocation,
+
+    composeProgram: WebGLProgram,
+    compose_a_position: number,
+    compose_a_color: number,
+    compose_a_texCoord: number,
+    compose_u_main: WebGLUniformLocation,
+    compose_u_lighting: WebGLUniformLocation,
+    compose_mainTexture: WebGLTexture,
+    compose_mainFb: WebGLFramebuffer,
+    compose_lightingTexture: WebGLTexture,
+    compose_lightingFb: WebGLFramebuffer;
 
 function createShader(
     source: string,
@@ -70,41 +96,118 @@ export async function setupRender() {
             powerPreference: 'high-performance',
         })!;
     if (!gl) throw new Error("WebGL2 failed to initialized!");
-
-    const
-        vertShader = createShader(mainVert, gl.VERTEX_SHADER),
-        fragShader = createShader(mainFrag, gl.FRAGMENT_SHADER),
-        program = createProgram(vertShader, fragShader),
-        vao = gl.createVertexArray(),
-        texture = gl.createTexture(),
-
-        getAttrib = (a: string) => gl.getAttribLocation(program, a),
-        getUniform = (u: string) => gl.getUniformLocation(program, u);
-
-    gl.useProgram(program);
-    gl.bindVertexArray(vao);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-    a_position = getAttrib("a_position")!;
-    a_positionBuffer = gl.createBuffer()!;
-    a_texCoord = getAttrib("a_texCoord")!;
-    a_texCoordBuffer = gl.createBuffer()!;
-    u_resolution = getUniform("u_resolution")!;
-    u_scale = getUniform("u_scale")!;
-    u_rotation = getUniform("u_rotation")!;
-    u_translation = getUniform("u_translation")!;
-    u_topLeft = getUniform("u_topLeft")!;
-    u_color = getUniform("u_color")!;
-    u_image = getUniform("u_image")!;
-    u_noTex = getUniform("u_noTex")!;
+    const vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+    positionBuffer = gl.createBuffer()!;
+    colorBuffer = gl.createBuffer()!;
+    texCoordBuffer = gl.createBuffer()!;
 
+    mainProgram = createProgram(
+        createShader(mainVert, gl.VERTEX_SHADER),
+        createShader(mainFrag, gl.FRAGMENT_SHADER),
+    );
+    gl.useProgram(mainProgram);
+
+    main_a_position = gl.getAttribLocation(mainProgram, "a_position");
+    main_a_color = gl.getAttribLocation(mainProgram, "a_color");
+    main_a_texCoord = gl.getAttribLocation(mainProgram, "a_texCoord");
+    main_u_resolution = gl.getUniformLocation(mainProgram, "u_resolution")!;
+    main_u_scale = gl.getUniformLocation(mainProgram, "u_scale")!;
+    main_u_rotation = gl.getUniformLocation(mainProgram, "u_rotation")!;
+    main_u_translation = gl.getUniformLocation(mainProgram, "u_translation")!;
+    main_u_color = gl.getUniformLocation(mainProgram, "u_color")!;
+    main_u_image = gl.getUniformLocation(mainProgram, "u_image")!;
+    main_u_noTex = gl.getUniformLocation(mainProgram, "u_noTex")!;
+
+    main_texture = gl.createTexture()!;
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.uniform1i(u_image, 0);
-
+    gl.bindTexture(gl.TEXTURE_2D, main_texture)!;
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+    gl.uniform1i(main_u_image, 0);
+
+
+    lightingProgram = createProgram(
+        createShader(lightingVert, gl.VERTEX_SHADER),
+        createShader(lightingFrag, gl.FRAGMENT_SHADER),
+    );
+    gl.useProgram(lightingProgram);
+
+    lighting_a_position = gl.getAttribLocation(lightingProgram, "a_position");
+    lighting_a_color = gl.getAttribLocation(lightingProgram, "a_color");
+    lighting_u_resolution = gl.getUniformLocation(lightingProgram, "u_resolution")!;
+    lighting_u_color = gl.getUniformLocation(lightingProgram, "u_color")!;
+
+    composeProgram = createProgram(
+        createShader(composeVert, gl.VERTEX_SHADER),
+        createShader(composeFrag, gl.FRAGMENT_SHADER),
+    );
+    gl.useProgram(composeProgram);
+
+    compose_a_position = gl.getAttribLocation(composeProgram, "a_position");
+    compose_a_color = gl.getAttribLocation(composeProgram, "a_color");
+    compose_a_texCoord = gl.getAttribLocation(composeProgram, "a_texCoord");
+    compose_u_main = gl.getUniformLocation(composeProgram, "u_main")!;
+    compose_u_lighting = gl.getUniformLocation(composeProgram, "u_lighting")!;
+
+    compose_mainTexture = gl.createTexture()!;
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, compose_mainTexture);
+    gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        gl.drawingBufferWidth, gl.drawingBufferHeight,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        null,
+    );
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+    compose_mainFb = gl.createFramebuffer()!;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, compose_mainFb);
+    gl.framebufferTexture2D(
+        gl.FRAMEBUFFER,
+        gl.COLOR_ATTACHMENT0,
+        gl.TEXTURE_2D,
+        compose_mainTexture,
+        0,
+    );
+
+    compose_lightingTexture = gl.createTexture()!;
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, compose_lightingTexture);
+    gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        gl.drawingBufferWidth, gl.drawingBufferHeight,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        null,
+    );
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+    compose_lightingFb = gl.createFramebuffer()!;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, compose_lightingFb);
+    gl.framebufferTexture2D(
+        gl.FRAMEBUFFER,
+        gl.COLOR_ATTACHMENT0,
+        gl.TEXTURE_2D,
+        compose_lightingTexture,
+        0,
+    );
+
+    gl.uniform1i(compose_u_main, 1);
+    gl.uniform1i(compose_u_lighting, 2);
 }
 
 export type GLColor = [r: GLclampf, g: GLclampf, b: GLclampf, a: GLclampf];
@@ -122,10 +225,50 @@ export function clearScreen(color: GLColor = [0, 0, 0, 0]) {
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
 
-    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.clearColor(...color);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.uniform2f(u_resolution, canvas.width, canvas.height);
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+
+    gl.bindTexture(gl.TEXTURE_2D, compose_mainTexture);
+    gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        gl.drawingBufferWidth, gl.drawingBufferHeight,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        null,
+    );
+
+    gl.bindTexture(gl.TEXTURE_2D, compose_lightingTexture);
+    gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        gl.drawingBufferWidth, gl.drawingBufferHeight,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        null,
+    );
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, compose_mainFb);
+    gl.clearColor(...color);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, compose_lightingFb);
+    gl.clearColor(...color);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+
+    gl.useProgram(mainProgram);
+    gl.uniform2f(main_u_resolution, canvas.width, canvas.height);
+
+    gl.useProgram(lightingProgram);
+    gl.uniform2f(lighting_u_resolution, canvas.width, canvas.height);
 }
 
 export function circleToLines({ x, y }: Vector2D, r: number): Float32Array {
@@ -134,9 +277,8 @@ export function circleToLines({ x, y }: Vector2D, r: number): Float32Array {
         const angle1 = i * Math.PI / CIRCLE_ACCURACY * 2,
             angle2 = (i + 1) * Math.PI / CIRCLE_ACCURACY * 2;
         arr.push(
-            x + r * Math.cos(angle1), y + r * Math.sin(angle1),
-            x + r * Math.cos(angle2), y + r * Math.sin(angle2),
-            0, 1,
+            x + r * Math.cos(angle1), y + r * Math.sin(angle1), 0, 1,
+            x + r * Math.cos(angle2), y + r * Math.sin(angle2), 0, 1,
         );
     }
     return new Float32Array(arr);
@@ -148,10 +290,9 @@ export function circleToGeometry({ x, y }: Vector2D, r: number): Float32Array {
         const angle1 = i * Math.PI / CIRCLE_ACCURACY * 2,
             angle2 = (i + 1) * Math.PI / CIRCLE_ACCURACY * 2;
         arr.push(
-            x + r * Math.cos(angle1), y + r * Math.sin(angle1),
-            x, y,
-            x + r * Math.cos(angle2), y + r * Math.sin(angle2),
-            0, 1,
+            x + r * Math.cos(angle1), y + r * Math.sin(angle1), 0, 1,
+            x, y, 0, 1,
+            x + r * Math.cos(angle2), y + r * Math.sin(angle2), 0, 1,
         );
     }
     return new Float32Array(arr);
@@ -181,74 +322,102 @@ export function rectToGeometry(r: GLRectangle): Float32Array {
     ]);
 }
 
+export const
+    defaultCircleLinesColor = new Float32Array(8 * CIRCLE_ACCURACY).fill(1),
+    defaultCircleColor = new Float32Array(12 * CIRCLE_ACCURACY).fill(1),
+    defaultRectLinesColor = new Float32Array(32).fill(1),
+    //defaultRectColor = new Float32Array([
+    //    1, 1, 1, 1, // top left
+    //    1.3, 1.2, 1.1, 1, // top right
+    //    .7, .8, .9, 1., // bottom left
+    //    .7, .8, .9, 1., // bottom left
+    //    1.3, 1.2, 1.1, 1, // top right
+    //    1, 1, 1, 1, // bottom right
+    //]);
+    defaultRectColor = new Float32Array(24).fill(1);
+
 const _tint: GLColor = [1, 1, 1, 1],
     _scale = Vector2D.xy(1, 1),
     _translation = Vector2D.zero();
 
 export function fillLines(
     lines: Float32Array,
-    { scale, rotation, translation, isTopLeft, tint }: {
+    colors: Float32Array,
+    { scale, rotation, translation, tint }: {
         scale?: Vector2D,
         rotation?: number,
         translation?: Vector2D,
-        isTopLeft?: boolean,
         tint?: GLColor,
     } = {},
 ) {
     scale ??= _scale;
     rotation ??= 0;
     translation ??= _translation;
-    isTopLeft ??= false;
     tint ??= _tint;
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, a_positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, lines, gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(a_position);
-    gl.vertexAttribPointer(a_position, 4, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(a_texCoord);
-    gl.vertexAttribPointer(a_texCoord, 4, gl.FLOAT, false, 0, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, compose_mainFb);
+    gl.useProgram(mainProgram);
 
-    gl.uniform2fv(u_scale, scale.arr);
-    gl.uniform2f(u_rotation, Math.cos(rotation), Math.sin(rotation));
-    gl.uniform2fv(u_translation, translation.arr);
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, lines, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(main_a_position);
+    gl.vertexAttribPointer(main_a_position, 4, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(main_a_color);
+    gl.vertexAttribPointer(main_a_color, 4, gl.FLOAT, false, 0, 0);
+
+    gl.enableVertexAttribArray(main_a_texCoord);
+    gl.vertexAttribPointer(main_a_texCoord, 4, gl.FLOAT, false, 0, 0);
+
+    gl.uniform2fv(main_u_scale, scale.arr);
+    gl.uniform2f(main_u_rotation, Math.cos(rotation), Math.sin(rotation));
+    gl.uniform2fv(main_u_translation, translation.arr);
     // @ts-ignore
-    gl.uniform1ui(u_topLeft, isTopLeft + 0);
-    gl.uniform4fv(u_color, tint);
-    gl.uniform1ui(u_noTex, 1);
+    gl.uniform4fv(main_u_color, tint);
+    gl.uniform1ui(main_u_noTex, 1);
 
     gl.drawArrays(gl.LINES, 0, lines.length / 4);
 }
 
 export function fillGeometry(
     triangles: Float32Array,
-    { scale, rotation, translation, isTopLeft, tint }: {
+    colors: Float32Array,
+    { scale, rotation, translation, tint }: {
         scale?: Vector2D,
         rotation?: number,
         translation?: Vector2D,
-        isTopLeft?: boolean,
         tint?: GLColor,
     } = {},
 ) {
     scale ??= _scale;
     rotation ??= 0;
     translation ??= _translation;
-    isTopLeft ??= false;
     tint ??= _tint;
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, a_positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(a_position);
-    gl.vertexAttribPointer(a_position, 4, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(a_texCoord);
-    gl.vertexAttribPointer(a_texCoord, 4, gl.FLOAT, false, 0, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, compose_mainFb);
+    gl.useProgram(mainProgram);
 
-    gl.uniform2fv(u_scale, scale.arr);
-    gl.uniform2f(u_rotation, Math.cos(rotation), Math.sin(rotation));
-    gl.uniform2fv(u_translation, translation.arr);
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(main_a_position);
+    gl.vertexAttribPointer(main_a_position, 4, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(main_a_color);
+    gl.vertexAttribPointer(main_a_color, 4, gl.FLOAT, false, 0, 0);
+
+    gl.enableVertexAttribArray(main_a_texCoord);
+    gl.vertexAttribPointer(main_a_texCoord, 4, gl.FLOAT, false, 0, 0);
+
+    gl.uniform2fv(main_u_scale, scale.arr);
+    gl.uniform2f(main_u_rotation, Math.cos(rotation), Math.sin(rotation));
+    gl.uniform2fv(main_u_translation, translation.arr);
     // @ts-ignore
-    gl.uniform1ui(u_topLeft, isTopLeft + 0);
-    gl.uniform4fv(u_color, tint);
-    gl.uniform1ui(u_noTex, 1);
+    gl.uniform4fv(main_u_color, tint);
+    gl.uniform1ui(main_u_noTex, 1);
 
     gl.drawArrays(gl.TRIANGLES, 0, triangles.length / 4);
 }
@@ -257,11 +426,11 @@ export function drawGeometry(
     image: TexImageSource,
     texCoord: Float32Array,
     triangles: Float32Array,
+    colors: Float32Array,
     {
         scale,
         rotation,
         translation,
-        isTopLeft,
         tint,
         repeatX,
         repeatY,
@@ -271,7 +440,6 @@ export function drawGeometry(
         scale?: Vector2D,
         rotation?: number,
         translation?: Vector2D,
-        isTopLeft?: boolean,
         tint?: GLColor,
         repeatX?: boolean,
         repeatY?: boolean,
@@ -282,18 +450,28 @@ export function drawGeometry(
     scale ??= _scale;
     rotation ??= 0;
     translation ??= _translation;
-    isTopLeft ??= false;
     tint ??= _tint;
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, a_positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(a_position);
-    gl.vertexAttribPointer(a_position, 4, gl.FLOAT, false, 0, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, compose_mainFb);
+    gl.useProgram(mainProgram);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, a_texCoordBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, triangles, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(main_a_position);
+    gl.vertexAttribPointer(main_a_position, 4, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(main_a_color);
+    gl.vertexAttribPointer(main_a_color, 4, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, texCoord, gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(a_texCoord);
-    gl.vertexAttribPointer(a_texCoord, 4, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(main_a_texCoord);
+    gl.vertexAttribPointer(main_a_texCoord, 4, gl.FLOAT, false, 0, 0);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, main_texture);
     gl.texImage2D(
         gl.TEXTURE_2D,
         0,
@@ -303,13 +481,12 @@ export function drawGeometry(
         image,
     );
 
-    gl.uniform2fv(u_scale, scale.arr);
-    gl.uniform2f(u_rotation, Math.cos(rotation), Math.sin(rotation));
-    gl.uniform2fv(u_translation, translation.arr);
+    gl.uniform2fv(main_u_scale, scale.arr);
+    gl.uniform2f(main_u_rotation, Math.cos(rotation), Math.sin(rotation));
+    gl.uniform2fv(main_u_translation, translation.arr);
     // @ts-ignore
-    gl.uniform1ui(u_topLeft, isTopLeft + 0);
-    gl.uniform4fv(u_color, tint);
-    gl.uniform1ui(u_noTex, 0);
+    gl.uniform4fv(main_u_color, tint);
+    gl.uniform1ui(main_u_noTex, 0);
 
     if (repeatX)
         if (mirroredX)
@@ -329,7 +506,149 @@ export function drawGeometry(
             );
         else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
     gl.drawArrays(gl.TRIANGLES, 0, triangles.length / 4);
+}
+
+export class Light { }
+
+export function renderLighting(
+    ambientLight: GLColor,
+    lights: Light[],
+    offsetHitboxes: [Vector2D, Hitbox][],
+) {
+    const
+        geometry = [
+            1, 0, 0, 0,
+            0, 0, 0, 1,
+            0, 1, 0, 0,
+            -1, 0, 0, 0,
+            0, 0, 0, 1,
+            0, -1, 0, 0,
+            1, 0, 0, 0,
+            0, 0, 0, 1,
+            0, -1, 0, 0,
+            -1, 0, 0, 0,
+            0, 0, 0, 1,
+            0, 1, 0, 0,
+        ],
+        color = [
+            ...ambientLight,
+            ...ambientLight,
+            ...ambientLight,
+            ...ambientLight,
+            ...ambientLight,
+            ...ambientLight,
+            ...ambientLight,
+            ...ambientLight,
+            ...ambientLight,
+            ...ambientLight,
+            ...ambientLight,
+            ...ambientLight,
+        ];
+
+    const points: [Vector2D, Hitbox, number][] = [];
+    for (let i = 0; i < offsetHitboxes.length; i++) {
+        const [pos, hitbox] = offsetHitboxes[i];
+        switch (hitbox.type) {
+            case "rect":
+                points.push(
+                    [Vector2D.add(
+                        Vector2D.add(pos, hitbox.offset),
+                        Vector2D.xy(-hitbox.w / 2, -hitbox.h / 2),
+                    ), hitbox, 0],
+                    [Vector2D.add(
+                        Vector2D.add(pos, hitbox.offset),
+                        Vector2D.xy(-hitbox.w / 2, +hitbox.h / 2),
+                    ), hitbox, 1],
+                    [Vector2D.add(
+                        Vector2D.add(pos, hitbox.offset),
+                        Vector2D.xy(+hitbox.w / 2, -hitbox.h / 2),
+                    ), hitbox, 2],
+                    [Vector2D.add(
+                        Vector2D.add(pos, hitbox.offset),
+                        Vector2D.xy(+hitbox.w / 2, +hitbox.h / 2),
+                    ), hitbox, 3],
+                );
+                break;
+            case "circle":
+                throw "Not implemented!";
+        }
+    }
+
+    // sort points by distance to light
+    lights;
+
+    // render light triangles
+
+    // get light at each point
+
+    // render the hitboxes with light
+
+    // multiply light onto map
+    gl.bindFramebuffer(gl.FRAMEBUFFER, compose_lightingFb);
+    gl.useProgram(lightingProgram);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(geometry), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(lighting_a_position);
+    gl.vertexAttribPointer(lighting_a_position, 4, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(color), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(lighting_a_color);
+    gl.vertexAttribPointer(lighting_a_color, 4, gl.FLOAT, false, 0, 0);
+
+    gl.uniform4fv(lighting_u_color, [1, 1, 1, 1]);
+
+    gl.drawArrays(gl.TRIANGLES, 0, geometry.length / 4);
+}
+
+const
+    _geometry = new Float32Array([
+        -1, -1, -1, 1.,
+        1., -1, -1, 1.,
+        -1, 1., -1, 1.,
+        -1, 1., -1, 1.,
+        1., -1, -1, 1.,
+        1., 1., -1, 1.,
+    ]),
+    _color = new Float32Array([
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+        1, 1, 1, 1,
+    ]),
+    _texCoord = new Float32Array([
+        0, 0, 0, 1,
+        1, 0, 0, 1,
+        0, 1, 0, 1,
+        0, 1, 0, 1,
+        1, 0, 0, 1,
+        1, 1, 0, 1,
+    ]);
+export function composeDisplay() {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.useProgram(composeProgram);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, _geometry, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(compose_a_position);
+    gl.vertexAttribPointer(compose_a_position, 4, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, _color, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(compose_a_color);
+    gl.vertexAttribPointer(compose_a_color, 4, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, _texCoord, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(compose_a_texCoord);
+    gl.vertexAttribPointer(compose_a_texCoord, 4, gl.FLOAT, false, 0, 0);
+
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
 
 export class RGBAColor {
@@ -472,19 +791,13 @@ export function createTextTemporary(
     fontSize: number,
     pos: Vector2D,
     lifespan: number,
-    isTopLeft: boolean = false,
 ) {
     const elem = app.appendChild(document.createElement("p"));
     elem.innerText = text;
     elem.className = className;
     elem.style.fontSize = `${fontSize | 0}px`;
-    if (isTopLeft) {
-        elem.style.left = `${pos.x | 0}px`;
-        elem.style.top = `${pos.y | 0}px`;
-    } else {
-        elem.style.left = `calc(50vw + ${pos.x | 0}px)`;
-        elem.style.top = `calc(50vh + ${pos.y | 0}px)`;
-    }
+    elem.style.left = `calc(50vw + ${pos.x | 0}px)`;
+    elem.style.top = `calc(50vh + ${pos.y | 0}px)`;
     elem.style.animationDuration = `${lifespan}s`;
     elem.style.opacity = "0";
     timeout(() => elem.remove(), lifespan);
