@@ -136,8 +136,43 @@ canvas {
     }
 }
 
-.player-ui {
+.player-ui-bg {
     margin: 0;
+    padding: 0;
+    position: absolute;
+    width: 430px;
+    height: 55px;
+    border: 5px solid #4D4D4D;
+}
+
+.player-ui-rect {
+    margin: 0;
+    padding: 4px;
+    position: absolute;
+}
+
+.player-ui-img {
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    width: 45px;
+    height: 45px;
+    overflow: hidden;
+}
+
+.player-ui-img img {
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    width: 135px;
+    height: 45px;
+    image-rendering: crisp-edges;
+    mix-blend-mode: multiply;
+}
+
+.player-ui-text {
+    margin: 0;
+    padding: 0;
     position: absolute;
     color: #AAA;
     mix-blend-mode: multiply;

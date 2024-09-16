@@ -1,6 +1,6 @@
 import iconsImg from "./assets/ui/icons.png";
 import defaultImg from "./assets/classes/default.png";
-import { GLColor, RGBAColor, drawGeometry, fillGeometry, loadImage, rectToGeometry, createTextTemporary, createTextRender, defaultRectColor } from "./render";
+import { GLColor, RGBAColor, drawGeometry, fillGeometry, loadImage, rectToGeometry, createHTMLTemporary, createHTMLRender, defaultRectColor } from "./render";
 import { Vector2D } from "./math";
 import { drawHitbox, Hitbox, makePhysicsBody, PhysicsBody, RectangleHitbox } from "./physics";
 import { DAMAGE_COLOR, DEBUG_HITBOXES, HEAL_COLOR, KILL_CREDIT_TIME } from "./flags";
@@ -9,8 +9,8 @@ import { isMousePressed, isPressed } from "./input";
 import { clearTimer, timeout, Timer } from "./loop";
 import { GameMap } from "./map";
 
-type Keybind = { key: string };
-type MouseButton = { button: number };
+type Keybind = { key: string; };
+type MouseButton = { button: number; };
 type Control
     = Keybind
     | MouseButton;
@@ -42,12 +42,7 @@ const
         2: Vector2D.xy(20, 105),
         3: Vector2D.xy(20, 190),
         4: Vector2D.xy(20, 275),
-    },
-
-    iconTex = await loadImage(iconsImg),
-    killIcon = rectToGeometry([0, 0, 12, 12]),
-    deathsIcon = rectToGeometry([12, 0, 24, 12]),
-    livesIcon = rectToGeometry([24, 0, 36, 12]);
+    };
 export type PlayerNumber = 1 | 2 | 3 | 4;
 export type DamageReason
     = {
@@ -193,14 +188,6 @@ const defaultTex = await loadImage(defaultImg),
         w: 50,
         h: 50,
     },
-    defaultUiBorder = rectToGeometry([0, 0, 447, 65]),
-    defaultUiBorderColor: GLColor = [.3, .3, .3, 1],
-    defaultUiAnimConstant = Math.log(1e-16),
-    defaultHealthBarBg = rectToGeometry([257, 10, 437, 55]),
-    defaultKillIcon = rectToGeometry([10, 10, 58, 58]),
-    defaultKillBarBg = rectToGeometry([65, 10, 117, 55]),
-    defaultDeathsOrLivesIcon = rectToGeometry([130, 10, 178, 58]),
-    defaultDeathsOrLivesBarBg = rectToGeometry([185, 10, 237, 55]),
     defaultMaxKb = 3_000;
 export class Default implements Player {
     visualOffset = Vector2D.zero();
@@ -235,24 +222,35 @@ export class Default implements Player {
     specialCooldown = this.attackCooldown * 2;
     isSpecialCooldown = false;
 
-    animHealth = 100;
     health = 100;
     maxHealth = 100;
     isDead = false;
+    healthBar: HTMLDivElement;
+    healthBarChild: HTMLDivElement;
     healthText: Text;
+    removeHealthBar: () => void;
     removeHealthText: () => void;
 
     kills = 0;
-    killsText: Text;
-    removeKillsText: () => void;
-
     deaths = 0;
-    deathsText?: Text;
-    removeDeathsText?: () => void;
-
     lives = 0;
-    livesText?: Text;
-    removeLivesText?: () => void;
+    uiBar1: HTMLDivElement;
+    uiBar1Child: HTMLDivElement;
+    uiIcon1: HTMLImageElement;
+    text1: Text;
+    uiBar2: HTMLDivElement;
+    uiBar2Child: HTMLDivElement;
+    uiIcon2: HTMLImageElement;
+    text2: Text;
+    removeUiBar1: () => void;
+    removeIcon1: () => void;
+    removeText1: () => void;
+    removeUiBar2: () => void;
+    removeIcon2: () => void;
+    removeText2: () => void;
+
+    uiBg: HTMLDivElement;
+    removeUiBg: () => void;
 
     lastHit?: Player;
     lastHitTimer?: Timer;
@@ -291,15 +289,49 @@ export class Default implements Player {
             yDrag: 0.2,
         });
 
+        const uiCoords = playerUiCoords[this.number];
+
         {
-            const { elem, remove } = createTextRender(
+            const { elem, remove } = createHTMLRender(
                 "",
-                "player-ui",
+                "player-ui-bg",
+                0,
+                uiCoords,
+                true,
+            );
+
+            this.uiBg = elem;
+            this.removeUiBg = remove;
+        }
+
+        {
+            const { elem, remove } = createHTMLRender(
+                "",
+                "player-ui-rect",
+                0,
+                Vector2D.add(uiCoords, Vector2D.xy(10, 10)),
+                true,
+            );
+
+            elem.style.width = "172px";
+            elem.style.height = "37px";
+
+            this.healthBar = elem;
+            this.removeHealthBar = remove;
+
+            this.healthBarChild = this.healthBar.appendChild(
+                document.createElement("div")
+            );
+            this.healthBarChild.style.width = "100%";
+            this.healthBarChild.style.height = "100%";
+        }
+
+        {
+            const { elem, remove } = createHTMLRender(
+                "",
+                "player-ui-text",
                 50,
-                Vector2D.add(
-                    playerUiCoords[this.number],
-                    Vector2D.xy(262, 34),
-                ),
+                Vector2D.add(uiCoords, Vector2D.xy(15, 34)),
                 true,
             );
             this.healthText = elem.appendChild(
@@ -309,53 +341,125 @@ export class Default implements Player {
         }
 
         {
-            const { elem, remove } = createTextRender(
+            const { elem, remove } = createHTMLRender(
                 "",
-                "player-ui",
-                50,
-                Vector2D.add(
-                    playerUiCoords[this.number],
-                    Vector2D.xy(70, 34),
-                ),
+                "player-ui-rect",
+                0,
+                Vector2D.add(uiCoords, Vector2D.xy(258, 10)),
                 true,
             );
-            this.killsText = elem.appendChild(
-                document.createTextNode(this.kills.toFixed(0)),
+
+            elem.style.width = "44px";
+            elem.style.height = "37px";
+
+            this.uiBar1 = elem;
+            this.removeUiBar1 = remove;
+
+            this.uiBar1Child = this.uiBar1.appendChild(
+                document.createElement("div")
             );
-            this.removeKillsText = remove;
+            this.uiBar1Child.style.width = "100%";
+            this.uiBar1Child.style.height = "100%";
+        }
+
+        {
+            const { elem, remove } = createHTMLRender(
+                "",
+                "player-ui-img",
+                0,
+                Vector2D.add(uiCoords, Vector2D.xy(203, 10)),
+                true,
+            );
+
+            const img = elem.appendChild(document.createElement("img"));
+            img.src = iconsImg;
+            img.style.margin = "0 0 0 0";
+
+            this.uiIcon1 = img;
+            this.removeIcon1 = remove;
+        }
+
+        {
+            const { elem, remove } = createHTMLRender(
+                "",
+                "player-ui-text",
+                50,
+                Vector2D.add(uiCoords, Vector2D.xy(263, 34)),
+                true,
+            );
+            this.text1 = elem.appendChild(
+                document.createTextNode("0"),
+            );
+            this.removeText1 = remove;
+        }
+
+        {
+            const { elem, remove } = createHTMLRender(
+                "",
+                "player-ui-rect",
+                0,
+                Vector2D.add(uiCoords, Vector2D.xy(378, 10)),
+                true,
+            );
+
+            elem.style.width = "44px";
+            elem.style.height = "37px";
+
+            this.uiBar2 = elem;
+            this.removeUiBar2 = remove;
+
+            this.uiBar2Child = this.uiBar2.appendChild(
+                document.createElement("div")
+            );
+            this.uiBar2Child.style.width = "100%";
+            this.uiBar2Child.style.height = "100%";
         }
 
         if (this.map.gamemode.secondDisplay == "deaths") {
-            const { elem, remove } = createTextRender(
+            const { elem, remove } = createHTMLRender(
                 "",
-                "player-ui",
-                50,
-                Vector2D.add(
-                    playerUiCoords[this.number],
-                    Vector2D.xy(190, 34),
-                ),
+                "player-ui-img",
+                0,
+                Vector2D.add(uiCoords, Vector2D.xy(323, 10)),
                 true,
             );
-            this.deathsText = elem.appendChild(
-                document.createTextNode(this.kills.toFixed(0)),
-            );
-            this.removeDeathsText = remove;
+
+            const img = elem.appendChild(document.createElement("img"));
+            img.src = iconsImg;
+            img.style.margin = "0 0 0 -45px";
+
+            this.uiIcon2 = img;
+            this.removeIcon2 = remove;
         } else {
             this.lives = this.map.gamemode.lives;
-            const { elem, remove } = createTextRender(
+            const { elem, remove } = createHTMLRender(
                 "",
-                "player-ui",
-                50,
-                Vector2D.add(
-                    playerUiCoords[this.number],
-                    Vector2D.xy(190, 34),
-                ),
+                "player-ui-img",
+                0,
+                Vector2D.add(uiCoords, Vector2D.xy(323, 10)),
                 true,
             );
-            this.livesText = elem.appendChild(
-                document.createTextNode(this.lives.toFixed(0)),
+
+            const img = elem.appendChild(document.createElement("img"));
+            img.src = iconsImg;
+            img.style.margin = "0 0 0 -90px";
+
+            this.uiIcon2 = img;
+            this.removeIcon2 = remove;
+        }
+
+        {
+            const { elem, remove } = createHTMLRender(
+                "",
+                "player-ui-text",
+                50,
+                Vector2D.add(uiCoords, Vector2D.xy(383, 34)),
+                true,
             );
-            this.removeLivesText = remove;
+            this.text2 = elem.appendChild(
+                document.createTextNode("0"),
+            );
+            this.removeText2 = remove;
         }
     }
 
@@ -441,156 +545,38 @@ export class Default implements Player {
         );
     }
 
-    renderUi(dt: number) {
-        const tint = this.color.glColor,
-            translation = playerUiCoords[this.number],
-            darkened = this.color.darken(1.5).glColor;
-
-        this.animHealth += (this.health - this.animHealth) *
-            Math.exp(dt * defaultUiAnimConstant);
+    renderUi() {
+        const color = this.color.toCSS(),
+            darkenedColor = this.color.darken(1.3).toCSS();
 
         if (this.health > 0)
             if (this.health < 0.01)
                 this.healthText.textContent = this.health.toExponential(2);
             else this.healthText.textContent = this.health.toPrecision(3);
         else this.healthText.textContent = "0";
+        this.healthBarChild.style.width =
+            (this.health / this.maxHealth * 100).toFixed(0) + "%";
 
-        this.killsText.textContent = this.kills.toFixed(0);
-
-        fillGeometry(
-            defaultUiBorder,
-            defaultRectColor,
-            {
-                tint: defaultUiBorderColor,
-                translation,
-            },
-        );
-
-        fillGeometry(
-            defaultHealthBarBg,
-            defaultRectColor,
-            {
-                tint: darkened,
-                translation,
-            },
-        );
-
-        fillGeometry(
-            rectToGeometry([
-                257,
-                10,
-                257 + 180 * (this.animHealth / this.maxHealth),
-                55,
-            ]),
-                defaultRectColor,
-            {
-                tint,
-                translation,
-            },
-        );
-
-        drawGeometry(
-            iconTex,
-            killIcon,
-            defaultKillIcon,
-                defaultRectColor,
-            {
-                tint,
-                translation,
-            },
-        );
-
+        this.text1.textContent = this.kills.toFixed(0);
         if (this.map.gamemode.secondDisplay == "deaths") {
-            this.deathsText!.textContent = this.deaths.toFixed(0);
-
-            fillGeometry(
-                defaultKillBarBg,
-                defaultRectColor,
-                {
-                    tint: darkened,
-                    translation,
-                },
-            );
-
-            fillGeometry(
-                rectToGeometry([
-                    65,
-                    10,
-                    65 + 52 * Math.min(this.kills / this.map.gamemode.kills, 1),
-                    55,
-                ]),
-                defaultRectColor,
-                {
-                    tint,
-                    translation,
-                },
-            );
-
-            drawGeometry(
-                iconTex,
-                deathsIcon,
-                defaultDeathsOrLivesIcon,
-                defaultRectColor,
-                {
-                    tint,
-                    translation,
-                },
-            );
-
-            fillGeometry(
-                defaultDeathsOrLivesBarBg,
-                defaultRectColor,
-                {
-                    tint,
-                    translation,
-                },
-            );
+            this.text2.textContent = this.deaths.toFixed(0);
+            this.uiBar1Child.style.width =
+                (this.kills / this.map.gamemode.kills * 100).toFixed(0) + "%";
         } else {
-            this.livesText!.textContent = this.lives.toFixed(0);
-
-            fillGeometry(
-                defaultKillBarBg,
-                defaultRectColor,
-                {
-                    tint,
-                    translation,
-                },
-            );
-
-            drawGeometry(
-                iconTex,
-                livesIcon,
-                defaultDeathsOrLivesIcon,
-                defaultRectColor,
-                {
-                    tint,
-                    translation,
-                },
-            );
-
-            fillGeometry(
-                defaultDeathsOrLivesBarBg,
-                defaultRectColor,
-                {
-                    tint: darkened,
-                    translation,
-                },
-            );
-
-            fillGeometry(
-                rectToGeometry([
-                    185,
-                    10,
-                    185 + 52 * Math.min(this.lives / this.map.gamemode.lives, 1),
-                    55,
-                ]),
-                defaultRectColor,
-                {
-                    tint,
-                    translation,
-                },
-            );
+            this.text2.textContent = this.lives.toFixed(0);
+            this.uiBar2Child.style.width =
+                (this.lives / this.map.gamemode.lives * 100).toFixed(0) + "%";
         }
+
+        this.uiBg.style.backgroundColor = color;
+
+        this.healthBar.style.backgroundColor = darkenedColor;
+        this.uiBar1.style.backgroundColor = darkenedColor;
+        this.uiBar2.style.backgroundColor = darkenedColor;
+
+        this.healthBarChild.style.backgroundColor = color;
+        this.uiBar1Child.style.backgroundColor = color;
+        this.uiBar2Child.style.backgroundColor = color;
     }
 
     update(dt: number) {
@@ -764,7 +750,7 @@ export class Default implements Player {
     }
 
     takeKb(kb: Vector2D) {
-        kb.Sn((this.maxHealth / this.health) ** 2)
+        kb.Sn((this.maxHealth / this.health) ** 2);
         const squaredMagnitude = Vector2D.squaredMagnitude(kb);
         if (squaredMagnitude > defaultMaxKb ** 2)
             kb.Sn(defaultMaxKb / Math.sqrt(squaredMagnitude));
@@ -776,14 +762,14 @@ export class Default implements Player {
         this.color.pulseFromGL(DAMAGE_COLOR, .25);
 
         if (reason.type == 'player') {
-            if (reason.isCrit) createTextTemporary(
+            if (reason.isCrit) createHTMLTemporary(
                 `${damage.toPrecision(3)}`,
                 "critical-damage",
                 ((damage / 4) + 75) | 0,
                 this.physicsBody.pos,
                 .5 + Math.log10(damage),
             );
-            else createTextTemporary(
+            else createHTMLTemporary(
                 `${damage.toPrecision(3)}`,
                 "damage",
                 ((damage / 4) + 50) | 0,
@@ -825,7 +811,7 @@ export class Default implements Player {
         this.color.pulseFromGL(HEAL_COLOR, .25);
 
         if (reason.type == "player") {
-            createTextTemporary(
+            createHTMLTemporary(
                 `${health.toPrecision(3)}`,
                 "heal",
                 ((health / 4) + 50) | 0,
@@ -836,10 +822,15 @@ export class Default implements Player {
     }
 
     onDestroy() {
+        this.removeUiBg();
+        this.removeHealthBar();
         this.removeHealthText();
-        this.removeKillsText();
-        if (this.removeDeathsText) this.removeDeathsText();
-        if (this.removeLivesText) this.removeLivesText();
+        this.removeUiBar1();
+        this.removeIcon1();
+        this.removeText1();
+        this.removeUiBar2();
+        this.removeIcon2();
+        this.removeText2();
         // @ts-ignore
         this.map = null;
         // @ts-ignore

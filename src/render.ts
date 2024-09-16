@@ -225,6 +225,7 @@ export function clearScreen(color: GLColor = [0, 0, 0, 0]) {
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
 
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.clearColor(...color);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -355,6 +356,7 @@ export function fillLines(
     translation ??= _translation;
     tint ??= _tint;
 
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.bindFramebuffer(gl.FRAMEBUFFER, compose_mainFb);
     gl.useProgram(mainProgram);
 
@@ -396,6 +398,7 @@ export function fillGeometry(
     translation ??= _translation;
     tint ??= _tint;
 
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.bindFramebuffer(gl.FRAMEBUFFER, compose_mainFb);
     gl.useProgram(mainProgram);
 
@@ -452,6 +455,7 @@ export function drawGeometry(
     translation ??= _translation;
     tint ??= _tint;
 
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.bindFramebuffer(gl.FRAMEBUFFER, compose_mainFb);
     gl.useProgram(mainProgram);
 
@@ -580,12 +584,32 @@ export function renderLighting(
     lights;
 
     // render light triangles
+    geometry.push(
+        -100, -100, 0, 1,
+        -500, 100, 0, 1,
+        500, 500, 0, 0,
+    );
+    color.push(
+        0, 1, 0, 1,
+        0, 0, 1, 1,
+        0, 1, 0, 1,
+    );
+    geometry.push(
+        -100, -100, 0, 1,
+        -200, 400, 0, 1,
+        600, -500, 0, 0,
+    );
+    color.push(
+        0, 0, 1, 1,
+        0, 1, 0, 1,
+        0, 0, 1, 1,
+    );
 
     // get light at each point
 
     // render the hitboxes with light
 
-    // multiply light onto map
+    gl.blendFunc(gl.ONE, gl.ONE);
     gl.bindFramebuffer(gl.FRAMEBUFFER, compose_lightingFb);
     gl.useProgram(lightingProgram);
 
@@ -630,6 +654,7 @@ const
         1, 1, 0, 1,
     ]);
 export function composeDisplay() {
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.useProgram(composeProgram);
 
@@ -653,13 +678,13 @@ export function composeDisplay() {
 
 export class RGBAColor {
     glColor: GLColor;
-    get r() { return this.glColor[0] }
+    get r() { return this.glColor[0]; }
     set r(r: number) { this.glColor[0] = r; }
-    get g() { return this.glColor[1] }
+    get g() { return this.glColor[1]; }
     set g(g: number) { this.glColor[1] = g; }
-    get b() { return this.glColor[2] }
+    get b() { return this.glColor[2]; }
     set b(b: number) { this.glColor[2] = b; }
-    get a() { return this.glColor[3] }
+    get a() { return this.glColor[3]; }
     set a(a: number) { this.glColor[3] = a; }
 
     constructor(r: number, g: number, b: number, a: number = 1) {
@@ -785,15 +810,15 @@ export class HSVAColor {
     }
 }
 
-export function createTextTemporary(
-    text: string,
+export function createHTMLTemporary(
+    innerText: string,
     className: string,
     fontSize: number,
     pos: Vector2D,
     lifespan: number,
 ) {
-    const elem = app.appendChild(document.createElement("p"));
-    elem.innerText = text;
+    const elem = app.appendChild(document.createElement("div"));
+    elem.innerText = innerText;
     elem.className = className;
     elem.style.fontSize = `${fontSize | 0}px`;
     elem.style.left = `calc(50vw + ${pos.x | 0}px)`;
@@ -803,15 +828,15 @@ export function createTextTemporary(
     timeout(() => elem.remove(), lifespan);
 }
 
-export function createTextRender(
-    text: string,
+export function createHTMLRender(
+    innerText: string,
     className: string,
     fontSize: number,
     pos: Vector2D,
     isTopLeft: boolean = false,
 ) {
-    const elem = app.appendChild(document.createElement("p"));
-    elem.innerText = text;
+    const elem = app.appendChild(document.createElement("div"));
+    elem.innerText = innerText;
     elem.className = className;
     elem.style.fontSize = `${fontSize}px`;
     if (isTopLeft) {

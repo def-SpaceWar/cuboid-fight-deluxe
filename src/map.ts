@@ -76,7 +76,7 @@ export class Map1 implements GameMap {
                 renderParticles(dt);
 
                 renderLighting(
-                    [.3, .3, .3, 1],
+                    [1, 1, 1, 1],
                     [],
                     [],
                 );
