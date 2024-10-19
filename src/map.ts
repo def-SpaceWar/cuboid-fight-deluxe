@@ -1,14 +1,28 @@
+// @ts-ignore:
 import map1BgImg from "./assets/backgrounds/bg1.png";
-import { getPlayers } from "./player";
-import { Gamemode, getGamemode } from "./gamemode";
-import { GrassPlatform, resolvePlatformPlayerCollisions, StonePlatform } from "./platform";
-import { Vector2D } from "./math";
-import { clearScreen, composeDisplay, createEndScreen, defaultRectColor, drawGeometry, loadImage, rectToGeometry, renderLighting } from "./render";
-import { renderParticles } from "./particle";
-import { isPressed, listenToInput, stopListeningToInput } from "./input";
-import { renderLoop, timeout, updateLoop } from "./loop";
-import { toggleHitboxes } from "./flags";
-import { MainMenu, Scene } from "./scene";
+import { getPlayers } from "./player.ts";
+import { Gamemode, getGamemode } from "./gamemode.ts";
+import {
+    GrassPlatform,
+    resolvePlatformPlayerCollisions,
+    StonePlatform,
+} from "./platform.ts";
+import { Vector2D } from "./math.ts";
+import {
+    clearScreen,
+    composeDisplay,
+    createEndScreen,
+    defaultRectColor,
+    drawGeometry,
+    loadImage,
+    rectToGeometry,
+    renderLighting,
+} from "./render.ts";
+import { renderParticles } from "./particle.ts";
+import { isPressed, listenToInput, stopListeningToInput } from "./input.ts";
+import { renderLoop, timeout, updateLoop } from "./loop.ts";
+import { toggleHitboxes } from "./flags.ts";
+import { MainMenu, Scene } from "./scene.ts";
 
 export interface GameMap extends Scene {
     readonly gamemode: Gamemode;
@@ -20,7 +34,9 @@ const map1BgTex = await loadImage(map1BgImg),
     map1BgGeometry = rectToGeometry([-960, -540, 960, 540]);
 export class Map1 implements GameMap {
     readonly gamemode: Gamemode;
-    constructor() { this.gamemode = getGamemode(); }
+    constructor() {
+        this.gamemode = getGamemode();
+    }
 
     platforms = [
         new StonePlatform(Vector2D.xy(0, 150), 200, 25),
@@ -54,7 +70,7 @@ export class Map1 implements GameMap {
                 .av(this.respawnPoints[player.number - 1]);
         }
 
-        return await new Promise<Scene>(resolve => {
+        return await new Promise<Scene>((resolve) => {
             let gameOver = false;
             const platforms = this.platforms;
 
@@ -67,24 +83,27 @@ export class Map1 implements GameMap {
                     defaultRectColor,
                 );
 
-                for (let i = 0; i < platforms.length; i++)
+                for (let i = 0; i < platforms.length; i++) {
                     platforms[i].render();
+                }
 
-                for (let i = 0; i < players.length; i++)
+                for (let i = 0; i < players.length; i++) {
                     players[i].render(dt);
+                }
 
                 renderParticles(dt);
 
                 renderLighting(
-                    [1, 1, 1, 1],
+                    [.7, .7, .7, 1],
                     [],
                     [],
                 );
 
                 composeDisplay();
 
-                for (let i = 0; i < players.length; i++)
+                for (let i = 0; i < players.length; i++) {
                     players[i].renderUi(dt);
+                }
             });
 
             let canToggleHitboxes = true;
@@ -92,11 +111,13 @@ export class Map1 implements GameMap {
                 const platforms = this.platforms;
                 resolvePlatformPlayerCollisions(platforms, players);
 
-                for (let i = 0; i < platforms.length; i++)
+                for (let i = 0; i < platforms.length; i++) {
                     platforms[i].update(dt);
+                }
 
-                for (let i = 0; i < players.length; i++)
+                for (let i = 0; i < players.length; i++) {
                     players[i].update(dt);
+                }
 
                 if (canToggleHitboxes && isPressed("Escape")) {
                     canToggleHitboxes = false;
@@ -114,9 +135,10 @@ export class Map1 implements GameMap {
                         this.gamemode.getWinnerData(players),
                         this.gamemode.getLeaderboardTable(players),
                         () => {
-                            for (let i = 0; i < players.length; i++)
+                            for (let i = 0; i < players.length; i++) {
                                 players[i].onDestroy();
-                            // @ts-ignore
+                            }
+                            // @ts-ignore:
                             players = null;
 
                             stopRender();
@@ -125,16 +147,17 @@ export class Map1 implements GameMap {
                             resolve(new Map1());
                         },
                         () => {
-                            for (let i = 0; i < players.length; i++)
+                            for (let i = 0; i < players.length; i++) {
                                 players[i].onDestroy();
-                            // @ts-ignore
+                            }
+                            // @ts-ignore:
                             players = null;
 
                             stopRender();
                             stopUpdate();
                             removeEndScreen();
                             resolve(new MainMenu());
-                        }
+                        },
                     );
                 }, 2);
             });

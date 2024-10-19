@@ -1,4 +1,4 @@
-import { Platform } from "./platform";
+import { Platform } from "./platform.ts";
 
 export interface Particle {
     lifespan: number;

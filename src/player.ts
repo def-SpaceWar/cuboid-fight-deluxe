@@ -1,23 +1,50 @@
+// @ts-ignore:
 import iconsImg from "./assets/ui/icons.png";
+// @ts-ignore:
 import defaultImg from "./assets/classes/default.png";
-import { GLColor, RGBAColor, drawGeometry, fillGeometry, loadImage, rectToGeometry, createHTMLTemporary, createHTMLRender, defaultRectColor } from "./render";
-import { Vector2D } from "./math";
-import { drawHitbox, Hitbox, makePhysicsBody, PhysicsBody, RectangleHitbox } from "./physics";
-import { DAMAGE_COLOR, DEBUG_HITBOXES, HEAL_COLOR, KILL_CREDIT_TIME } from "./flags";
-import { Platform } from "./platform";
-import { isMousePressed, isPressed } from "./input";
-import { clearTimer, timeout, Timer } from "./loop";
-import { GameMap } from "./map";
+import {
+    createHTMLRender,
+    createHTMLTemporary,
+    defaultRectColor,
+    drawGeometry,
+    fillGeometry,
+    GLColor,
+    loadImage,
+    rectToGeometry,
+    RGBAColor,
+} from "./render.ts";
+import { Vector2D } from "./math.ts";
+import {
+    drawHitbox,
+    Hitbox,
+    makePhysicsBody,
+    PhysicsBody,
+    RectangleHitbox,
+} from "./physics.ts";
+import {
+    DAMAGE_COLOR,
+    DEBUG_HITBOXES,
+    HEAL_COLOR,
+    KILL_CREDIT_TIME,
+} from "./flags.ts";
+import { Platform } from "./platform.ts";
+import { isMousePressed, isPressed } from "./input.ts";
+import { clearTimer, timeout, Timer } from "./loop.ts";
+import { GameMap } from "./map.ts";
 
-type Keybind = { key: string; };
-type MouseButton = { button: number; };
-type Control
-    = Keybind
+type Keybind = { key: string };
+type MouseButton = { button: number };
+type Control =
+    | Keybind
     | MouseButton;
 
 export const Binding = {
-    key(key: string): Keybind { return { key }; },
-    button(button: number): MouseButton { return { button }; },
+    key(key: string): Keybind {
+        return { key };
+    },
+    button(button: number): MouseButton {
+        return { button };
+    },
 };
 
 export type Controls = {
@@ -30,36 +57,35 @@ export type Controls = {
 };
 
 function isControlDown(c: Control) {
-    // @ts-ignore
+    // @ts-ignore:
     if (c.key) return isPressed(c.key);
-    // @ts-ignore
+    // @ts-ignore:
     return isMousePressed(c.button);
 }
 
-const
-    playerUiCoords = {
-        1: Vector2D.xy(20, 20),
-        2: Vector2D.xy(20, 105),
-        3: Vector2D.xy(20, 190),
-        4: Vector2D.xy(20, 275),
-    };
+const playerUiCoords = {
+    1: Vector2D.xy(20, 20),
+    2: Vector2D.xy(20, 105),
+    3: Vector2D.xy(20, 190),
+    4: Vector2D.xy(20, 275),
+};
 export type PlayerNumber = 1 | 2 | 3 | 4;
-export type DamageReason
-    = {
-        type: 'player',
-        player: Player,
-        isCrit: boolean,
+export type DamageReason =
+    | {
+        type: "player";
+        player: Player;
+        isCrit: boolean;
     }
     | {
-        type: 'environment',
+        type: "environment";
     };
-export type HealReason
-    = {
-        type: 'player',
-        player: Player,
+export type HealReason =
+    | {
+        type: "player";
+        player: Player;
     }
     | {
-        type: 'environment',
+        type: "environment";
     };
 export interface Player {
     color: RGBAColor;
@@ -109,7 +135,7 @@ export interface Player {
     takeHealing(health: number, reason: HealReason): void;
 
     onDestroy(): void;
-};
+}
 
 export function getPlayers(map: GameMap): Player[] {
     const players: Player[] = [];
@@ -117,12 +143,12 @@ export function getPlayers(map: GameMap): Player[] {
         new Default(
             new RGBAColor(1, .2, .3),
             {
-                left: Binding.key('ArrowLeft'),
-                up: Binding.key('ArrowUp'),
-                down: Binding.key('ArrowDown'),
-                right: Binding.key('ArrowRight'),
-                attack: Binding.key('/'),
-                special: Binding.key('.'),
+                left: Binding.key("ArrowLeft"),
+                up: Binding.key("ArrowUp"),
+                down: Binding.key("ArrowDown"),
+                right: Binding.key("ArrowRight"),
+                attack: Binding.key("/"),
+                special: Binding.key("."),
             },
             1,
             "Mafia",
@@ -132,12 +158,12 @@ export function getPlayers(map: GameMap): Player[] {
         new Default(
             new RGBAColor(0, .5, 1),
             {
-                left: Binding.key('s'),
-                up: Binding.key('e'),
-                down: Binding.key('d'),
-                right: Binding.key('f'),
-                attack: Binding.key('w'),
-                special: Binding.key('q'),
+                left: Binding.key("s"),
+                up: Binding.key("e"),
+                down: Binding.key("d"),
+                right: Binding.key("f"),
+                attack: Binding.key("w"),
+                special: Binding.key("q"),
             },
             2,
             "Innocent",
@@ -183,7 +209,7 @@ const defaultTex = await loadImage(defaultImg),
     defaultDeadTexCoord = rectToGeometry([16, 0, 32, 16]),
     defaultGeometry = rectToGeometry([-25, -25, 25, 25]),
     defaultHitbox = {
-        type: 'rect',
+        type: "rect",
         offset: Vector2D.zero(),
         w: 50,
         h: 50,
@@ -320,7 +346,7 @@ export class Default implements Player {
             this.removeHealthBar = remove;
 
             this.healthBarChild = this.healthBar.appendChild(
-                document.createElement("div")
+                document.createElement("div"),
             );
             this.healthBarChild.style.width = "100%";
             this.healthBarChild.style.height = "100%";
@@ -356,7 +382,7 @@ export class Default implements Player {
             this.removeUiBar1 = remove;
 
             this.uiBar1Child = this.uiBar1.appendChild(
-                document.createElement("div")
+                document.createElement("div"),
             );
             this.uiBar1Child.style.width = "100%";
             this.uiBar1Child.style.height = "100%";
@@ -409,7 +435,7 @@ export class Default implements Player {
             this.removeUiBar2 = remove;
 
             this.uiBar2Child = this.uiBar2.appendChild(
-                document.createElement("div")
+                document.createElement("div"),
             );
             this.uiBar2Child.style.width = "100%";
             this.uiBar2Child.style.height = "100%";
@@ -489,71 +515,94 @@ export class Default implements Player {
                 { tint: this.color.glColor, translation },
             );
 
-            if (this.combo > 0) fillGeometry(
-                rectToGeometry([
-                    -25 +
-                    50 * (Math.max(0, 1 -
-                        this.combo * this.comboCooldown /
-                        this.attackCooldown)),
-                    -30,
-                    25,
-                    -40,
-                ]),
-                defaultRectColor,
-                { tint: this.comboColor, translation },
-            );
+            if (this.combo > 0) {
+                fillGeometry(
+                    rectToGeometry([
+                        -25 +
+                        50 * (Math.max(
+                                0,
+                                1 -
+                                    this.combo * this.comboCooldown /
+                                        this.attackCooldown,
+                            )),
+                        -30,
+                        25,
+                        -40,
+                    ]),
+                    defaultRectColor,
+                    { tint: this.comboColor, translation },
+                );
+            }
 
-            if (this.attackTimer > 0) fillGeometry(
-                rectToGeometry([
-                    -25,
-                    -30,
-                    25 -
-                    50 * (1 -
-                        this.attackTimer / this.attackCooldown),
-                    -40,
-                ]),
-                defaultRectColor,
-                { tint: this.color.glColor, translation },
-            );
-            else if (this.specialTimer > 0) fillGeometry(
-                rectToGeometry([
-                    -25, -30,
-                    25 -
-                    50 * (1 - this.specialTimer / this.specialCooldown),
-                    -40,
-                ]),
-                defaultRectColor,
-                { tint: this.specialColor, translation },
-            );
-            else if (DEBUG_HITBOXES) drawHitbox({
-                type: 'circle',
-                offset: Vector2D.zero(),
-                r: this.attackRange * this.attackRangeMultiplier,
-            }, this.physicsBody.pos, [1, 0, 0, 1]);
+            if (this.attackTimer > 0) {
+                fillGeometry(
+                    rectToGeometry([
+                        -25,
+                        -30,
+                        25 -
+                        50 * (1 -
+                                this.attackTimer / this.attackCooldown),
+                        -40,
+                    ]),
+                    defaultRectColor,
+                    { tint: this.color.glColor, translation },
+                );
+            } else if (this.specialTimer > 0) {
+                fillGeometry(
+                    rectToGeometry([
+                        -25,
+                        -30,
+                        25 -
+                        50 * (1 - this.specialTimer / this.specialCooldown),
+                        -40,
+                    ]),
+                    defaultRectColor,
+                    { tint: this.specialColor, translation },
+                );
+            } else if (DEBUG_HITBOXES) {
+                drawHitbox(
+                    {
+                        type: "circle",
+                        offset: Vector2D.zero(),
+                        r: this.attackRange * this.attackRangeMultiplier,
+                    },
+                    this.physicsBody.pos,
+                    [1, 0, 0, 1],
+                );
+            }
 
-            if (DEBUG_HITBOXES) drawHitbox({
-                type: 'circle',
-                offset: Vector2D.zero(),
-                r: this.attackRange * this.attackRangeMultiplier * Math.SQRT2,
-            }, this.physicsBody.pos, [1, 0, 0, 1]);
+            if (DEBUG_HITBOXES) {
+                drawHitbox(
+                    {
+                        type: "circle",
+                        offset: Vector2D.zero(),
+                        r: this.attackRange * this.attackRangeMultiplier *
+                            Math.SQRT2,
+                    },
+                    this.physicsBody.pos,
+                    [1, 0, 0, 1],
+                );
+            }
         }
 
-        if (DEBUG_HITBOXES) drawHitbox(
-            this.hitbox,
-            this.physicsBody.pos,
-            [0, 1, 0.5, 1],
-        );
+        if (DEBUG_HITBOXES) {
+            drawHitbox(
+                this.hitbox,
+                this.physicsBody.pos,
+                [0, 1, 0.5, 1],
+            );
+        }
     }
 
     renderUi() {
         const color = this.color.toCSS(),
             darkenedColor = this.color.darken(1.3).toCSS();
 
-        if (this.health > 0)
-            if (this.health < 0.01)
+        if (this.health > 0) {
+            if (this.health < 0.01) {
                 this.healthText.textContent = this.health.toExponential(2);
-            else this.healthText.textContent = this.health.toPrecision(3);
-        else this.healthText.textContent = "0";
+            } else this.healthText.textContent = this.health.toPrecision(3);
+        } else this.healthText.textContent = "0";
         this.healthBarChild.style.width =
             (this.health / this.maxHealth * 100).toFixed(0) + "%";
 
@@ -603,8 +652,9 @@ export class Default implements Player {
             if (this.isGrounded) this.phase();
             else this.groundPound();
         }
-        if (this.canPressAttackKey && isControlDown(this.controls.attack))
+        if (this.canPressAttackKey && isControlDown(this.controls.attack)) {
             this.attack();
+        }
         if (isControlDown(this.controls.special)) this.special();
         this.isGrounded = false;
     }
@@ -649,8 +699,8 @@ export class Default implements Player {
         }
 
         const oldY = this.physicsBody.pos.y;
-        this.physicsBody.pos.y = p.pos.y + p.hitbox.offset.y
-            - p.hitbox.h / 2 - this.hitbox.h / 2;
+        this.physicsBody.pos.y = p.pos.y + p.hitbox.offset.y -
+            p.hitbox.h / 2 - this.hitbox.h / 2;
         const diff = this.physicsBody.pos.y - oldY;
         if (Math.abs(diff) > 4) this.visualOffset.y -= diff;
         this.physicsBody.vel.y = 0;
@@ -660,7 +710,7 @@ export class Default implements Player {
         this.doubleJumpCount = 2;
     }
 
-    onPlayerCollision(_: Player) { }
+    onPlayerCollision(_: Player) {}
 
     attack(isGroundPound = false) {
         if (isGroundPound) this.combo = 0;
@@ -677,18 +727,22 @@ export class Default implements Player {
                 other.physicsBody.pos,
             );
             if (isGroundPound) squaredDistance /= 2;
-            if (squaredDistance > (
-                this.attackRange * this.attackRangeMultiplier
-            ) ** 2) continue;
+            if (
+                squaredDistance > (
+                            this.attackRange * this.attackRangeMultiplier
+                        ) ** 2
+            ) continue;
             if (!isGroundPound) this.combo++;
             hasHit = true;
 
             let damage = Math.max(
-                this.attackRange / Math.sqrt(squaredDistance) * this.damage,
-                this.damage ** 1.5,
-            ), isCrit = false;
-            if (damage >= this.damage ** 2.5)
+                    this.attackRange / Math.sqrt(squaredDistance) * this.damage,
+                    this.damage ** 1.5,
+                ),
+                isCrit = false;
+            if (damage >= this.damage ** 2.5) {
                 isCrit = true, damage = this.damage ** 2.5;
+            }
 
             const kb = Vector2D
                 .subtract(other.physicsBody.pos, this.physicsBody.pos)
@@ -697,21 +751,21 @@ export class Default implements Player {
             if (isGroundPound) {
                 kb.Sn(this.jumpPower / 1000);
                 damage /= 4;
-            } else damage *= (1 + .5 * this.combo);
+            } else damage *= 1 + .5 * this.combo;
 
             other.combo = 0;
             other.takeKb(kb.Sn(this.kbMultiplier));
             other.takeDamage(
                 damage * this.attackMultiplier,
-                { type: 'player', player: this, isCrit },
+                { type: "player", player: this, isCrit },
             );
         }
 
         if (isGroundPound) return;
         if (!hasHit) this.combo = 0;
         this.canAttack = false;
-        this.attackTimer = this.attackCooldown
-            - (this.combo * this.comboCooldown);
+        this.attackTimer = this.attackCooldown -
+            (this.combo * this.comboCooldown);
     }
 
     groundPound() {
@@ -729,13 +783,16 @@ export class Default implements Player {
         this.canAttack = false;
 
         if (this.health >= this.maxHealth) return;
-        for (let i = 0; i < 5; i++) timeout(
-            () => this.takeHealing(
-                Math.min(this.maxHealth - this.health, 4),
-                { type: 'player', player: this },
-            ),
-            i,
-        );
+        for (let i = 0; i < 5; i++) {
+            timeout(
+                () =>
+                    this.takeHealing(
+                        Math.min(this.maxHealth - this.health, 4),
+                        { type: "player", player: this },
+                    ),
+                i,
+            );
+        }
     }
 
     respawn() {
@@ -752,8 +809,9 @@ export class Default implements Player {
     takeKb(kb: Vector2D) {
         kb.Sn((this.maxHealth / this.health) ** 2);
         const squaredMagnitude = Vector2D.squaredMagnitude(kb);
-        if (squaredMagnitude > defaultMaxKb ** 2)
+        if (squaredMagnitude > defaultMaxKb ** 2) {
             kb.Sn(defaultMaxKb / Math.sqrt(squaredMagnitude));
+        }
         this.physicsBody.vel.av(kb.Sn(this.incomingKbMultiplier));
     }
 
@@ -761,21 +819,22 @@ export class Default implements Player {
         this.health -= damage * this.damageMultiplier;
         this.color.pulseFromGL(DAMAGE_COLOR, .25);
 
-        if (reason.type == 'player') {
-            if (reason.isCrit) createHTMLTemporary(
-                `${damage.toPrecision(3)}`,
-                "critical-damage",
-                ((damage / 4) + 75) | 0,
-                this.physicsBody.pos,
-                .5 + Math.log10(damage),
-            );
-            else createHTMLTemporary(
-                `${damage.toPrecision(3)}`,
-                "damage",
-                ((damage / 4) + 50) | 0,
-                this.physicsBody.pos,
-                .2 + Math.log10(damage) / 2,
-            );
+        if (reason.type == "player") {
+            if (reason.isCrit) {
+                createHTMLTemporary(
+                    `${damage.toPrecision(3)}`,
+                    "critical-damage",
+                    ((damage / 4) + 75) | 0,
+                    this.physicsBody.pos,
+                    .5 + Math.log10(damage),
+                );
+            } else {createHTMLTemporary(
+                    `${damage.toPrecision(3)}`,
+                    "damage",
+                    ((damage / 4) + 50) | 0,
+                    this.physicsBody.pos,
+                    .2 + Math.log10(damage) / 2,
+                );}
 
             this.lastHit = reason.player;
             if (this.lastHitTimer) clearTimer(this.lastHitTimer);
@@ -799,8 +858,8 @@ export class Default implements Player {
         this.isDead = true;
 
         if (
-            this.map.gamemode.secondDisplay == 'deaths' ||
-            (this.map.gamemode.secondDisplay == 'lives' &&
+            this.map.gamemode.secondDisplay == "deaths" ||
+            (this.map.gamemode.secondDisplay == "lives" &&
                 this.lives > 0)
         ) this.respawn();
     }
@@ -831,9 +890,9 @@ export class Default implements Player {
         this.removeUiBar2();
         this.removeIcon2();
         this.removeText2();
-        // @ts-ignore
+        // @ts-ignore:
         this.map = null;
-        // @ts-ignore
+        // @ts-ignore:
         this.players = null;
     }
 }

@@ -1,9 +1,9 @@
-import { FPS_SAMPLE_AMOUNT, TPS_SAMPLE_AMOUNT, MIN_DT } from "./flags";
+import { FPS_SAMPLE_AMOUNT, MIN_DT, TPS_SAMPLE_AMOUNT } from "./flags.ts";
 const app = document.getElementById("app")!;
 
 export function renderLoop(c: () => unknown): () => void;
 export function renderLoop(c: (dt: number) => unknown): () => void;
-export function renderLoop(c: Function) {
+export function renderLoop(c: (dt: number) => unknown) {
     const fpsList = new Float32Array(FPS_SAMPLE_AMOUNT),
         avgFps = () => {
             let sum = 0;
@@ -34,12 +34,12 @@ export function renderLoop(c: Function) {
         fpsTextNode.remove();
         fpsText.remove();
         cancelAnimationFrame(handle);
-    }
+    };
 }
 
 export function updateLoop(c: () => unknown): () => void;
 export function updateLoop(c: (dt: number) => unknown): () => void;
-export function updateLoop(c: Function) {
+export function updateLoop(c: (dt: number) => unknown) {
     const tpsList = new Float32Array(TPS_SAMPLE_AMOUNT),
         avgTps = () => {
             let sum = 0;
@@ -71,12 +71,12 @@ export function updateLoop(c: Function) {
         tpsTextNode.remove();
         tpsText.remove();
         clearInterval(handle);
-    }
+    };
 }
 
-export type Timer
-    = [c: Function, t: number]
-    | [c: Function, t: number, repeat: true, _t: number];
+export type Timer =
+    | [c: () => unknown, t: number]
+    | [c: () => unknown, t: number, repeat: true, _t: number];
 const timers: Timer[] = [];
 
 function tickTimers(dt: number) {
@@ -86,7 +86,7 @@ function tickTimers(dt: number) {
         if (timer[1] > 0) continue;
         timer[0]();
         if (timer[2]) {
-            // @ts-ignore
+            // @ts-ignore:
             timer[1] = timer[3];
             continue;
         }
@@ -95,15 +95,15 @@ function tickTimers(dt: number) {
     }
 }
 
-export function timeout(c: Function, t: number) {
+export function timeout(c: () => unknown, t: number) {
     const timer: Timer = [c, t];
-    timers.push(timer)
+    timers.push(timer);
     return timer;
 }
 
-export function repeatedTimeout(c: Function, t: number) {
+export function repeatedTimeout(c: () => unknown, t: number) {
     const timer: Timer = [c, t, true, t];
-    timers.push(timer)
+    timers.push(timer);
     return timer;
 }
 

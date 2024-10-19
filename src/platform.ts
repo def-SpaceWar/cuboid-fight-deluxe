@@ -1,10 +1,19 @@
-import { DEBUG_HITBOXES, TEX_TO_SCREEN_RATIO } from "./flags";
-import { Vector2D } from "./math";
-import { drawHitbox, isColliding, RectangleHitbox } from "./physics";
-import { Player } from "./player";
-import { GLColor, defaultRectColor, drawGeometry, loadImage, rectToGeometry } from "./render";
+import { DEBUG_HITBOXES, TEX_TO_SCREEN_RATIO } from "./flags.ts";
+import { Vector2D } from "./math.ts";
+import { drawHitbox, isColliding, RectangleHitbox } from "./physics.ts";
+import { Player } from "./player.ts";
+import {
+    defaultRectColor,
+    drawGeometry,
+    GLColor,
+    loadImage,
+    rectToGeometry,
+} from "./render.ts";
+// @ts-ignore:
 import dirtImg from "./assets/platforms/dirt.png";
+// @ts-ignore:
 import grassImg from "./assets/platforms/grass.png";
+// @ts-ignore:
 import stoneImg from "./assets/platforms/stone.png";
 
 export type Platform = {
@@ -27,12 +36,16 @@ export function resolvePlatformPlayerCollisions(
                 const platform = platforms[j];
                 if (
                     player.physicsBody.pos.y >
-                    platform.pos.y + platform.hitbox.offset.y
+                        platform.pos.y + platform.hitbox.offset.y
                 ) continue;
-                if (!isColliding(
-                    player.physicsBody.pos, player.hitbox,
-                    platform.pos, platform.hitbox,
-                )) continue;
+                if (
+                    !isColliding(
+                        player.physicsBody.pos,
+                        player.hitbox,
+                        platform.pos,
+                        platform.hitbox,
+                    )
+                ) continue;
 
                 player.onPlatformCollision(platform);
                 platform.onCollision(player);
@@ -60,19 +73,25 @@ export class GrassPlatform implements Platform {
         const x = pos.x % 16 / TEX_TO_SCREEN_RATIO,
             y = pos.y % 16 / TEX_TO_SCREEN_RATIO;
         this.grassTexCoord = rectToGeometry([
-            x, 0,
-            x + w / TEX_TO_SCREEN_RATIO, h / TEX_TO_SCREEN_RATIO,
+            x,
+            0,
+            x + w / TEX_TO_SCREEN_RATIO,
+            h / TEX_TO_SCREEN_RATIO,
         ]);
         this.dirtTexCoord = rectToGeometry([
-            x, y,
-            x + w / TEX_TO_SCREEN_RATIO, y + h / TEX_TO_SCREEN_RATIO,
+            x,
+            y,
+            x + w / TEX_TO_SCREEN_RATIO,
+            y + h / TEX_TO_SCREEN_RATIO,
         ]);
 
         this.triangles = rectToGeometry([
-            this.pos.x - this.w / 2, this.pos.y - this.h / 2,
-            this.pos.x + this.w / 2, this.pos.y + this.h / 2,
+            this.pos.x - this.w / 2,
+            this.pos.y - this.h / 2,
+            this.pos.x + this.w / 2,
+            this.pos.y + this.h / 2,
         ]);
-        this.hitbox = { type: 'rect', offset: Vector2D.zero(), w, h };
+        this.hitbox = { type: "rect", offset: Vector2D.zero(), w, h };
     }
 
     update(dt: number) {
@@ -96,14 +115,16 @@ export class GrassPlatform implements Platform {
             { tint: grassColor, repeatX: true, mirroredX: true },
         );
 
-        if (DEBUG_HITBOXES) drawHitbox(
-            this.hitbox,
-            this.pos,
-            [0, 0, 1, 1],
-        );
+        if (DEBUG_HITBOXES) {
+            drawHitbox(
+                this.hitbox,
+                this.pos,
+                [0, 0, 1, 1],
+            );
+        }
     }
 
-    onCollision(_: Player) { }
+    onCollision(_: Player) {}
 }
 
 const stoneTex = await loadImage(stoneImg),
@@ -122,15 +143,19 @@ export class StonePlatform implements Platform {
         const x = pos.x % 16 / TEX_TO_SCREEN_RATIO,
             y = pos.y % 16 / TEX_TO_SCREEN_RATIO;
         this.texCoord = rectToGeometry([
-            x, y,
-            x + w / TEX_TO_SCREEN_RATIO, y + h / TEX_TO_SCREEN_RATIO,
+            x,
+            y,
+            x + w / TEX_TO_SCREEN_RATIO,
+            y + h / TEX_TO_SCREEN_RATIO,
         ]);
 
         this.triangles = rectToGeometry([
-            this.pos.x - w / 2, this.pos.y - h / 2,
-            this.pos.x + w / 2, this.pos.y + h / 2,
+            this.pos.x - w / 2,
+            this.pos.y - h / 2,
+            this.pos.x + w / 2,
+            this.pos.y + h / 2,
         ]);
-        this.hitbox = { type: 'rect', offset: Vector2D.zero(), w, h };
+        this.hitbox = { type: "rect", offset: Vector2D.zero(), w, h };
     }
 
     update(dt: number) {
@@ -145,16 +170,20 @@ export class StonePlatform implements Platform {
             defaultRectColor,
             {
                 tint: stoneColor,
-                repeatX: true, repeatY: true,
-                mirroredX: true, mirroredY: true,
+                repeatX: true,
+                repeatY: true,
+                mirroredX: true,
+                mirroredY: true,
             },
         );
 
-        if (DEBUG_HITBOXES) drawHitbox(
-            this.hitbox,
-            this.pos,
-            [0, 0, 1, 1],
-        );
+        if (DEBUG_HITBOXES) {
+            drawHitbox(
+                this.hitbox,
+                this.pos,
+                [0, 0, 1, 1],
+            );
+        }
     }
 
     onCollision(p: Player) {

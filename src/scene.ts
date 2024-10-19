@@ -1,5 +1,5 @@
-import { Map1 } from "./map";
-import { clearScreen } from "./render";
+import { Map1 } from "./map.ts";
+import { clearScreen } from "./render.ts";
 
 const app = document.getElementById("app")!;
 
@@ -14,11 +14,11 @@ export class MainMenu implements Scene {
         button.id = "start-game";
         button.innerText = "Start Game";
 
-        return new Promise<Scene>(resolve => {
+        return new Promise<Scene>((resolve) => {
             button.onclick = () => {
                 button.remove();
                 resolve(new Map1());
-            }
+            };
         });
     }
 }

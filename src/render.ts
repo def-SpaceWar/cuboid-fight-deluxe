@@ -1,14 +1,20 @@
+// @ts-ignore:
 import mainVert from "./shaders/main.vert?raw";
+// @ts-ignore:
 import mainFrag from "./shaders/main.frag?raw";
+// @ts-ignore:
 import lightingVert from "./shaders/lighting.vert?raw";
+// @ts-ignore:
 import lightingFrag from "./shaders/lighting.frag?raw";
+// @ts-ignore:
 import composeVert from "./shaders/compose.vert?raw";
+// @ts-ignore:
 import composeFrag from "./shaders/compose.frag?raw";
-import { Vector2D } from "./math";
-import { Hitbox } from "./physics";
-import { CIRCLE_ACCURACY, PULSE_ANIM_STEPS } from "./flags";
-import { clearTimer, repeatedTimeout, timeout } from "./loop";
-import { Winner } from "./gamemode";
+import { Vector2D } from "./math.ts";
+import { Hitbox } from "./physics.ts";
+import { CIRCLE_ACCURACY, PULSE_ANIM_STEPS } from "./flags.ts";
+import { clearTimer, repeatedTimeout, timeout } from "./loop.ts";
+import { Winner } from "./gamemode.ts";
 
 const app = document.getElementById("app")!;
 export let canvas: HTMLCanvasElement;
@@ -18,7 +24,6 @@ let gl: WebGL2RenderingContext,
     colorBuffer: WebGLBuffer,
     texCoordBuffer: WebGLBuffer,
     main_texture: WebGLTexture,
-
     mainProgram: WebGLProgram,
     main_a_position: number,
     main_a_color: number,
@@ -30,13 +35,11 @@ let gl: WebGL2RenderingContext,
     main_u_color: WebGLUniformLocation,
     main_u_image: WebGLUniformLocation,
     main_u_noTex: WebGLUniformLocation,
-
     lightingProgram: WebGLProgram,
     lighting_a_position: number,
     lighting_a_color: number,
     lighting_u_resolution: WebGLUniformLocation,
     lighting_u_color: WebGLUniformLocation,
-
     composeProgram: WebGLProgram,
     compose_a_position: number,
     compose_a_color: number,
@@ -86,14 +89,14 @@ export const loadImage = (imageUrl: string): Promise<HTMLImageElement> =>
         img.crossOrigin = "Anonymous";
         img.src = imageUrl;
         img.onload = () => resolve(img);
-        img.onerror = e => reject(e);
+        img.onerror = (e) => reject(e);
     });
 
-export async function setupRender() {
+export function setupRender() {
     gl = app.appendChild(canvas = document.createElement("canvas"))
         .getContext("webgl2", {
             antialias: false,
-            powerPreference: 'high-performance',
+            powerPreference: "high-performance",
         })!;
     if (!gl) throw new Error("WebGL2 failed to initialized!");
     gl.enable(gl.BLEND);
@@ -130,7 +133,6 @@ export async function setupRender() {
 
     gl.uniform1i(main_u_image, 0);
 
-
     lightingProgram = createProgram(
         createShader(lightingVert, gl.VERTEX_SHADER),
         createShader(lightingFrag, gl.FRAGMENT_SHADER),
@@ -139,7 +141,10 @@ export async function setupRender() {
 
     lighting_a_position = gl.getAttribLocation(lightingProgram, "a_position");
     lighting_a_color = gl.getAttribLocation(lightingProgram, "a_color");
-    lighting_u_resolution = gl.getUniformLocation(lightingProgram, "u_resolution")!;
+    lighting_u_resolution = gl.getUniformLocation(
+        lightingProgram,
+        "u_resolution",
+    )!;
     lighting_u_color = gl.getUniformLocation(lightingProgram, "u_color")!;
 
     composeProgram = createProgram(
@@ -161,7 +166,8 @@ export async function setupRender() {
         gl.TEXTURE_2D,
         0,
         gl.RGBA,
-        gl.drawingBufferWidth, gl.drawingBufferHeight,
+        gl.drawingBufferWidth,
+        gl.drawingBufferHeight,
         0,
         gl.RGBA,
         gl.UNSIGNED_BYTE,
@@ -187,7 +193,8 @@ export async function setupRender() {
         gl.TEXTURE_2D,
         0,
         gl.RGBA,
-        gl.drawingBufferWidth, gl.drawingBufferHeight,
+        gl.drawingBufferWidth,
+        gl.drawingBufferHeight,
         0,
         gl.RGBA,
         gl.UNSIGNED_BYTE,
@@ -236,7 +243,8 @@ export function clearScreen(color: GLColor = [0, 0, 0, 0]) {
         gl.TEXTURE_2D,
         0,
         gl.RGBA,
-        gl.drawingBufferWidth, gl.drawingBufferHeight,
+        gl.drawingBufferWidth,
+        gl.drawingBufferHeight,
         0,
         gl.RGBA,
         gl.UNSIGNED_BYTE,
@@ -248,7 +256,8 @@ export function clearScreen(color: GLColor = [0, 0, 0, 0]) {
         gl.TEXTURE_2D,
         0,
         gl.RGBA,
-        gl.drawingBufferWidth, gl.drawingBufferHeight,
+        gl.drawingBufferWidth,
+        gl.drawingBufferHeight,
         0,
         gl.RGBA,
         gl.UNSIGNED_BYTE,
@@ -278,8 +287,14 @@ export function circleToLines({ x, y }: Vector2D, r: number): Float32Array {
         const angle1 = i * Math.PI / CIRCLE_ACCURACY * 2,
             angle2 = (i + 1) * Math.PI / CIRCLE_ACCURACY * 2;
         arr.push(
-            x + r * Math.cos(angle1), y + r * Math.sin(angle1), 0, 1,
-            x + r * Math.cos(angle2), y + r * Math.sin(angle2), 0, 1,
+            x + r * Math.cos(angle1),
+            y + r * Math.sin(angle1),
+            0,
+            1,
+            x + r * Math.cos(angle2),
+            y + r * Math.sin(angle2),
+            0,
+            1,
         );
     }
     return new Float32Array(arr);
@@ -291,9 +306,18 @@ export function circleToGeometry({ x, y }: Vector2D, r: number): Float32Array {
         const angle1 = i * Math.PI / CIRCLE_ACCURACY * 2,
             angle2 = (i + 1) * Math.PI / CIRCLE_ACCURACY * 2;
         arr.push(
-            x + r * Math.cos(angle1), y + r * Math.sin(angle1), 0, 1,
-            x, y, 0, 1,
-            x + r * Math.cos(angle2), y + r * Math.sin(angle2), 0, 1,
+            x + r * Math.cos(angle1),
+            y + r * Math.sin(angle1),
+            0,
+            1,
+            x,
+            y,
+            0,
+            1,
+            x + r * Math.cos(angle2),
+            y + r * Math.sin(angle2),
+            0,
+            1,
         );
     }
     return new Float32Array(arr);
@@ -301,30 +325,72 @@ export function circleToGeometry({ x, y }: Vector2D, r: number): Float32Array {
 
 export function rectToLines(r: GLRectangle): Float32Array {
     return new Float32Array([
-        r[0], r[1], 0, 1,
-        r[0], r[3], 0, 1,
-        r[0], r[3], 0, 1,
-        r[2], r[3], 0, 1,
-        r[2], r[3], 0, 1,
-        r[2], r[1], 0, 1,
-        r[2], r[1], 0, 1,
-        r[0], r[1], 0, 1,
+        r[0],
+        r[1],
+        0,
+        1,
+        r[0],
+        r[3],
+        0,
+        1,
+        r[0],
+        r[3],
+        0,
+        1,
+        r[2],
+        r[3],
+        0,
+        1,
+        r[2],
+        r[3],
+        0,
+        1,
+        r[2],
+        r[1],
+        0,
+        1,
+        r[2],
+        r[1],
+        0,
+        1,
+        r[0],
+        r[1],
+        0,
+        1,
     ]);
 }
 
 export function rectToGeometry(r: GLRectangle): Float32Array {
     return new Float32Array([
-        r[0], r[1], 0, 1,
-        r[2], r[1], 0, 1,
-        r[0], r[3], 0, 1,
-        r[0], r[3], 0, 1,
-        r[2], r[1], 0, 1,
-        r[2], r[3], 0, 1,
+        r[0],
+        r[1],
+        0,
+        1,
+        r[2],
+        r[1],
+        0,
+        1,
+        r[0],
+        r[3],
+        0,
+        1,
+        r[0],
+        r[3],
+        0,
+        1,
+        r[2],
+        r[1],
+        0,
+        1,
+        r[2],
+        r[3],
+        0,
+        1,
     ]);
 }
 
-export const
-    defaultCircleLinesColor = new Float32Array(8 * CIRCLE_ACCURACY).fill(1),
+export const defaultCircleLinesColor = new Float32Array(8 * CIRCLE_ACCURACY)
+        .fill(1),
     defaultCircleColor = new Float32Array(12 * CIRCLE_ACCURACY).fill(1),
     defaultRectLinesColor = new Float32Array(32).fill(1),
     //defaultRectColor = new Float32Array([
@@ -345,10 +411,10 @@ export function fillLines(
     lines: Float32Array,
     colors: Float32Array,
     { scale, rotation, translation, tint }: {
-        scale?: Vector2D,
-        rotation?: number,
-        translation?: Vector2D,
-        tint?: GLColor,
+        scale?: Vector2D;
+        rotation?: number;
+        translation?: Vector2D;
+        tint?: GLColor;
     } = {},
 ) {
     scale ??= _scale;
@@ -376,7 +442,6 @@ export function fillLines(
     gl.uniform2fv(main_u_scale, scale.arr);
     gl.uniform2f(main_u_rotation, Math.cos(rotation), Math.sin(rotation));
     gl.uniform2fv(main_u_translation, translation.arr);
-    // @ts-ignore
     gl.uniform4fv(main_u_color, tint);
     gl.uniform1ui(main_u_noTex, 1);
 
@@ -387,10 +452,10 @@ export function fillGeometry(
     triangles: Float32Array,
     colors: Float32Array,
     { scale, rotation, translation, tint }: {
-        scale?: Vector2D,
-        rotation?: number,
-        translation?: Vector2D,
-        tint?: GLColor,
+        scale?: Vector2D;
+        rotation?: number;
+        translation?: Vector2D;
+        tint?: GLColor;
     } = {},
 ) {
     scale ??= _scale;
@@ -418,7 +483,6 @@ export function fillGeometry(
     gl.uniform2fv(main_u_scale, scale.arr);
     gl.uniform2f(main_u_rotation, Math.cos(rotation), Math.sin(rotation));
     gl.uniform2fv(main_u_translation, translation.arr);
-    // @ts-ignore
     gl.uniform4fv(main_u_color, tint);
     gl.uniform1ui(main_u_noTex, 1);
 
@@ -440,14 +504,14 @@ export function drawGeometry(
         mirroredX,
         mirroredY,
     }: {
-        scale?: Vector2D,
-        rotation?: number,
-        translation?: Vector2D,
-        tint?: GLColor,
-        repeatX?: boolean,
-        repeatY?: boolean,
-        mirroredX?: boolean,
-        mirroredY?: boolean,
+        scale?: Vector2D;
+        rotation?: number;
+        translation?: Vector2D;
+        tint?: GLColor;
+        repeatX?: boolean;
+        repeatY?: boolean;
+        mirroredX?: boolean;
+        mirroredY?: boolean;
     } = {},
 ) {
     scale ??= _scale;
@@ -488,53 +552,88 @@ export function drawGeometry(
     gl.uniform2fv(main_u_scale, scale.arr);
     gl.uniform2f(main_u_rotation, Math.cos(rotation), Math.sin(rotation));
     gl.uniform2fv(main_u_translation, translation.arr);
-    // @ts-ignore
     gl.uniform4fv(main_u_color, tint);
     gl.uniform1ui(main_u_noTex, 0);
 
-    if (repeatX)
-        if (mirroredX)
+    if (repeatX) {
+        if (mirroredX) {
             gl.texParameteri(
                 gl.TEXTURE_2D,
                 gl.TEXTURE_WRAP_S,
                 gl.MIRRORED_REPEAT,
             );
-        else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-    else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    if (repeatY)
-        if (mirroredY)
+        } else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    } else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    if (repeatY) {
+        if (mirroredY) {
             gl.texParameteri(
                 gl.TEXTURE_2D,
                 gl.TEXTURE_WRAP_T,
                 gl.MIRRORED_REPEAT,
             );
-        else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
-    else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        } else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+    } else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
     gl.drawArrays(gl.TRIANGLES, 0, triangles.length / 4);
 }
 
-export class Light { }
+export class Light {
+}
 
 export function renderLighting(
     ambientLight: GLColor,
     lights: Light[],
     offsetHitboxes: [Vector2D, Hitbox][],
 ) {
-    const
-        geometry = [
-            1, 0, 0, 0,
-            0, 0, 0, 1,
-            0, 1, 0, 0,
-            -1, 0, 0, 0,
-            0, 0, 0, 1,
-            0, -1, 0, 0,
-            1, 0, 0, 0,
-            0, 0, 0, 1,
-            0, -1, 0, 0,
-            -1, 0, 0, 0,
-            0, 0, 0, 1,
-            0, 1, 0, 0,
+    const geometry = [
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            1,
+            0,
+            0,
+            -1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            -1,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            -1,
+            0,
+            0,
+            -1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            1,
+            0,
+            0,
         ],
         color = [
             ...ambientLight,
@@ -557,22 +656,38 @@ export function renderLighting(
         switch (hitbox.type) {
             case "rect":
                 points.push(
-                    [Vector2D.add(
-                        Vector2D.add(pos, hitbox.offset),
-                        Vector2D.xy(-hitbox.w / 2, -hitbox.h / 2),
-                    ), hitbox, 0],
-                    [Vector2D.add(
-                        Vector2D.add(pos, hitbox.offset),
-                        Vector2D.xy(-hitbox.w / 2, +hitbox.h / 2),
-                    ), hitbox, 1],
-                    [Vector2D.add(
-                        Vector2D.add(pos, hitbox.offset),
-                        Vector2D.xy(+hitbox.w / 2, -hitbox.h / 2),
-                    ), hitbox, 2],
-                    [Vector2D.add(
-                        Vector2D.add(pos, hitbox.offset),
-                        Vector2D.xy(+hitbox.w / 2, +hitbox.h / 2),
-                    ), hitbox, 3],
+                    [
+                        Vector2D.add(
+                            Vector2D.add(pos, hitbox.offset),
+                            Vector2D.xy(-hitbox.w / 2, -hitbox.h / 2),
+                        ),
+                        hitbox,
+                        0,
+                    ],
+                    [
+                        Vector2D.add(
+                            Vector2D.add(pos, hitbox.offset),
+                            Vector2D.xy(-hitbox.w / 2, +hitbox.h / 2),
+                        ),
+                        hitbox,
+                        1,
+                    ],
+                    [
+                        Vector2D.add(
+                            Vector2D.add(pos, hitbox.offset),
+                            Vector2D.xy(+hitbox.w / 2, -hitbox.h / 2),
+                        ),
+                        hitbox,
+                        2,
+                    ],
+                    [
+                        Vector2D.add(
+                            Vector2D.add(pos, hitbox.offset),
+                            Vector2D.xy(+hitbox.w / 2, +hitbox.h / 2),
+                        ),
+                        hitbox,
+                        3,
+                    ],
                 );
                 break;
             case "circle":
@@ -585,24 +700,60 @@ export function renderLighting(
 
     // render light triangles
     geometry.push(
-        -100, -100, 0, 1,
-        -500, 100, 0, 1,
-        500, 500, 0, 0,
+        -100,
+        -100,
+        0,
+        1,
+        -500,
+        100,
+        0,
+        1,
+        500,
+        500,
+        0,
+        0,
     );
     color.push(
-        0, 1, 0, 1,
-        0, 0, 1, 1,
-        0, 1, 0, 1,
+        .2,
+        .2,
+        .2,
+        1,
+        .2,
+        .2,
+        .2,
+        1,
+        .2,
+        .2,
+        .2,
+        1,
     );
     geometry.push(
-        -100, -100, 0, 1,
-        -200, 400, 0, 1,
-        600, -500, 0, 0,
+        -100,
+        -100,
+        0,
+        1,
+        -200,
+        400,
+        0,
+        1,
+        600,
+        -500,
+        0,
+        0,
     );
     color.push(
-        0, 0, 1, 1,
-        0, 1, 0, 1,
-        0, 0, 1, 1,
+        .1,
+        .1,
+        .1,
+        1,
+        .1,
+        .1,
+        .1,
+        1,
+        .1,
+        .1,
+        .1,
+        1,
     );
 
     // get light at each point
@@ -628,30 +779,83 @@ export function renderLighting(
     gl.drawArrays(gl.TRIANGLES, 0, geometry.length / 4);
 }
 
-const
-    _geometry = new Float32Array([
-        -1, -1, -1, 1.,
-        1., -1, -1, 1.,
-        -1, 1., -1, 1.,
-        -1, 1., -1, 1.,
-        1., -1, -1, 1.,
-        1., 1., -1, 1.,
+const _geometry = new Float32Array([
+        -1,
+        -1,
+        -1,
+        1.,
+        1.,
+        -1,
+        -1,
+        1.,
+        -1,
+        1.,
+        -1,
+        1.,
+        -1,
+        1.,
+        -1,
+        1.,
+        1.,
+        -1,
+        -1,
+        1.,
+        1.,
+        1.,
+        -1,
+        1.,
     ]),
     _color = new Float32Array([
-        1, 1, 1, 1,
-        1, 1, 1, 1,
-        1, 1, 1, 1,
-        1, 1, 1, 1,
-        1, 1, 1, 1,
-        1, 1, 1, 1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
     ]),
     _texCoord = new Float32Array([
-        0, 0, 0, 1,
-        1, 0, 0, 1,
-        0, 1, 0, 1,
-        0, 1, 0, 1,
-        1, 0, 0, 1,
-        1, 1, 0, 1,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        1,
+        0,
+        0,
+        1,
+        1,
+        1,
+        0,
+        1,
     ]);
 export function composeDisplay() {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -678,14 +882,30 @@ export function composeDisplay() {
 
 export class RGBAColor {
     glColor: GLColor;
-    get r() { return this.glColor[0]; }
-    set r(r: number) { this.glColor[0] = r; }
-    get g() { return this.glColor[1]; }
-    set g(g: number) { this.glColor[1] = g; }
-    get b() { return this.glColor[2]; }
-    set b(b: number) { this.glColor[2] = b; }
-    get a() { return this.glColor[3]; }
-    set a(a: number) { this.glColor[3] = a; }
+    get r() {
+        return this.glColor[0];
+    }
+    set r(r: number) {
+        this.glColor[0] = r;
+    }
+    get g() {
+        return this.glColor[1];
+    }
+    set g(g: number) {
+        this.glColor[1] = g;
+    }
+    get b() {
+        return this.glColor[2];
+    }
+    set b(b: number) {
+        this.glColor[2] = b;
+    }
+    get a() {
+        return this.glColor[3];
+    }
+    set a(a: number) {
+        this.glColor[3] = a;
+    }
 
     constructor(r: number, g: number, b: number, a: number = 1) {
         this.glColor = new Float32Array([r, g, b, a]) as unknown as GLColor;
@@ -703,20 +923,28 @@ export class RGBAColor {
         const max = Math.max(this.r, this.g, this.b),
             min = Math.min(this.r, this.g, this.b),
             d = max - min,
-            s = (max === 0 ? 0 : d / max),
+            s = max === 0 ? 0 : d / max,
             v = max;
         let h: number;
         switch (max) {
-            case min: h = 0; break;
+            case min:
+                h = 0;
+                break;
             case this.r:
-                h = (this.g - this.b);
+                h = this.g - this.b;
                 if (this.g < this.b) h += d * 6;
                 h /= 6 * d;
                 break;
-            case this.g: h = (this.b - this.r) + d * 2; h /= 6 * d; break;
-            case this.b: h = (this.r - this.g) + d * 4; h /= 6 * d; break;
+            case this.g:
+                h = (this.b - this.r) + d * 2;
+                h /= 6 * d;
+                break;
+            case this.b:
+            default:
+                h = (this.r - this.g) + d * 4;
+                h /= 6 * d;
+                break;
         }
-        // @ts-ignore
         return new HSVAColor(h, s, v, this.a);
     }
 
@@ -788,7 +1016,7 @@ export class HSVAColor {
         public s: number,
         public v: number,
         public a: number,
-    ) { }
+    ) {}
 
     toRGBA(): RGBAColor {
         const i = (this.h * 6) | 0,
@@ -798,14 +1026,26 @@ export class HSVAColor {
             t = this.v * (1 - (1 - f) * this.s);
         let r: number, g: number, b: number;
         switch (i % 6) {
-            case 0: r = this.v, g = t, b = p; break;
-            case 1: r = q, g = this.v, b = p; break;
-            case 2: r = p, g = this.v, b = t; break;
-            case 3: r = p, g = q, b = this.v; break;
-            case 4: r = t, g = p, b = this.v; break;
-            case 5: r = this.v, g = p, b = q; break;
+            case 0:
+                r = this.v, g = t, b = p;
+                break;
+            case 1:
+                r = q, g = this.v, b = p;
+                break;
+            case 2:
+                r = p, g = this.v, b = t;
+                break;
+            case 3:
+                r = p, g = q, b = this.v;
+                break;
+            case 4:
+                r = t, g = p, b = this.v;
+                break;
+            case 5:
+            default:
+                r = this.v, g = p, b = q;
+                break;
         }
-        // @ts-ignore
         return new RGBAColor(r, g, b, this.a);
     }
 }
@@ -863,7 +1103,7 @@ export function createEndScreen(
     endScreenContainer.className = "end-screen-container";
 
     const endScreen = endScreenContainer.appendChild(
-        document.createElement("center")
+        document.createElement("center"),
     );
     endScreen.className = "end-screen";
 
@@ -872,61 +1112,77 @@ export function createEndScreen(
         case "none":
             header.innerText = "Undecided";
             break;
-        case "player":
+        case "player": {
             const span = header.appendChild(document.createElement("span"));
-            span.innerText = `[P${winnerData.player.number}] `
-                + winnerData.player.name;
+            span.innerText = `[P${winnerData.player.number}] ` +
+                winnerData.player.name;
             span.style.color = winnerData.player.color.toCSS();
             header.appendChild(document.createTextNode(" Won!"));
             break;
+        }
         case "players":
-            if (winnerData.players.length >= numPlayers)
+            if (winnerData.players.length >= numPlayers) {
                 header.innerText = "Everyone won!?";
-            else switch (winnerData.players.length) {
-                case 2:
-                    {
-                        const span =
-                            header.appendChild(document.createElement("span"));
-                        span.innerText = `[P${winnerData.players[0].number}] `
-                            + winnerData.players[0].name;
-                        span.style.color = winnerData.players[0].color.toCSS();
-                    }
-                    header.appendChild(document.createTextNode(" and "));
-                    {
-                        const span =
-                            header.appendChild(document.createElement("span"));
-                        span.innerText = `[P${winnerData.players[1].number}] `
-                            + winnerData.players[1].name;
-                        span.style.color = winnerData.players[1].color.toCSS();
-                    }
-                    header.appendChild(document.createTextNode(" Won!"));
-                    break;
-                case 3:
-                    {
-                        const span =
-                            header.appendChild(document.createElement("span"));
-                        span.innerText = `[P${winnerData.players[0].number}] `
-                            + winnerData.players[0].name;
-                        span.style.color = winnerData.players[0].color.toCSS();
-                    }
-                    header.appendChild(document.createTextNode(", "));
-                    {
-                        const span =
-                            header.appendChild(document.createElement("span"));
-                        span.innerText = `[P${winnerData.players[1].number}] `
-                            + winnerData.players[1].name;
-                        span.style.color = winnerData.players[1].color.toCSS();
-                    }
-                    header.appendChild(document.createTextNode(", and "));
-                    {
-                        const span =
-                            header.appendChild(document.createElement("span"));
-                        span.innerText = `[P${winnerData.players[2].number}] `
-                            + winnerData.players[2].name;
-                        span.style.color = winnerData.players[2].color.toCSS();
-                    }
-                    header.appendChild(document.createTextNode(" Won!"));
-            }
+            } else {switch (winnerData.players.length) {
+                    case 2:
+                        {
+                            const span = header.appendChild(
+                                document.createElement("span"),
+                            );
+                            span.innerText =
+                                `[P${winnerData.players[0].number}] ` +
+                                winnerData.players[0].name;
+                            span.style.color = winnerData.players[0].color
+                                .toCSS();
+                        }
+                        header.appendChild(document.createTextNode(" and "));
+                        {
+                            const span = header.appendChild(
+                                document.createElement("span"),
+                            );
+                            span.innerText =
+                                `[P${winnerData.players[1].number}] ` +
+                                winnerData.players[1].name;
+                            span.style.color = winnerData.players[1].color
+                                .toCSS();
+                        }
+                        header.appendChild(document.createTextNode(" Won!"));
+                        break;
+                    case 3:
+                        {
+                            const span = header.appendChild(
+                                document.createElement("span"),
+                            );
+                            span.innerText =
+                                `[P${winnerData.players[0].number}] ` +
+                                winnerData.players[0].name;
+                            span.style.color = winnerData.players[0].color
+                                .toCSS();
+                        }
+                        header.appendChild(document.createTextNode(", "));
+                        {
+                            const span = header.appendChild(
+                                document.createElement("span"),
+                            );
+                            span.innerText =
+                                `[P${winnerData.players[1].number}] ` +
+                                winnerData.players[1].name;
+                            span.style.color = winnerData.players[1].color
+                                .toCSS();
+                        }
+                        header.appendChild(document.createTextNode(", and "));
+                        {
+                            const span = header.appendChild(
+                                document.createElement("span"),
+                            );
+                            span.innerText =
+                                `[P${winnerData.players[2].number}] ` +
+                                winnerData.players[2].name;
+                            span.style.color = winnerData.players[2].color
+                                .toCSS();
+                        }
+                        header.appendChild(document.createTextNode(" Won!"));
+                }}
     }
 
     endScreen.appendChild(leaderboardTable);

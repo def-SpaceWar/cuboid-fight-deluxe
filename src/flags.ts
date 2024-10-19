@@ -1,4 +1,4 @@
-import { GLColor } from "./render";
+import { GLColor } from "./render.ts";
 
 /** The amount of previous dts to sample for FPS */
 export const FPS_SAMPLE_AMOUNT = 25;
