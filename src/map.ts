@@ -88,6 +88,8 @@ export class Map1 implements GameMap {
                 }
 
                 for (let i = 0; i < players.length; i++) {
+                    if (players[i].physicsBody.pos.y > 1_000)
+                        players[i].takeDamage(2, {type: "environment"});
                     players[i].render(dt);
                 }
 
