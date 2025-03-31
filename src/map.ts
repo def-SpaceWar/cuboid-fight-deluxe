@@ -9,20 +9,28 @@ import {
 } from "./platform.ts";
 import { Vector2D } from "./math.ts";
 import {
+    ambientGeometry,
     clearScreen,
     composeDisplay,
     createEndScreen,
     defaultRectColor,
     drawGeometry,
+    generateAmbientColor,
     loadImage,
     rectToGeometry,
     renderLighting,
 } from "./render.ts";
 import { renderParticles } from "./particle.ts";
 import { isPressed, listenToInput, stopListeningToInput } from "./input.ts";
-import { renderLoop, timeout, updateLoop } from "./loop.ts";
+import {
+    clearTimer,
+    renderLoop,
+    repeatedTimeout,
+    timeout,
+    updateLoop,
+} from "./loop.ts";
 import { toggleHitboxes } from "./flags.ts";
-import { MainMenu, Scene } from "./scene.ts";
+import { JoinOrCreateLobby, Scene } from "./scene.ts";
 
 export interface GameMap extends Scene {
     readonly gamemode: Gamemode;
@@ -39,12 +47,12 @@ export class Map1 implements GameMap {
     }
 
     platforms = [
-        new StonePlatform(Vector2D.xy(0, 150), 200, 25),
-        new GrassPlatform(Vector2D.xy(-100, 300), 500, 100),
-        new StonePlatform(Vector2D.xy(500, 50), 150, 15),
         new GrassPlatform(Vector2D.xy(-300, -200), 300, 45),
+        new GrassPlatform(Vector2D.xy(-100, 300), 500, 100),
         new GrassPlatform(Vector2D.xy(-100, -300), 300, 35),
+        new StonePlatform(Vector2D.xy(0, 150), 200, 25),
         new GrassPlatform(Vector2D.xy(300, -100), 300, 35),
+        new StonePlatform(Vector2D.xy(500, 50), 150, 15),
         new StonePlatform(Vector2D.xy(500, 300), 350, 200),
     ];
 
@@ -54,6 +62,31 @@ export class Map1 implements GameMap {
         Vector2D.x(475),
         Vector2D.x(-200),
     ];
+
+    lightGeometry = new Float32Array([
+        ...ambientGeometry,
+
+        // platform 0
+        ...[.25, -1, 0, 0],
+        ...[-450, -222.5, 0, 1],
+        ...[-450, -177.5, 0, 1],
+        ...[.25, -1, 0, 0],
+        ...[-450, -177.5, 0, 1],
+        ...[-150, -177.5, 0, 1],
+
+        // platform 1
+        ...[.25, -1, 0, 0],
+        ...[-350, 250, 0, 1],
+        ...[-350, 350, 0, 1],
+        ...[.25, -1, 0, 0],
+        ...[-350, 350, 0, 1],
+        ...[150, 350, 0, 1],
+    ]);
+
+    lightColor = new Float32Array([
+        ...generateAmbientColor([.7, .75, .8, 1]),
+        ...(new Float32Array(256).fill(1)),
+    ]);
 
     getRespawnPoint(): Vector2D {
         return this.respawnPoints[(Math.random() * 4) | 0];
@@ -74,6 +107,23 @@ export class Map1 implements GameMap {
             let gameOver = false;
             const platforms = this.platforms;
 
+            // TODO: remove and replace with damage areas/platforms
+            const damageTimer = repeatedTimeout(() => {
+                for (let i = 0; i < players.length; i++) {
+                    if (
+                        !players[i].isDead &&
+                        (
+                            players[i].physicsBody.pos.y > 1_000 ||
+                            players[i].physicsBody.pos.y < -1_000 ||
+                            players[i].physicsBody.pos.x > 2_000 ||
+                            players[i].physicsBody.pos.x < -2_000
+                        )
+                    ) {
+                        players[i].takeDamage(10, { type: "environment" });
+                    }
+                }
+            }, .1);
+
             const stopRender = renderLoop((dt: number) => {
                 clearScreen();
                 drawGeometry(
@@ -88,18 +138,12 @@ export class Map1 implements GameMap {
                 }
 
                 for (let i = 0; i < players.length; i++) {
-                    if (players[i].physicsBody.pos.y > 1_000)
-                        players[i].takeDamage(2, {type: "environment"});
                     players[i].render(dt);
                 }
 
                 renderParticles(dt);
 
-                renderLighting(
-                    [.7, .7, .7, 1],
-                    [],
-                    [],
-                );
+                renderLighting(this.lightGeometry, this.lightColor);
 
                 composeDisplay();
 
@@ -143,6 +187,7 @@ export class Map1 implements GameMap {
                             // @ts-ignore:
                             players = null;
 
+                            clearTimer(damageTimer);
                             stopRender();
                             stopUpdate();
                             removeEndScreen();
@@ -155,10 +200,11 @@ export class Map1 implements GameMap {
                             // @ts-ignore:
                             players = null;
 
+                            clearTimer(damageTimer);
                             stopRender();
                             stopUpdate();
                             removeEndScreen();
-                            resolve(new MainMenu());
+                            resolve(new JoinOrCreateLobby());
                         },
                     );
                 }, 2);

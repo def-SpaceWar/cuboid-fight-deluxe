@@ -1,4 +1,4 @@
-import { FPS_SAMPLE_AMOUNT, MIN_DT, TPS_SAMPLE_AMOUNT } from "./flags.ts";
+import { FPS_SAMPLE_AMOUNT, MIN_DT, TPS, TPS_SAMPLE_AMOUNT } from "./flags.ts";
 const app = document.getElementById("app")!;
 
 export function renderLoop(c: () => unknown): () => void;
@@ -66,7 +66,7 @@ export function updateLoop(c: (dt: number) => unknown) {
         const dtPrime = Math.min(dt, MIN_DT);
         c(dtPrime);
         tickTimers(dtPrime);
-    }, 1);
+    }, 1_000 / TPS);
     return () => {
         tpsTextNode.remove();
         tpsText.remove();
@@ -101,8 +101,18 @@ export function timeout(c: () => unknown, t: number) {
     return timer;
 }
 
-export function repeatedTimeout(c: () => unknown, t: number) {
-    const timer: Timer = [c, t, true, t];
+export function repeatedTimeout(c: () => unknown, t: number): Timer;
+export function repeatedTimeout(
+    c: () => unknown,
+    initialTimeout: number,
+    repeatTime: number,
+): Timer;
+export function repeatedTimeout(
+    c: () => unknown,
+    t: number,
+    rt: number = t,
+) {
+    const timer: Timer = [c, t, true, rt];
     timers.push(timer);
     return timer;
 }

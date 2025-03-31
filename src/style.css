@@ -8,6 +8,8 @@
 body {
     margin: 0;
     background-color: black;
+    font-size: 2.5rem;
+    color: #B0BBBF;
 }
 
 canvas {
@@ -17,24 +19,125 @@ canvas {
     width: 100vw;
     height: 100vh;
     z-index: -1;
-    image-rendering: crisp-edges;
-    background-color: black;
+    image-rendering: pixelated,crisp-edges;
+    background-color: #2A2A2A;
 }
 
-#start-game {
+#app {
     position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    background-color: #55DD11;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+#spacer {
+    flex-grow: .1;
+}
+
+input {
+    background-color: #444;
     border: none;
-    font-size: 4rem;
+    font-size: 3rem;
+    text-align: center;
+    outline: none;
+    color: #B0BBBF;
+    width: 24rem;
+}
+
+#join-lobby {
+    background-color: #1155DD;
+    border: none;
+    font-size: 3rem;
     padding-left: 2rem;
     padding-right: 2rem;
 }
 
-#start-game:hover {
+#join-lobby:hover {
+    background-color: #3377FF;
+}
+
+#create-lobby {
+    background-color: #55DD11;
+    border: none;
+    font-size: 3rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
+
+#create-lobby:hover {
     background-color: #77FF33;
+}
+
+#lobby-answer-data {
+    background-color: #444;
+    border: none;
+    font-size: 3rem;
+    text-align: center;
+    outline: none;
+    color: #B0BBBF;
+    width: 24rem;
+    height: 24rem;
+    resize: none;
+    overflow: scroll;
+}
+
+#invite-ui {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 40vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    background-color: #252525;
+    scale: .9;
+}
+
+#lobby-ui {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: row;
+    background-color: #252525;
+    scale: .9;
+}
+
+#lobby-ui-host {
+    position: absolute;
+    top: 0;
+    left: 40vw;
+    width: 60vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: row;
+    background-color: #252525;
+    scale: .9;
+}
+
+#accept-lobby {
+    background-color: #DD1155;
+    border: none;
+    font-size: 3rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
+
+#accept-lobby:hover {
+    background-color: #FF3377;
 }
 
 #fps {
@@ -146,9 +249,10 @@ canvas {
 }
 
 .player-ui-rect {
+    position: absolute;
+    display: flex;
     margin: 0;
     padding: 4px;
-    position: absolute;
 }
 
 .player-ui-img {
@@ -166,8 +270,10 @@ canvas {
     position: absolute;
     width: 135px;
     height: 45px;
+    image-rendering: pixelated;
     image-rendering: crisp-edges;
     mix-blend-mode: multiply;
+    transform: translateX(-23px);
 }
 
 .player-ui-text {

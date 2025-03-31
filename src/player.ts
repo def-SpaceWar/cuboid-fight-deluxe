@@ -47,20 +47,64 @@ export const Binding = {
     },
 };
 
-export type Controls = {
-    left: Control;
-    up: Control;
-    down: Control;
-    right: Control;
-    attack: Control;
-    special: Control;
-};
+export interface PlayerInput {
+    left(): boolean;
+    up(): boolean;
+    down(): boolean;
+    right(): boolean;
+    attack(): boolean;
+    special(): boolean;
+}
 
 function isControlDown(c: Control) {
-    // @ts-ignore:
-    if (c.key) return isPressed(c.key);
-    // @ts-ignore:
+    if ("key" in c) return isPressed(c.key);
     return isMousePressed(c.button);
+}
+
+export class Controls implements PlayerInput {
+    left: () => boolean;
+    up: () => boolean;
+    down: () => boolean;
+    right: () => boolean;
+    attack: () => boolean;
+    special: () => boolean;
+
+    constructor(
+        { left, up, down, right, attack, special }: {
+            left: Control;
+            up: Control;
+            down: Control;
+            right: Control;
+            attack: Control;
+            special: Control;
+        },
+    ) {
+        this.left = () => isControlDown(left);
+        this.up = () => isControlDown(up);
+        this.down = () => isControlDown(down);
+        this.right = () => isControlDown(right);
+        this.attack = () => isControlDown(attack);
+        this.special = () => isControlDown(special);
+    }
+}
+
+export class RandomControls implements PlayerInput {
+    left: () => boolean;
+    up: () => boolean;
+    down: () => boolean;
+    right: () => boolean;
+    attack: () => boolean;
+    special: () => boolean;
+
+    constructor() {
+        this.left =
+            this.up =
+            this.down =
+            this.right =
+            this.attack =
+            this.special =
+                () => Math.random() > 0.5;
+    }
 }
 
 const playerUiCoords = {
@@ -89,7 +133,7 @@ export type HealReason =
     };
 export interface Player {
     color: RGBAColor;
-    controls: Controls;
+    input: PlayerInput;
     number: PlayerNumber;
     name: string;
     allPlayers: Player[];
@@ -131,8 +175,8 @@ export interface Player {
     onPlayerCollision(p: Player): void;
 
     takeKb(kb: Vector2D): void;
-    takeDamage(damage: number, reason: DamageReason): void;
-    takeHealing(health: number, reason: HealReason): void;
+    takeDamage(damage: number, reason: DamageReason): number;
+    takeHealing(health: number, reason: HealReason): number;
 
     onDestroy(): void;
 }
@@ -142,14 +186,15 @@ export function getPlayers(map: GameMap): Player[] {
     players.push(
         new Default(
             new RGBAColor(1, .2, .3),
-            {
+            //new RandomControls(),
+            new Controls({
                 left: Binding.key("ArrowLeft"),
                 up: Binding.key("ArrowUp"),
                 down: Binding.key("ArrowDown"),
                 right: Binding.key("ArrowRight"),
                 attack: Binding.key("/"),
                 special: Binding.key("."),
-            },
+            }),
             1,
             "Mafia",
             players,
@@ -157,14 +202,14 @@ export function getPlayers(map: GameMap): Player[] {
         ),
         new Default(
             new RGBAColor(0, .5, 1),
-            {
+            new Controls({
                 left: Binding.key("s"),
                 up: Binding.key("e"),
                 down: Binding.key("d"),
                 right: Binding.key("f"),
                 attack: Binding.key("w"),
                 special: Binding.key("q"),
-            },
+            }),
             2,
             "Innocent",
             players,
@@ -293,7 +338,7 @@ export class Default implements Player {
 
     constructor(
         public color: RGBAColor,
-        public controls: Controls,
+        public input: Controls,
         public number: 1 | 2 | 3 | 4,
         public name: string,
         public allPlayers: Player[],
@@ -629,9 +674,30 @@ export class Default implements Player {
     }
 
     update(dt: number) {
-        this.physicsBody.vel.y += 2_500 * dt;
-        if (this.isGroundPounding) this.physicsBody.vel.y += 5_000 * dt;
+        this.physicsBody.vel.x += (
+            // @ts-ignore: boolean math ftw
+            this.input.right() -
+            // @ts-ignore: boolean math ftw
+            this.input.left()
+        ) * this.speed * this.speedMultiplier * dt / 2;
+        this.physicsBody.vel.y += (
+            // @ts-ignore: boolean math ftw
+            2_500 + this.isGroundPounding * 5_000
+        ) * dt / 2;
+
         this.physicsBody.update(dt);
+
+        this.physicsBody.vel.x += (
+            // @ts-ignore: boolean math ftw
+            this.input.right() -
+            // @ts-ignore: boolean math ftw
+            this.input.left()
+        ) * this.speed * this.speedMultiplier * dt / 2;
+        this.physicsBody.vel.y += (
+            // @ts-ignore: boolean math ftw
+            2_500 + this.isGroundPounding * 5_000
+        ) * dt / 2;
+
         this.visualOffset.Sn(Math.exp(dt * this.visualDiminishConstant));
 
         this.attackTimer -= dt * this.abilitySpeedMultiplier;
@@ -644,18 +710,15 @@ export class Default implements Player {
         }
 
         if (this.isDead) return;
-        const sped = this.speed * this.speedMultiplier * dt;
-        if (isControlDown(this.controls.left)) this.physicsBody.vel.x -= sped;
-        if (isControlDown(this.controls.right)) this.physicsBody.vel.x += sped;
-        if (isControlDown(this.controls.up)) this.jump();
-        if (isControlDown(this.controls.down)) {
+        if (this.input.up()) this.jump();
+        if (this.input.down()) {
             if (this.isGrounded) this.phase();
             else this.groundPound();
         }
-        if (this.canPressAttackKey && isControlDown(this.controls.attack)) {
+        if (this.input.attack() && this.canPressAttackKey) {
             this.attack();
         }
-        if (isControlDown(this.controls.special)) this.special();
+        if (this.input.special()) this.special();
         this.isGrounded = false;
     }
 
@@ -816,6 +879,7 @@ export class Default implements Player {
     }
 
     takeDamage(damage: number, reason: DamageReason) {
+        const origHealth = this.health;
         this.health -= damage * this.damageMultiplier;
         this.color.pulseFromGL(DAMAGE_COLOR, .25);
 
@@ -844,7 +908,7 @@ export class Default implements Player {
             );
         }
 
-        if (this.health > 0) return;
+        if (this.health > 0) return origHealth - this.health;
         this.health = 0;
         if (this.lives > 0) this.lives -= 1;
 
@@ -862,10 +926,13 @@ export class Default implements Player {
             (this.map.gamemode.secondDisplay == "lives" &&
                 this.lives > 0)
         ) this.respawn();
+        return origHealth;
     }
 
     takeHealing(health: number, reason: HealReason) {
-        if (this.isDead) return;
+        if (this.isDead) return 0;
+
+        const origHealth = this.health;
         this.health += health * this.healMultiplier;
         this.color.pulseFromGL(HEAL_COLOR, .25);
 
@@ -878,6 +945,7 @@ export class Default implements Player {
                 .2 + Math.log10(health) / 2,
             );
         }
+        return this.health - origHealth;
     }
 
     onDestroy() {

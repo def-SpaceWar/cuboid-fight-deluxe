@@ -1,10 +1,10 @@
 import { setupRender } from "./render.ts";
-import { MainMenu, Scene } from "./scene.ts";
+import { JoinOrCreateLobby, Scene } from "./scene.ts";
 import "./style.css";
 
 setupRender();
 
 for (
-    let scene: Scene = new MainMenu();
+    let scene: Scene = new JoinOrCreateLobby();
     (scene = await scene.run());
 );

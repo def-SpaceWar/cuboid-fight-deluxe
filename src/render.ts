@@ -577,200 +577,93 @@ export function drawGeometry(
     gl.drawArrays(gl.TRIANGLES, 0, triangles.length / 4);
 }
 
-export class Light {
+export interface Light {
+    //
+}
+
+export const ambientGeometry = [
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    1,
+    0,
+    0,
+    -1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    -1,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    -1,
+    0,
+    0,
+    -1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    1,
+    0,
+    0,
+];
+
+export function generateAmbientColor(color: GLColor) {
+    return [
+        ...color,
+        ...color,
+        ...color,
+        ...color,
+        ...color,
+        ...color,
+        ...color,
+        ...color,
+        ...color,
+        ...color,
+        ...color,
+        ...color,
+    ];
 }
 
 export function renderLighting(
-    ambientLight: GLColor,
-    lights: Light[],
-    offsetHitboxes: [Vector2D, Hitbox][],
+    geometry: Float32Array,
+    color: Float32Array,
 ) {
-    const geometry = [
-            1,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            1,
-            0,
-            0,
-            -1,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            -1,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            -1,
-            0,
-            0,
-            -1,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            1,
-            0,
-            0,
-        ],
-        color = [
-            ...ambientLight,
-            ...ambientLight,
-            ...ambientLight,
-            ...ambientLight,
-            ...ambientLight,
-            ...ambientLight,
-            ...ambientLight,
-            ...ambientLight,
-            ...ambientLight,
-            ...ambientLight,
-            ...ambientLight,
-            ...ambientLight,
-        ];
-
-    const points: [Vector2D, Hitbox, number][] = [];
-    for (let i = 0; i < offsetHitboxes.length; i++) {
-        const [pos, hitbox] = offsetHitboxes[i];
-        switch (hitbox.type) {
-            case "rect":
-                points.push(
-                    [
-                        Vector2D.add(
-                            Vector2D.add(pos, hitbox.offset),
-                            Vector2D.xy(-hitbox.w / 2, -hitbox.h / 2),
-                        ),
-                        hitbox,
-                        0,
-                    ],
-                    [
-                        Vector2D.add(
-                            Vector2D.add(pos, hitbox.offset),
-                            Vector2D.xy(-hitbox.w / 2, +hitbox.h / 2),
-                        ),
-                        hitbox,
-                        1,
-                    ],
-                    [
-                        Vector2D.add(
-                            Vector2D.add(pos, hitbox.offset),
-                            Vector2D.xy(+hitbox.w / 2, -hitbox.h / 2),
-                        ),
-                        hitbox,
-                        2,
-                    ],
-                    [
-                        Vector2D.add(
-                            Vector2D.add(pos, hitbox.offset),
-                            Vector2D.xy(+hitbox.w / 2, +hitbox.h / 2),
-                        ),
-                        hitbox,
-                        3,
-                    ],
-                );
-                break;
-            case "circle":
-                throw "Not implemented!";
-        }
-    }
-
-    // sort points by distance to light
-    lights;
-
-    // render light triangles
-    geometry.push(
-        -100,
-        -100,
-        0,
-        1,
-        -500,
-        100,
-        0,
-        1,
-        500,
-        500,
-        0,
-        0,
-    );
-    color.push(
-        .2,
-        .2,
-        .2,
-        1,
-        .2,
-        .2,
-        .2,
-        1,
-        .2,
-        .2,
-        .2,
-        1,
-    );
-    geometry.push(
-        -100,
-        -100,
-        0,
-        1,
-        -200,
-        400,
-        0,
-        1,
-        600,
-        -500,
-        0,
-        0,
-    );
-    color.push(
-        .1,
-        .1,
-        .1,
-        1,
-        .1,
-        .1,
-        .1,
-        1,
-        .1,
-        .1,
-        .1,
-        1,
-    );
-
-    // get light at each point
-
-    // render the hitboxes with light
-
     gl.blendFunc(gl.ONE, gl.ONE);
     gl.bindFramebuffer(gl.FRAMEBUFFER, compose_lightingFb);
     gl.useProgram(lightingProgram);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(geometry), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, geometry, gl.STATIC_DRAW);
     gl.enableVertexAttribArray(lighting_a_position);
     gl.vertexAttribPointer(lighting_a_position, 4, gl.FLOAT, false, 0, 0);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(color), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, color, gl.STATIC_DRAW);
     gl.enableVertexAttribArray(lighting_a_color);
     gl.vertexAttribPointer(lighting_a_color, 4, gl.FLOAT, false, 0, 0);
 

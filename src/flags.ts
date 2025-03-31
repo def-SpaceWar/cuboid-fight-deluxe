@@ -9,6 +9,9 @@ export const TPS_SAMPLE_AMOUNT = 25;
 /** Maximum 󰇂t (used for when clicking off screen) */
 export const MIN_DT = 0.04; // 25 FPS/TPS
 
+/** Ticks per second (faster to make more realistic, slower for better networking) */
+export const TPS = 60;
+
 /** Render hitboxes */
 export let DEBUG_HITBOXES = false;
 export const toggleHitboxes = () => DEBUG_HITBOXES = !DEBUG_HITBOXES;

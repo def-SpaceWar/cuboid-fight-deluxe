@@ -213,6 +213,27 @@
       ]
     }
   },
+  "redirects": {
+    "https://esm.sh/@firebase/app@0.x?target=denonext": "https://esm.sh/@firebase/app@0.11.3?target=denonext"
+  },
+  "remote": {
+    "https://esm.sh/@firebase/app@0.11.3/denonext/app.mjs": "e7f64b14930692ea3206c4fbbee971677b8d0286327db6f810ec98d663956994",
+    "https://esm.sh/@firebase/app@0.11.3?target=denonext": "889de7eccf957baf3a3d8bc33dc4517913b1703bcf3cabe4f933877a2f8cac36",
+    "https://esm.sh/@firebase/component@0.6.13/denonext/component.mjs": "458feaf0f45253aeb3a587a27947a563db55886dc91e76046e5e05f8ea0ea41c",
+    "https://esm.sh/@firebase/firestore@4.7.10/denonext/firestore.mjs": "0a5cce0eaa5502ab9d7cdaac506da16f0c47176511b0108b162fb407f1d022f3",
+    "https://esm.sh/@firebase/logger@0.4.4/denonext/logger.mjs": "3d33d9c76be88e3debab394cea4ddda3ceafb67147d6eb207fcc106450244efd",
+    "https://esm.sh/@firebase/util@1.11.0/denonext/util.mjs": "c8590039cecf15706ffad8cdccf5d9a565ab6eda24afe09dcaa24848a23cc202",
+    "https://esm.sh/@firebase/webchannel-wrapper@1.0.3/denonext/bloom-blob.mjs": "ed461ef157498c3400de9e251385d5e87b9fa1981fbd1cf8f1403544d56f0b19",
+    "https://esm.sh/@firebase/webchannel-wrapper@1.0.3/denonext/webchannel-blob.mjs": "db3d492817514abe28ecbae093ec8c4dd581e447583d5593ea2c2ed143789d2b",
+    "https://esm.sh/firebase@11.5.0/app": "ecd452e061cd579b26f0b74f7d8fc84658c0d22d1a5404f2e7363a32fdfebea3",
+    "https://esm.sh/firebase@11.5.0/denonext/app.mjs": "dae6f4c08a2787cc4024faad4c45fcd883a2b573d7140c4019f2e2e75d468c58",
+    "https://esm.sh/firebase@11.5.0/denonext/firestore.mjs": "ffd052dfd2648334dcb6a9e3a4d0a79e82295b702fe382f0a17cb477da880912",
+    "https://esm.sh/firebase@11.5.0/firestore": "101ed7716e244294ad845e6e51ee9abfe1d209f50f3e45baecf1cd520eee5e3f",
+    "https://esm.sh/idb@7.1.1/denonext/build/wrap-idb-value.mjs": "059a9ff6c85eb79237a9500da25b7b92b8a0b85d7e215cb84294227c95975de5",
+    "https://esm.sh/idb@7.1.1/denonext/idb.mjs": "8277e35ae095896a2e5ce48d142bb37be9071d9984dfbeec2a425b7c7211c907",
+    "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js": "d62ea90814df80d1379304926f650aedbebccd71ebde03e22ece6d55dd74ee2f",
+    "https://www.gstatic.com/firebasejs/11.5.0/firebase-firestore.js": "61820ae6e70731e444403a794b93c387150f7289136673e9eee443007e1a547e"
+  },
   "workspace": {
     "dependencies": [
       "npm:@deno/vite-plugin@1",
