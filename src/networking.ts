@@ -13,7 +13,24 @@ export class Connection {
 
     constructor() {
         this.pc = new RTCPeerConnection({
-            "iceServers": [{ "urls": "stun:stun.gmx.net" }],
+            //['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302']
+            //"iceServers": [{ "urls": "stun:stun.gmx.net" }],
+            //"iceServers": [{
+            //    "urls": [
+            //        "stun:stun1.l.google.com:19302",
+            //        "stun:stun2.l.google.com:19302",
+            //    ],
+            //}],
+            iceServers: [
+                {
+                    urls: "stun:stun.relay.metered.ca:80",
+                },
+                {
+                    urls: "turn:standard.relay.metered.ca:80",
+                    username: "",
+                    credential: "",
+                },
+            ],
         }); //, { "optional": [{ "DtlsSrtpKeyAgreement": true }] });
     }
 
