@@ -23,11 +23,16 @@ jobs:
         with:
           deno-version: v2.x
 
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
       - name: Install step
         run: "deno i"
 
       - name: Build step
-        run: "deno run build"
+        run: "deno run build && echo -e \"VITE_FIREBASE_API_KEY=AIzaSyA84ujSkfLpF8ZmGlqrecg6_COpUibEf_IVITE_TURN_USERNAME=36c84ec55e36a8f40e69e86aVITE_TURN_CREDENTIAL=jG6bGW1qKk0N+lU1\" >> ./dist/.env"
 
       - name: Upload to Deno Deploy
         uses: denoland/deployctl@v1
@@ -35,3 +40,5 @@ jobs:
           project: "cuboid-fight-deluxe"
           entrypoint: "https://deno.land/std@0.217.0/http/file_server.ts"
           root: "dist"
+          
+          
