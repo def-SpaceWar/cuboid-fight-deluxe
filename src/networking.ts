@@ -7,6 +7,9 @@ export const setHost = (val: boolean) => isHosting = val;
  */
 export const connections = [] as Connection[];
 
+console.log(import.meta.env.VITE_FIREBASE_API_KEY);
+console.log(import.meta.env.VITE_TURN_CREDENTIAL);
+console.log(import.meta.env.VITE_TURN_USERNAME);
 export class Connection {
     pc: RTCPeerConnection;
     datachannel?: RTCDataChannel;
