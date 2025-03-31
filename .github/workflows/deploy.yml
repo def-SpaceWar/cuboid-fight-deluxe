@@ -32,7 +32,7 @@ jobs:
         run: "deno i"
 
       - name: Build step
-        run: "deno run build"
+        run: "deno run build && echo -e \"VITE_FIREBASE_API_KEY=AIzaSyA84ujSkfLpF8ZmGlqrecg6_COpUibEf_I\nVITE_TURN_USERNAME=36c84ec55e36a8f40e69e86a\nVITE_TURN_CREDENTIAL=jG6bGW1qKk0N+lU1\" >> .env.local"
 
       - name: Upload to Deno Deploy
         uses: denoland/deployctl@v1
