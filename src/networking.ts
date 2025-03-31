@@ -25,23 +25,23 @@ export class Connection {
                 { "urls": "stun:stun.relay.metered.ca:80" },
                 {
                     "urls": "turn:global.relay.metered.ca:80",
-                    "username": import.meta.env.VITE_TURN_USERNAME,
-                    "credential": import.meta.env.VITE_TURN_CREDENTIAL,
+                    "username": "36c84ec55e36a8f40e69e86a",
+                    "credential": "jG6bGW1qKk0N+lU1",
                 },
                 {
                     "urls": "turn:global.relay.metered.ca:80?transport=tcp",
-                    "username": import.meta.env.VITE_TURN_USERNAME,
-                    "credential": import.meta.env.VITE_TURN_CREDENTIAL,
+                    "username": "36c84ec55e36a8f40e69e86a",
+                    "credential": "jG6bGW1qKk0N+lU1",
                 },
                 {
                     "urls": "turn:global.relay.metered.ca:443",
-                    "username": import.meta.env.VITE_TURN_USERNAME,
-                    "credential": import.meta.env.VITE_TURN_CREDENTIAL,
+                    "username": "36c84ec55e36a8f40e69e86a",
+                    "credential": "jG6bGW1qKk0N+lU1",
                 },
                 {
                     "urls": "turns:global.relay.metered.ca:443?transport=tcp",
-                    "username": import.meta.env.VITE_TURN_USERNAME,
-                    "credential": import.meta.env.VITE_TURN_CREDENTIAL,
+                    "username": "36c84ec55e36a8f40e69e86a",
+                    "credential": "jG6bGW1qKk0N+lU1",
                 },
             ],
         }); //, { "optional": [{ "DtlsSrtpKeyAgreement": true }] });
