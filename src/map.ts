@@ -390,8 +390,7 @@ export class Map1 implements GameMap {
                     ): GameState<State, Input> {
                         for (let i = 0; i < incoming.inputs.length; i++) {
                             if (
-                                incoming.inputs[i] & PREDICTED &&
-                                ((old.inputs[i] & PREDICTED) != old.inputs[i])
+                                (old.inputs[i] & PREDICTED) != old.inputs[i]
                             ) {
                                 incoming.inputs[i] = old.inputs[i];
                             }
