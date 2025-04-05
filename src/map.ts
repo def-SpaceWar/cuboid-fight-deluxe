@@ -218,6 +218,7 @@ export class Map1 implements GameMap {
                         tick: number;
                         inputs: RawPlayerInput[];
                     } = JSON.parse(e.data);
+
                     if (data.inputs) {
                         if (isHosting) {
                             otherConnections.forEach((c) =>
@@ -281,7 +282,7 @@ export class Map1 implements GameMap {
                                     control.getInput();
                         }
                         const future = parkedInputs.get(updateLoop.gameTick);
-                        if (future) {
+                        if (future != undefined) {
                             for (const i in future) {
                                 inputs[i] = future[i]!;
                             }
