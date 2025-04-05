@@ -10,41 +10,48 @@ export const connections = [] as Connection[];
 export class Connection {
     pc: RTCPeerConnection;
     datachannel?: RTCDataChannel;
+    id?: string;
 
     constructor() {
-        this.pc = new RTCPeerConnection({
-            //['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302']
-            //"iceServers": [{ "urls": "stun:stun.gmx.net" }],
-            //"iceServers": [{
-            //    "urls": [
-            //        "stun:stun1.l.google.com:19302",
-            //        "stun:stun2.l.google.com:19302",
-            //    ],
-            //}],
-            iceServers: [
-                { "urls": "stun:stun.relay.metered.ca:80" },
-                {
-                    "urls": "turn:global.relay.metered.ca:80",
-                    "username": "36c84ec55e36a8f40e69e86a",
-                    "credential": "jG6bGW1qKk0N+lU1",
+        this.pc = new RTCPeerConnection(
+            import.meta.env.DEV
+                ? {
+                    "iceServers": [{ "urls": "stun:stun.gmx.net" }],
+                    //"iceServers": [{
+                    //    "urls": [
+                    //        "stun:stun1.l.google.com:19302",
+                    //        "stun:stun2.l.google.com:19302",
+                    //    ],
+                    //}],
+                }
+                : {
+                    iceServers: [
+                        { "urls": "stun:stun.relay.metered.ca:80" },
+                        {
+                            "urls": "turn:global.relay.metered.ca:80",
+                            "username": "36c84ec55e36a8f40e69e86a",
+                            "credential": "jG6bGW1qKk0N+lU1",
+                        },
+                        {
+                            "urls":
+                                "turn:global.relay.metered.ca:80?transport=tcp",
+                            "username": "36c84ec55e36a8f40e69e86a",
+                            "credential": "jG6bGW1qKk0N+lU1",
+                        },
+                        {
+                            "urls": "turn:global.relay.metered.ca:443",
+                            "username": "36c84ec55e36a8f40e69e86a",
+                            "credential": "jG6bGW1qKk0N+lU1",
+                        },
+                        {
+                            "urls":
+                                "turns:global.relay.metered.ca:443?transport=tcp",
+                            "username": "36c84ec55e36a8f40e69e86a",
+                            "credential": "jG6bGW1qKk0N+lU1",
+                        },
+                    ],
                 },
-                {
-                    "urls": "turn:global.relay.metered.ca:80?transport=tcp",
-                    "username": "36c84ec55e36a8f40e69e86a",
-                    "credential": "jG6bGW1qKk0N+lU1",
-                },
-                {
-                    "urls": "turn:global.relay.metered.ca:443",
-                    "username": "36c84ec55e36a8f40e69e86a",
-                    "credential": "jG6bGW1qKk0N+lU1",
-                },
-                {
-                    "urls": "turns:global.relay.metered.ca:443?transport=tcp",
-                    "username": "36c84ec55e36a8f40e69e86a",
-                    "credential": "jG6bGW1qKk0N+lU1",
-                },
-            ],
-        }); //, { "optional": [{ "DtlsSrtpKeyAgreement": true }] });
+        ); //, { "optional": [{ "DtlsSrtpKeyAgreement": true }] });
     }
 
     async offer() {
@@ -101,7 +108,11 @@ export class Connection {
             this.pc.onconnectionstatechange = (_) => {
                 console.log(this.pc.connectionState);
                 if (this.pc.connectionState == "connecting") return;
-                if (this.pc.connectionState == "connected") resolve();
+                if (this.pc.connectionState == "connected") {
+                    this.id = this.pc.remoteDescription!.sdp.split(" ")[1];
+                    console.log(this.id);
+                    resolve();
+                }
                 reject(this.pc.connectionState);
             };
         });

@@ -1,3 +1,4 @@
+import { Map1 } from "./map.ts";
 import { Connection, connections, isHosting, setHost } from "./networking.ts";
 import { clearScreen } from "./render.ts";
 
@@ -75,7 +76,6 @@ class AnswerLobby implements Scene {
         copyAnswer.innerText = "Copy and send to lobby host! (auto-copied)";
         await connection.connect();
         connections.push(connection);
-        console.log(connection.pc.remoteDescription!.sdp.split(" ")[1]);
         await connection.acquiredDataChannel!;
 
         const cleanScene = () => {
@@ -86,7 +86,7 @@ class AnswerLobby implements Scene {
         return new Promise<Scene>((resolve) => {
             connection.datachannel!.onmessage = (e) => {
                 cleanScene();
-                resolve(new Lobby(false, e.data));
+                resolve(new Lobby(false, JSON.parse(e.data).name));
             };
         });
     }
@@ -95,10 +95,9 @@ class AnswerLobby implements Scene {
 export class Lobby implements Scene {
     constructor(isHost: boolean, public name: string) {
         setHost(isHost);
-        console.log(this.name);
     }
 
-    async run() {
+    run() {
         if (isHosting) {
             const inviteUI = app.appendChild(
                 document.createElement("div"),
@@ -120,11 +119,6 @@ export class Lobby implements Scene {
             loadingInvite.placeholder = "Loading...";
             loadingInvite.disabled = true;
 
-            const connection = new Connection();
-            const offer = await connection.offer();
-            loadingInvite.value = offer;
-            navigator.clipboard.writeText(offer);
-
             const copyOffer = inviteUI.appendChild(document.createElement("p"));
             copyOffer.innerText =
                 "Copy and send to friend! (auto-copied)\nThen have your friend send you their answer!";
@@ -139,22 +133,52 @@ export class Lobby implements Scene {
             );
             joinLobbyBtn.id = "accept-lobby";
             joinLobbyBtn.innerText = "Accept Answer";
-            joinLobbyBtn.onclick = () => {
-                connection.acceptAnswer(acceptAnswer.value);
+
+            const getConnection = async () => {
+                const connection = new Connection();
+                const offer = await connection.offer();
+                loadingInvite.value = offer;
+                navigator.clipboard.writeText(offer);
+                joinLobbyBtn.onclick = async () => {
+                    connection.acceptAnswer(acceptAnswer.value);
+                    await connection.connect();
+                    await connection.dataOpen();
+                    connection.sendMessage(JSON.stringify({
+                        name: this.name,
+                    }));
+                    // send other lobby data too
+                    // connection.datachannel!.onmessage = (e) => {...};
+                    // send lobby data when host updates, and the clients also send their lobby data when they update to host
+                    connections.push(connection);
+                    acceptAnswer.value = "";
+                    getConnection();
+                };
             };
-            await connection.connect();
-            await connection.dataOpen();
-            connection.sendMessage(this.name);
-            console.log(connection.pc.remoteDescription!.sdp.split(" ")[1]);
+            getConnection();
 
             const cleanScene = () => {
                 inviteUI.remove();
                 lobbyUI.remove();
             };
 
+            const startGame = lobbyUI.appendChild(
+                document.createElement("button"),
+            );
+            startGame.id = "create-lobby";
+            startGame.innerText = "Start Game";
+
             return new Promise<Scene>((resolve) => {
+                startGame.onclick = () => {
+                    for (const connection of connections) {
+                        connection.sendMessage("start");
+                    }
+                    cleanScene();
+                    resolve(new Map1());
+                };
             });
         }
+
+        connections[0]; // host
 
         const lobbyUI = app.appendChild(
             document.createElement("div"),
@@ -170,6 +194,12 @@ export class Lobby implements Scene {
         };
 
         return new Promise<Scene>((resolve) => {
+            connections[0].datachannel!.onmessage = (e) => {
+                if (e.data == "start") {
+                    cleanScene();
+                    resolve(new Map1());
+                }
+            };
         });
     }
 }

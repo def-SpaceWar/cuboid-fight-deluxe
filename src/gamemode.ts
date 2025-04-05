@@ -3,7 +3,7 @@ import { Player } from "./player.ts";
 export type Gamemode = KillsGamemode | LivesGamemode;
 
 export function getGamemode(): Gamemode {
-    return new Deathmatch(3);
+    return new Stock(1);
 }
 
 export type Winner

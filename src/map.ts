@@ -1,6 +1,12 @@
 // @ts-ignore:
 import map1BgImg from "./assets/backgrounds/bg1.png";
-import { getPlayers } from "./player.ts";
+import {
+    Controls,
+    getPlayers,
+    parseRawInput,
+    PREDICTED,
+    RawPlayerInput,
+} from "./player.ts";
 import { Gamemode, getGamemode } from "./gamemode.ts";
 import {
     GrassPlatform,
@@ -23,14 +29,18 @@ import {
 import { renderParticles } from "./particle.ts";
 import { isPressed, listenToInput, stopListeningToInput } from "./input.ts";
 import {
-    clearTimer,
+    GameState,
+    isRollbacking,
     renderLoop,
-    repeatedTimeout,
+    setUpdateLoop,
+    tickTimers,
     timeout,
+    UpdateLoop,
     updateLoop,
 } from "./loop.ts";
 import { toggleHitboxes } from "./flags.ts";
 import { JoinOrCreateLobby, Scene } from "./scene.ts";
+import { connections, isHosting } from "./networking.ts";
 
 export interface GameMap extends Scene {
     readonly gamemode: Gamemode;
@@ -89,7 +99,7 @@ export class Map1 implements GameMap {
     ]);
 
     getRespawnPoint(): Vector2D {
-        return this.respawnPoints[(Math.random() * 4) | 0];
+        return this.respawnPoints[updateLoop.gameTick % 4];
     }
 
     async run() {
@@ -104,25 +114,10 @@ export class Map1 implements GameMap {
         }
 
         return await new Promise<Scene>((resolve) => {
-            let gameOver = false;
-            const platforms = this.platforms;
-
-            // TODO: remove and replace with damage areas/platforms
-            const damageTimer = repeatedTimeout(() => {
-                for (let i = 0; i < players.length; i++) {
-                    if (
-                        !players[i].isDead &&
-                        (
-                            players[i].physicsBody.pos.y > 1_000 ||
-                            players[i].physicsBody.pos.y < -1_000 ||
-                            players[i].physicsBody.pos.x > 2_000 ||
-                            players[i].physicsBody.pos.x < -2_000
-                        )
-                    ) {
-                        players[i].takeDamage(10, { type: "environment" });
-                    }
-                }
-            }, .1);
+            let gameOver = false,
+                canToggleHitboxes = true;
+            const map = (() => this)(), // gets rid of annoying warning
+                platforms = this.platforms;
 
             const stopRender = renderLoop((dt: number) => {
                 clearScreen();
@@ -152,63 +147,259 @@ export class Map1 implements GameMap {
                 }
             });
 
-            let canToggleHitboxes = true;
-            const stopUpdate = updateLoop((dt: number) => {
-                const platforms = this.platforms;
-                resolvePlatformPlayerCollisions(platforms, players);
+            const initialState = {
+                playerStates: players.map((p) => p.saveState()),
+            };
+            type State = typeof initialState;
+            const initialInput = [0, 0] as RawPlayerInput[];
+            type Input = typeof initialInput;
 
-                for (let i = 0; i < platforms.length; i++) {
-                    platforms[i].update(dt);
-                }
+            const localControls = isHosting
+                ? [
+                    new Controls({
+                        left: { key: "s" },
+                        up: { key: "e" },
+                        down: { key: "d" },
+                        right: { key: "f" },
+                        attack: { key: "w" },
+                        special: { key: "q" },
+                    }, 1),
+                ]
+                : [
+                    new Controls({
+                        left: { key: "s" },
+                        up: { key: "e" },
+                        down: { key: "d" },
+                        right: { key: "f" },
+                        attack: { key: "w" },
+                        special: { key: "q" },
+                    }, 2),
+                ];
 
-                for (let i = 0; i < players.length; i++) {
-                    players[i].update(dt);
-                }
+            const saveState = (
+                state: State,
+                inputs: Input,
+            ): GameState<State, Input> => {
+                return {
+                    state: {
+                        ...state,
+                        playerStates: players.map((p) => p.saveState()),
+                    },
+                    // TODO: make better
+                    inputs: inputs.map((i) => i | PREDICTED),
+                };
+            };
+            let removeEndScreen: () => void;
 
-                if (canToggleHitboxes && isPressed("Escape")) {
-                    canToggleHitboxes = false;
-                    timeout(() => canToggleHitboxes = true, .2);
-                    toggleHitboxes();
-                }
+            const parkedInputs = new Map<number, {
+                [playerNum: number]: RawPlayerInput | undefined;
+            }>();
+            for (const connection of connections) {
+                const otherConnections = connections.filter((c) =>
+                    c != connection
+                );
+                connection.datachannel!.onmessage = (e) => {
+                    if (!isHosting && e.data == "restart") {
+                        console.log("RESTARTING");
+                        for (let i = 0; i < players.length; i++) {
+                            players[i].onDestroy();
+                        }
+                        // @ts-ignore:
+                        players = null;
 
-                if (gameOver) return;
-                if (!(gameOver = this.gamemode.isGameOver(players))) return;
+                        stopRender();
+                        updateLoop.stop();
+                        removeEndScreen();
+                        resolve(new Map1());
+                        return;
+                    }
 
-                timeout(() => {
-                    stopListeningToInput();
-                    const removeEndScreen = createEndScreen(
-                        players.length,
-                        this.gamemode.getWinnerData(players),
-                        this.gamemode.getLeaderboardTable(players),
-                        () => {
-                            for (let i = 0; i < players.length; i++) {
-                                players[i].onDestroy();
+                    const data: {
+                        tick: number;
+                        inputs: RawPlayerInput[];
+                    } = JSON.parse(e.data);
+                    if (data.inputs) {
+                        if (isHosting) {
+                            otherConnections.forEach((c) =>
+                                c.sendMessage(e.data)
+                            );
+                        }
+
+                        if (data.tick >= updateLoop.gameTick) {
+                            parkedInputs.set(data.tick, data.inputs);
+                            return;
+                        }
+
+                        let match = true;
+                        for (const idx in data.inputs) {
+                            if (
+                                data.inputs[idx] ==
+                                    (updateLoop as UpdateLoop<State, Input>)
+                                            .inputStates[
+                                                data.tick - updateLoop.startTick
+                                            ].inputs[idx] - PREDICTED
+                            ) {
+                                (updateLoop as UpdateLoop<State, Input>)
+                                    .inputStates[
+                                        data.tick - updateLoop.startTick
+                                    ].inputs[idx] = data.inputs[idx];
+                                continue;
                             }
-                            // @ts-ignore:
-                            players = null;
+                            match = false;
+                        }
+                        if (match) return;
+                        (updateLoop as UpdateLoop<State, Input>).rollback(
+                            data.tick,
+                            ({ state, inputs }) => {
+                                return {
+                                    state,
+                                    inputs: inputs.map((input, idx) =>
+                                        data.inputs[idx] != undefined
+                                            ? data.inputs[idx]
+                                            : input
+                                    ),
+                                };
+                            },
+                        );
+                    }
+                };
+            }
 
-                            clearTimer(damageTimer);
-                            stopRender();
-                            stopUpdate();
-                            removeEndScreen();
-                            resolve(new Map1());
-                        },
-                        () => {
-                            for (let i = 0; i < players.length; i++) {
-                                players[i].onDestroy();
+            setUpdateLoop(
+                new (class extends UpdateLoop<State, Input> {
+                    getInput(
+                        { state, inputs }: GameState<State, Input>,
+                    ): GameState<State, Input> {
+                        const inputsToSend = {};
+                        for (let i = 0; i < inputs.length; i++) {
+                            inputs[i] = inputs[i] & PREDICTED;
+                        }
+                        for (const control of localControls) {
+                            // @ts-ignore:
+                            inputsToSend[control.playerNumber - 1] =
+                                inputs[control.playerNumber - 1] =
+                                    control.getInput();
+                        }
+                        const future = parkedInputs.get(updateLoop.gameTick);
+                        if (future) {
+                            for (const i in future) {
+                                inputs[i] = future[i]!;
                             }
-                            // @ts-ignore:
-                            players = null;
+                            parkedInputs.delete(updateLoop.gameTick);
+                        }
+                        for (const connection of connections) {
+                            connection.sendMessage(
+                                JSON.stringify({
+                                    tick: updateLoop.gameTick,
+                                    inputs: inputsToSend,
+                                }),
+                            );
+                        }
+                        return { state, inputs };
+                    }
+                    tick(
+                        { state, inputs }: GameState<State, Input>,
+                    ): GameState<State, Input> {
+                        for (let i = 0; i < players.length; i++) {
+                            players[i].restoreState(state.playerStates[i]);
+                        }
 
-                            clearTimer(damageTimer);
-                            stopRender();
-                            stopUpdate();
-                            removeEndScreen();
-                            resolve(new JoinOrCreateLobby());
-                        },
-                    );
-                }, 2);
-            });
+                        tickTimers();
+                        resolvePlatformPlayerCollisions(platforms, players);
+
+                        for (let i = 0; i < platforms.length; i++) {
+                            platforms[i].update();
+                        }
+
+                        for (let i = 0; i < players.length; i++) {
+                            players[i].update(
+                                parseRawInput(inputs[players[i].number - 1]),
+                            );
+                        }
+
+                        for (let i = 0; i < players.length; i++) {
+                            if (
+                                !players[i].isDead &&
+                                (
+                                    players[i].physicsBody.pos.y > 1_000 ||
+                                    players[i].physicsBody.pos.y < -1_000 ||
+                                    players[i].physicsBody.pos.x > 2_000 ||
+                                    players[i].physicsBody.pos.x < -2_000
+                                )
+                            ) {
+                                players[i].takeDamage(1, {
+                                    type: "environment",
+                                });
+                            }
+                        }
+
+                        if (canToggleHitboxes && isPressed("Escape")) {
+                            canToggleHitboxes = false;
+                            timeout(() => canToggleHitboxes = true, .2);
+                            toggleHitboxes();
+                        }
+
+                        if (isRollbacking) return saveState(state, inputs);
+                        if (gameOver) return saveState(state, inputs);
+                        if (!(gameOver = map.gamemode.isGameOver(players))) {
+                            return saveState(state, inputs);
+                        }
+
+                        setTimeout(() => {
+                            stopListeningToInput();
+                            removeEndScreen = createEndScreen(
+                                players.length,
+                                map.gamemode.getWinnerData(players),
+                                map.gamemode.getLeaderboardTable(players),
+                                () => {
+                                    for (let i = 0; i < players.length; i++) {
+                                        players[i].onDestroy();
+                                    }
+                                    // @ts-ignore:
+                                    players = null;
+
+                                    stopRender();
+                                    updateLoop.stop();
+                                    removeEndScreen();
+                                    resolve(new Map1());
+
+                                    for (const connection of connections) {
+                                        connection.sendMessage("restart");
+                                    }
+                                },
+                                () => {
+                                    for (let i = 0; i < players.length; i++) {
+                                        players[i].onDestroy();
+                                    }
+                                    // @ts-ignore:
+                                    players = null;
+
+                                    stopRender();
+                                    updateLoop.stop();
+                                    removeEndScreen();
+                                    resolve(new JoinOrCreateLobby());
+                                },
+                            );
+                        }, 2_000);
+
+                        return saveState(state, inputs);
+                    }
+                    mergeStates(
+                        incoming: GameState<State, Input>,
+                        old: GameState<State, Input>,
+                    ): GameState<State, Input> {
+                        for (let i = 0; i < incoming.inputs.length; i++) {
+                            if (
+                                incoming.inputs[i] & PREDICTED &&
+                                ((old.inputs[i] & PREDICTED) != old.inputs[i])
+                            ) {
+                                incoming.inputs[i] = old.inputs[i];
+                            }
+                        }
+                        return incoming;
+                    }
+                })({ state: initialState, inputs: initialInput }),
+            );
         });
     }
 }

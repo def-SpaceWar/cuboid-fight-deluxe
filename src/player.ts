@@ -24,12 +24,13 @@ import {
 import {
     DAMAGE_COLOR,
     DEBUG_HITBOXES,
+    DT,
     HEAL_COLOR,
     KILL_CREDIT_TIME,
 } from "./flags.ts";
 import { Platform } from "./platform.ts";
 import { isMousePressed, isPressed } from "./input.ts";
-import { clearTimer, timeout, Timer } from "./loop.ts";
+import { timeout } from "./loop.ts";
 import { GameMap } from "./map.ts";
 
 type Keybind = { key: string };
@@ -48,12 +49,12 @@ export const Binding = {
 };
 
 export interface PlayerInput {
-    left(): boolean;
-    up(): boolean;
-    down(): boolean;
-    right(): boolean;
-    attack(): boolean;
-    special(): boolean;
+    left: boolean;
+    up: boolean;
+    down: boolean;
+    right: boolean;
+    attack: boolean;
+    special: boolean;
 }
 
 function isControlDown(c: Control) {
@@ -61,16 +62,37 @@ function isControlDown(c: Control) {
     return isMousePressed(c.button);
 }
 
-export class Controls implements PlayerInput {
-    left: () => boolean;
-    up: () => boolean;
-    down: () => boolean;
-    right: () => boolean;
-    attack: () => boolean;
-    special: () => boolean;
+export type RawPlayerInput = number;
+export const PREDICTED = 0b1000000,
+    LEFT = 0b100000,
+    UP = 0b10000,
+    DOWN = 0b1000,
+    RIGHT = 0b100,
+    ATTACK = 0b10,
+    SPECIAL = 0b1;
+export function parseRawInput(raw: RawPlayerInput): Readonly<PlayerInput> {
+    return Object.freeze({
+        left: Boolean(raw & LEFT),
+        up: Boolean(raw & UP),
+        down: Boolean(raw & DOWN),
+        right: Boolean(raw & RIGHT),
+        attack: Boolean(raw & ATTACK),
+        special: Boolean(raw & SPECIAL),
+    });
+}
+
+export class Controls {
+    buttons: {
+        left: Control;
+        up: Control;
+        down: Control;
+        right: Control;
+        attack: Control;
+        special: Control;
+    };
 
     constructor(
-        { left, up, down, right, attack, special }: {
+        buttons: {
             left: Control;
             up: Control;
             down: Control;
@@ -78,32 +100,18 @@ export class Controls implements PlayerInput {
             attack: Control;
             special: Control;
         },
+        public playerNumber: PlayerNumber,
     ) {
-        this.left = () => isControlDown(left);
-        this.up = () => isControlDown(up);
-        this.down = () => isControlDown(down);
-        this.right = () => isControlDown(right);
-        this.attack = () => isControlDown(attack);
-        this.special = () => isControlDown(special);
+        this.buttons = buttons;
     }
-}
 
-export class RandomControls implements PlayerInput {
-    left: () => boolean;
-    up: () => boolean;
-    down: () => boolean;
-    right: () => boolean;
-    attack: () => boolean;
-    special: () => boolean;
-
-    constructor() {
-        this.left =
-            this.up =
-            this.down =
-            this.right =
-            this.attack =
-            this.special =
-                () => Math.random() > 0.5;
+    getInput(): RawPlayerInput {
+        return Number(isControlDown(this.buttons.left)) * LEFT +
+            Number(isControlDown(this.buttons.up)) * UP +
+            Number(isControlDown(this.buttons.down)) * DOWN +
+            Number(isControlDown(this.buttons.right)) * RIGHT +
+            Number(isControlDown(this.buttons.attack)) * ATTACK +
+            Number(isControlDown(this.buttons.special)) * SPECIAL;
     }
 }
 
@@ -133,7 +141,6 @@ export type HealReason =
     };
 export interface Player {
     color: RGBAColor;
-    input: PlayerInput;
     number: PlayerNumber;
     name: string;
     allPlayers: Player[];
@@ -155,8 +162,8 @@ export interface Player {
     deaths: number;
     lives: number;
 
-    lastHit?: Player;
-    lastHitTimer?: Timer;
+    lastHit?: PlayerNumber;
+    lastHitTimer: number;
 
     speedMultiplier: number;
     jumpMultiplier: number;
@@ -170,7 +177,7 @@ export interface Player {
 
     render(dt: number): void;
     renderUi(dt: number): void;
-    update(dt: number): void;
+    update(input: PlayerInput): void;
     onPlatformCollision(p: Platform): void;
     onPlayerCollision(p: Player): void;
 
@@ -179,6 +186,9 @@ export interface Player {
     takeHealing(health: number, reason: HealReason): number;
 
     onDestroy(): void;
+
+    saveState(): string;
+    restoreState(state: string): void;
 }
 
 export function getPlayers(map: GameMap): Player[] {
@@ -186,15 +196,6 @@ export function getPlayers(map: GameMap): Player[] {
     players.push(
         new Default(
             new RGBAColor(1, .2, .3),
-            //new RandomControls(),
-            new Controls({
-                left: Binding.key("ArrowLeft"),
-                up: Binding.key("ArrowUp"),
-                down: Binding.key("ArrowDown"),
-                right: Binding.key("ArrowRight"),
-                attack: Binding.key("/"),
-                special: Binding.key("."),
-            }),
             1,
             "Mafia",
             players,
@@ -202,14 +203,6 @@ export function getPlayers(map: GameMap): Player[] {
         ),
         new Default(
             new RGBAColor(0, .5, 1),
-            new Controls({
-                left: Binding.key("s"),
-                up: Binding.key("e"),
-                down: Binding.key("d"),
-                right: Binding.key("f"),
-                attack: Binding.key("w"),
-                special: Binding.key("q"),
-            }),
             2,
             "Innocent",
             players,
@@ -217,14 +210,6 @@ export function getPlayers(map: GameMap): Player[] {
         ),
         //new Default(
         //    new RGBAColor(.2, 1, .3),
-        //    {
-        //        left: Binding.key('aa'),
-        //        up: Binding.key('aa'),
-        //        down: Binding.key('aa'),
-        //        right: Binding.key('aa'),
-        //        attack: Binding.key('aa'),
-        //        special: Binding.key('aa'),
-        //    },
         //    3,
         //    "Villager",
         //    players,
@@ -232,14 +217,6 @@ export function getPlayers(map: GameMap): Player[] {
         //),
         //new Default(
         //    new RGBAColor(1, .8, .3),
-        //    {
-        //        left: Binding.key('aa'),
-        //        up: Binding.key('aa'),
-        //        down: Binding.key('aa'),
-        //        right: Binding.key('aa'),
-        //        attack: Binding.key('aa'),
-        //        special: Binding.key('aa'),
-        //    },
         //    4,
         //    "Mayor",
         //    players,
@@ -258,7 +235,7 @@ const defaultTex = await loadImage(defaultImg),
         offset: Vector2D.zero(),
         w: 50,
         h: 50,
-    },
+    } as RectangleHitbox,
     defaultMaxKb = 3_000;
 export class Default implements Player {
     visualOffset = Vector2D.zero();
@@ -266,17 +243,18 @@ export class Default implements Player {
     comboColor: GLColor;
     specialColor: GLColor;
 
-    hitbox: RectangleHitbox = defaultHitbox as RectangleHitbox;
+    hitbox: RectangleHitbox = defaultHitbox;
     physicsBody;
 
     speed = 1_000;
-    // airSpeed; for other classes
+    // airSpeed; for other classes like heavyweight
     isGrounded = false;
     jumpPower = 800;
+    jumpTimer = 0;
     canJump = true;
     doubleJumpCount = 0;
     isPhasing = false;
-    phaseTimeout?: Timer;
+    phaseTimer = 0;
 
     canAttack = true;
     canPressAttackKey = true;
@@ -323,8 +301,8 @@ export class Default implements Player {
     uiBg: HTMLDivElement;
     removeUiBg: () => void;
 
-    lastHit?: Player;
-    lastHitTimer?: Timer;
+    lastHit?: PlayerNumber;
+    lastHitTimer = 0;
 
     speedMultiplier = 1;
     jumpMultiplier = 1;
@@ -338,8 +316,7 @@ export class Default implements Player {
 
     constructor(
         public color: RGBAColor,
-        public input: Controls,
-        public number: 1 | 2 | 3 | 4,
+        public number: PlayerNumber,
         public name: string,
         public allPlayers: Player[],
         public map: GameMap,
@@ -673,35 +650,33 @@ export class Default implements Player {
         this.uiBar2Child.style.backgroundColor = color;
     }
 
-    update(dt: number) {
-        this.physicsBody.vel.x += (
-            // @ts-ignore: boolean math ftw
-            this.input.right() -
-            // @ts-ignore: boolean math ftw
-            this.input.left()
-        ) * this.speed * this.speedMultiplier * dt / 2;
+    update(input: Readonly<PlayerInput>) {
+        if (!this.isDead) {
+            this.physicsBody.vel.x += (
+                Number(input.right) -
+                Number(input.left)
+            ) * this.speed * this.speedMultiplier * DT / 2;
+        }
         this.physicsBody.vel.y += (
-            // @ts-ignore: boolean math ftw
-            2_500 + this.isGroundPounding * 5_000
-        ) * dt / 2;
+            2_500 + Number(this.isGroundPounding) * 5_000
+        ) * DT / 2;
 
-        this.physicsBody.update(dt);
+        this.physicsBody.update(DT);
 
-        this.physicsBody.vel.x += (
-            // @ts-ignore: boolean math ftw
-            this.input.right() -
-            // @ts-ignore: boolean math ftw
-            this.input.left()
-        ) * this.speed * this.speedMultiplier * dt / 2;
+        if (!this.isDead) {
+            this.physicsBody.vel.x += (
+                Number(input.right) -
+                Number(input.left)
+            ) * this.speed * this.speedMultiplier * DT / 2;
+        }
         this.physicsBody.vel.y += (
-            // @ts-ignore: boolean math ftw
-            2_500 + this.isGroundPounding * 5_000
-        ) * dt / 2;
+            2_500 + Number(this.isGroundPounding) * 5_000
+        ) * DT / 2;
 
-        this.visualOffset.Sn(Math.exp(dt * this.visualDiminishConstant));
+        this.visualOffset.Sn(Math.exp(DT * this.visualDiminishConstant));
 
-        this.attackTimer -= dt * this.abilitySpeedMultiplier;
-        this.specialTimer -= dt * this.abilitySpeedMultiplier;
+        this.attackTimer -= DT * this.abilitySpeedMultiplier;
+        this.specialTimer -= DT * this.abilitySpeedMultiplier;
         if (!this.isSpecialCooldown) {
             if (this.attackTimer <= 0) this.canAttack = true;
         } else if (this.specialTimer <= 0) {
@@ -710,16 +685,26 @@ export class Default implements Player {
         }
 
         if (this.isDead) return;
-        if (this.input.up()) this.jump();
-        if (this.input.down()) {
+        if (input.up) this.jump();
+        if (input.down) {
             if (this.isGrounded) this.phase();
             else this.groundPound();
         }
-        if (this.input.attack() && this.canPressAttackKey) {
+        if (input.attack && this.canPressAttackKey) {
             this.attack();
         }
-        if (this.input.special()) this.special();
+        if (input.special) this.special();
         this.isGrounded = false;
+        if (this.isPhasing) {
+            if ((this.phaseTimer -= DT) < 0) this.isPhasing = false;
+        }
+        if (this.lastHit) {
+            if ((this.lastHitTimer -= DT) < 0) this.lastHit = undefined;
+        }
+        if (this.jumpTimer > 0) {
+            this.jumpTimer -= DT;
+            if (this.jumpTimer <= 0 && this.doubleJumpCount > 0) this.canJump = true;
+        }
     }
 
     jump() {
@@ -735,18 +720,16 @@ export class Default implements Player {
         }
 
         this.physicsBody.vel.y = -jumpPower;
-        if (this.doubleJumpCount == 0) return;
-        timeout(() => this.canJump = true, .2);
+        this.jumpTimer = .2;
     }
 
     phase() {
         if (this.isPhasing) return;
         this.isPhasing = true;
-        this.phaseTimeout = timeout(() => this.isPhasing = false, .5);
+        this.phaseTimer = .5;
     }
 
     stopPhasing() {
-        clearTimer(this.phaseTimeout!);
         this.isPhasing = false;
     }
 
@@ -780,7 +763,7 @@ export class Default implements Player {
         else if (!this.canAttack) return;
         let hasHit = false;
         this.canPressAttackKey = false;
-        timeout(() => this.canPressAttackKey = true, .15);
+        timeout(() => this.canPressAttackKey = true, .02);
 
         for (let i = 0; i < this.allPlayers.length; i++) {
             const other = this.allPlayers[i];
@@ -900,12 +883,8 @@ export class Default implements Player {
                     .2 + Math.log10(damage) / 2,
                 );}
 
-            this.lastHit = reason.player;
-            if (this.lastHitTimer) clearTimer(this.lastHitTimer);
-            this.lastHitTimer = timeout(
-                () => this.lastHit = undefined,
-                KILL_CREDIT_TIME,
-            );
+            this.lastHit = reason.player.number;
+            this.lastHitTimer = KILL_CREDIT_TIME;
         }
 
         if (this.health > 0) return origHealth - this.health;
@@ -913,10 +892,11 @@ export class Default implements Player {
         if (this.lives > 0) this.lives -= 1;
 
         if (this.lastHit) {
-            this.lastHit.kills += 1;
+            this.allPlayers.filter(
+                (p) => p.number == this.lastHit,
+            )[0].kills += 1;
             this.lastHit = undefined;
         }
-        if (this.lastHitTimer) clearTimer(this.lastHitTimer);
 
         this.deaths += 1;
         this.isDead = true;
@@ -961,6 +941,81 @@ export class Default implements Player {
         // @ts-ignore:
         this.map = null;
         // @ts-ignore:
-        this.players = null;
+        this.allPlayers = null;
+    }
+
+    getState() {
+        return {
+            posX: this.physicsBody.pos.x,
+            posY: this.physicsBody.pos.y,
+            velX: this.physicsBody.vel.x,
+            velY: this.physicsBody.vel.y,
+            isGrounded: this.isGrounded,
+            canJump: this.canJump,
+            doubleJumpCount: this.doubleJumpCount,
+            isPhasing: this.isPhasing,
+            phaseTimer: this.phaseTimer,
+            canAttack: this.canAttack,
+            canPressAttackKey: this.canPressAttackKey,
+            attackTimer: this.attackTimer,
+            combo: this.combo,
+            isGroundPounding: this.isGroundPounding,
+            specialTimer: this.specialTimer,
+            isSpecialCooldown: this.isSpecialCooldown,
+            health: this.health,
+            isDead: this.isDead,
+            kills: this.kills,
+            deaths: this.deaths,
+            lives: this.lives,
+            lastHit: this.lastHit,
+            lastHitTimer: this.lastHitTimer,
+            speedMultiplier: this.speedMultiplier,
+            jumpMultiplier: this.jumpMultiplier,
+            abilitySpeedMultiplier: this.abilitySpeedMultiplier,
+            attackMultiplier: this.attackMultiplier,
+            kbMultiplier: this.kbMultiplier,
+            incomingKbMultiplier: this.incomingKbMultiplier,
+            damageMultiplier: this.damageMultiplier,
+            healMultiplier: this.healMultiplier,
+        };
+    }
+
+    saveState() {
+        return JSON.stringify(this.getState());
+    }
+
+    restoreState(state: string) {
+        const values = JSON.parse(state) as ReturnType<Default["getState"]>;
+        this.physicsBody.pos.x = values.posX;
+        this.physicsBody.pos.y = values.posY;
+        this.physicsBody.vel.x = values.velX;
+        this.physicsBody.vel.y = values.velY;
+        this.isGrounded = values.isGrounded;
+        this.canJump = values.canJump;
+        this.doubleJumpCount = values.doubleJumpCount;
+        this.isPhasing = values.isPhasing;
+        this.phaseTimer = values.phaseTimer;
+        this.canAttack = values.canAttack;
+        this.canPressAttackKey = values.canPressAttackKey;
+        this.attackTimer = values.attackTimer;
+        this.combo = values.combo;
+        this.isGroundPounding = values.isGroundPounding;
+        this.specialTimer = values.specialTimer;
+        this.isSpecialCooldown = values.isSpecialCooldown;
+        this.health = values.health;
+        this.isDead = values.isDead;
+        this.kills = values.kills;
+        this.deaths = values.deaths;
+        this.lives = values.lives;
+        this.lastHit = values.lastHit;
+        this.lastHitTimer = values.lastHitTimer;
+        this.speedMultiplier = values.speedMultiplier;
+        this.jumpMultiplier = values.jumpMultiplier;
+        this.abilitySpeedMultiplier = values.abilitySpeedMultiplier;
+        this.attackMultiplier = values.attackMultiplier;
+        this.kbMultiplier = values.kbMultiplier;
+        this.incomingKbMultiplier = values.incomingKbMultiplier;
+        this.damageMultiplier = values.damageMultiplier;
+        this.healMultiplier = values.healMultiplier;
     }
 }

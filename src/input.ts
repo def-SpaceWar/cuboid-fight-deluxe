@@ -11,9 +11,18 @@ export const isPressed = (k: string) => keys.has(k),
 const listeners = {
     "keydown": (e: KeyboardEvent) => keys.add(e.key),
     "keyup": (e: KeyboardEvent) => keys.delete(e.key),
-    "mousedown": (e: MouseEvent) => mouseButtons[e.button] = 1,
-    "mouseup": (e: MouseEvent) => mouseButtons[e.button] = 0,
-    "mousemove": (e: MouseEvent) => mouseCoords.sxy(e.clientX, e.clientY),
+    "mousedown": (e: MouseEvent) => {
+        e.preventDefault();
+        mouseButtons[e.button] = 1;
+    },
+    "mouseup": (e: MouseEvent) => {
+        e.preventDefault();
+        mouseButtons[e.button] = 0;
+    },
+    "mousemove": (e: MouseEvent) => {
+        e.preventDefault();
+        mouseCoords.sxy(e.clientX, e.clientY);
+    },
 };
 
 export function listenToInput() {

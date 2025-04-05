@@ -20,7 +20,7 @@ export type Platform = {
     pos: Vector2D;
     hitbox: RectangleHitbox;
     isPhaseable: boolean;
-    update(dt: number): void;
+    update(): void;
     render(): void;
     onCollision(p: Player): void;
 };
@@ -94,8 +94,7 @@ export class GrassPlatform implements Platform {
         this.hitbox = { type: "rect", offset: Vector2D.zero(), w, h };
     }
 
-    update(dt: number) {
-        dt;
+    update() {
     }
 
     render() {
@@ -160,8 +159,7 @@ export class StonePlatform implements Platform {
         this.hitbox = { type: "rect", offset: Vector2D.zero(), w, h };
     }
 
-    update(dt: number) {
-        dt;
+    update() {
     }
 
     render() {
@@ -224,8 +222,7 @@ export class DeathPlatform implements Platform {
         this.hitbox = { type: "rect", offset: Vector2D.zero(), w, h };
     }
 
-    update(dt: number) {
-        dt;
+    update() {
     }
 
     render() {

@@ -1,4 +1,11 @@
-import { FPS_SAMPLE_AMOUNT, MIN_DT, TPS, TPS_SAMPLE_AMOUNT } from "./flags.ts";
+import {
+    DT,
+    FPS_SAMPLE_AMOUNT,
+    MAX_SAVED_TICKS,
+    MIN_DT,
+    TPS,
+    TPS_SAMPLE_AMOUNT,
+} from "./flags.ts";
 const app = document.getElementById("app")!;
 
 export function renderLoop(c: () => unknown): () => void;
@@ -37,57 +44,26 @@ export function renderLoop(c: (dt: number) => unknown) {
     };
 }
 
-export function updateLoop(c: () => unknown): () => void;
-export function updateLoop(c: (dt: number) => unknown): () => void;
-export function updateLoop(c: (dt: number) => unknown) {
-    const tpsList = new Float32Array(TPS_SAMPLE_AMOUNT),
-        avgTps = () => {
-            let sum = 0;
-            for (let i = 0; i < TPS_SAMPLE_AMOUNT; i++) sum += tpsList[i];
-            return sum / TPS_SAMPLE_AMOUNT;
-        },
-        tpsText = app.appendChild(document.createElement("p")),
-        tpsTextNode = document.createTextNode("");
-    tpsText.id = "tps";
-    tpsText.innerText = "TPS: ";
-    tpsText.appendChild(tpsTextNode);
-
-    let before = performance.now(),
-        tpsIdx = 0;
-    const handle = setInterval(() => {
-        const now = performance.now(),
-            dt = (now - before) / 1_000;
-        before = now;
-
-        tpsList[tpsIdx] = 1 / dt;
-        tpsIdx < FPS_SAMPLE_AMOUNT ? tpsIdx++ : tpsIdx = 0;
-        tpsTextNode.textContent = avgTps().toPrecision(3);
-
-        const dtPrime = Math.min(dt, MIN_DT);
-        c(dtPrime);
-        tickTimers(dtPrime);
-    }, 1_000 / TPS);
-    return () => {
-        tpsTextNode.remove();
-        tpsText.remove();
-        clearInterval(handle);
-    };
-}
-
 export type Timer =
-    | [c: () => unknown, t: number]
-    | [c: () => unknown, t: number, repeat: true, _t: number];
-const timers: Timer[] = [];
+    | [c: () => unknown, t: number, birthTick: number]
+    | [
+        c: () => unknown,
+        t: number,
+        birthTick: number,
+        repeat: true,
+        _t: number,
+    ];
+let timers: Timer[] = [];
 
-function tickTimers(dt: number) {
+export function tickTimers() {
     for (let i = 0; i < timers.length; i++) {
         const timer = timers[i];
-        timer[1] -= dt;
+        timer[1] -= DT;
         if (timer[1] > 0) continue;
         timer[0]();
-        if (timer[2]) {
+        if (timer[3]) {
             // @ts-ignore:
-            timer[1] = timer[3];
+            timer[1] += timer[4];
             continue;
         }
         timers.splice(i, 1);
@@ -96,7 +72,7 @@ function tickTimers(dt: number) {
 }
 
 export function timeout(c: () => unknown, t: number) {
-    const timer: Timer = [c, t];
+    const timer: Timer = [c, t, updateLoop.gameTick];
     timers.push(timer);
     return timer;
 }
@@ -112,7 +88,7 @@ export function repeatedTimeout(
     t: number,
     rt: number = t,
 ) {
-    const timer: Timer = [c, t, true, rt];
+    const timer: Timer = [c, t, updateLoop.gameTick, true, rt];
     timers.push(timer);
     return timer;
 }
@@ -123,4 +99,112 @@ export function clearTimer(t: Timer) {
         timers.splice(i, 1);
         return;
     }
+}
+
+export type GameState<T, I> = {
+    state: T;
+    inputs: I;
+};
+
+export let isRollbacking = false;
+export abstract class UpdateLoop<T, I> {
+    tpsList: Float32Array;
+    avgTps: () => number;
+    tpsText: HTMLParagraphElement;
+    tpsTextNode: Text;
+
+    handle: number;
+    startTick = 0;
+    gameTick = 0;
+    timers: Timer[][] = [];
+    inputStates: GameState<T, I>[] = [];
+
+    constructor(public state: GameState<T, I>) {
+        this.tpsList = new Float32Array(TPS_SAMPLE_AMOUNT),
+            this.avgTps = () => {
+                let sum = 0;
+                for (let i = 0; i < TPS_SAMPLE_AMOUNT; i++) {
+                    sum += this.tpsList[i];
+                }
+                return sum / TPS_SAMPLE_AMOUNT;
+            },
+            this.tpsText = app.appendChild(document.createElement("p")),
+            this.tpsTextNode = document.createTextNode("");
+        this.tpsText.id = "tps";
+        this.tpsText.innerText = "TPS: ";
+        this.tpsText.appendChild(this.tpsTextNode);
+
+        let before = performance.now(),
+            tpsIdx = 0;
+        this.handle = setInterval(() => {
+            const now = performance.now(),
+                dt = (now - before) / 1_000;
+            before = now;
+
+            const dtPrime = Math.min(dt, MIN_DT);
+            this.tpsList[tpsIdx] = 1 / dtPrime;
+            tpsIdx < FPS_SAMPLE_AMOUNT ? tpsIdx++ : tpsIdx = 0;
+            this.tpsTextNode.textContent = this.avgTps().toPrecision(3);
+
+            this.inputStates.push(this.getInput(this.state));
+            this.timers.push(timers.map((t) => [t[0], t[1], t[2], t[3], t[4]]));
+            if (this.inputStates.length > MAX_SAVED_TICKS) {
+                this.startTick++;
+                this.inputStates.shift();
+                this.timers.shift();
+            }
+            this.state = this.tick(
+                structuredClone(
+                    this.inputStates[this.gameTick - this.startTick],
+                ),
+            );
+            this.gameTick++;
+        }, 1_000 / TPS);
+    }
+
+    abstract getInput(initial: GameState<T, I>): GameState<T, I>;
+    abstract tick(initial: GameState<T, I>): GameState<T, I>;
+
+    /**
+     * use new inputs whereever possible basically,
+     * on internet-based control objects, put whether or not
+     * it was obtained from the internet or predicted.
+     * prefer the non-predicted values over the predicted values, otherwise
+     * use the newer values than the older predicted values */
+    abstract mergeStates(
+        incoming: GameState<T, I>,
+        old: GameState<T, I>,
+    ): GameState<T, I>;
+
+    rollback(
+        toTick: number,
+        updateInput: (orig: GameState<T, I>) => GameState<T, I>,
+    ) {
+        isRollbacking = true;
+        timers = this.timers[toTick - this.startTick];
+
+        this.state = updateInput(this.inputStates[toTick - this.startTick]);
+        const previousTick = this.gameTick;
+        this.gameTick = toTick;
+        while (this.gameTick < previousTick) {
+            this.inputStates[this.gameTick - this.startTick] = this.mergeStates(
+                this.state,
+                this.inputStates[this.gameTick - this.startTick],
+            );
+            this.state = this.tick(structuredClone(this.state));
+            this.gameTick++;
+        }
+        isRollbacking = false;
+    }
+
+    stop() {
+        this.tpsTextNode.remove();
+        this.tpsText.remove();
+        clearInterval(this.handle);
+    }
+}
+
+export let updateLoop: UpdateLoop<unknown, unknown>;
+export function setUpdateLoop<T, I>(loop: UpdateLoop<T, I>) {
+    updateLoop = loop as UpdateLoop<unknown, unknown>;
 }

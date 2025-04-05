@@ -11,6 +11,8 @@ export const MIN_DT = 0.04; // 25 FPS/TPS
 
 /** Ticks per second (faster to make more realistic, slower for better networking) */
 export const TPS = 60;
+export const DT = 1 / TPS;
+export const MAX_SAVED_TICKS = 600;
 
 /** Render hitboxes */
 export let DEBUG_HITBOXES = false;
@@ -26,7 +28,7 @@ export const TEX_TO_SCREEN_RATIO = 4;
 export const CIRCLE_ACCURACY = 32;
 
 /** Amount of steps to animate a color pulse */
-export const PULSE_ANIM_STEPS = 20;
+export const PULSE_ANIM_STEPS = 3;
 
 /** Color for damage */
 export const DAMAGE_COLOR: GLColor = [1.5, 0.3, 0.5, 1];

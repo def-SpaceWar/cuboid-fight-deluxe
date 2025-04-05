@@ -11,10 +11,10 @@ import composeVert from "./shaders/compose.vert?raw";
 // @ts-ignore:
 import composeFrag from "./shaders/compose.frag?raw";
 import { Vector2D } from "./math.ts";
-import { Hitbox } from "./physics.ts";
 import { CIRCLE_ACCURACY, PULSE_ANIM_STEPS } from "./flags.ts";
-import { clearTimer, repeatedTimeout, timeout } from "./loop.ts";
 import { Winner } from "./gamemode.ts";
+import { updateLoop } from "./loop.ts";
+import { isHosting } from "./networking.ts";
 
 const app = document.getElementById("app")!;
 export let canvas: HTMLCanvasElement;
@@ -577,10 +577,6 @@ export function drawGeometry(
     gl.drawArrays(gl.TRIANGLES, 0, triangles.length / 4);
 }
 
-export interface Light {
-    //
-}
-
 export const ambientGeometry = [
     1,
     0,
@@ -861,19 +857,24 @@ export class RGBAColor {
         this.b = from.b;
         this.a = from.a;
 
-        let step = 0;
-        const timer = repeatedTimeout(() => {
-            if (step == PULSE_ANIM_STEPS) {
-                clearTimer(timer);
-                return;
-            }
+        setTimeout(
+            () => {
+                let step = 0;
+                const timer = setInterval(() => {
+                    if (step == PULSE_ANIM_STEPS) {
+                        clearInterval(timer);
+                        return;
+                    }
 
-            this.r += differenceR / PULSE_ANIM_STEPS;
-            this.g += differenceG / PULSE_ANIM_STEPS;
-            this.b += differenceB / PULSE_ANIM_STEPS;
-            this.a += differenceA / PULSE_ANIM_STEPS;
-            step++;
-        }, time / PULSE_ANIM_STEPS);
+                    this.r += differenceR / PULSE_ANIM_STEPS;
+                    this.g += differenceG / PULSE_ANIM_STEPS;
+                    this.b += differenceB / PULSE_ANIM_STEPS;
+                    this.a += differenceA / PULSE_ANIM_STEPS;
+                    step++;
+                }, time / PULSE_ANIM_STEPS * 750);
+            },
+            time * 250,
+        );
     }
 
     pulseFromGL(from: GLColor, time: number) {
@@ -887,19 +888,24 @@ export class RGBAColor {
         this.b = from[2];
         this.a = from[3];
 
-        let step = 0;
-        const timer = repeatedTimeout(() => {
-            if (step == PULSE_ANIM_STEPS) {
-                clearTimer(timer);
-                return;
-            }
+        setTimeout(
+            () => {
+                let step = 0;
+                const timer = setInterval(() => {
+                    if (step == PULSE_ANIM_STEPS) {
+                        clearInterval(timer);
+                        return;
+                    }
 
-            this.r += differenceR / PULSE_ANIM_STEPS;
-            this.g += differenceG / PULSE_ANIM_STEPS;
-            this.b += differenceB / PULSE_ANIM_STEPS;
-            this.a += differenceA / PULSE_ANIM_STEPS;
-            step++;
-        }, time / PULSE_ANIM_STEPS);
+                    this.r += differenceR / PULSE_ANIM_STEPS;
+                    this.g += differenceG / PULSE_ANIM_STEPS;
+                    this.b += differenceB / PULSE_ANIM_STEPS;
+                    this.a += differenceA / PULSE_ANIM_STEPS;
+                    step++;
+                }, time / PULSE_ANIM_STEPS * 750);
+            },
+            time * 250,
+        );
     }
 }
 
@@ -943,6 +949,7 @@ export class HSVAColor {
     }
 }
 
+updateLoop; // set this to have a birthTick
 export function createHTMLTemporary(
     innerText: string,
     className: string,
@@ -958,7 +965,7 @@ export function createHTMLTemporary(
     elem.style.top = `calc(50vh + ${pos.y | 0}px)`;
     elem.style.animationDuration = `${lifespan}s`;
     elem.style.opacity = "0";
-    timeout(() => elem.remove(), lifespan);
+    setTimeout(() => elem.remove(), lifespan * 1_000);
 }
 
 export function createHTMLRender(
@@ -1084,12 +1091,14 @@ export function createEndScreen(
         const button = endScreen.appendChild(document.createElement("button"));
         button.innerText = "Restart";
         button.onclick = restart;
+        button.disabled = !isHosting;
     }
 
     {
         const button = endScreen.appendChild(document.createElement("button"));
         button.innerText = "Continue";
         button.onclick = next;
+        button.disabled = !isHosting;
     }
 
     return () => endScreenContainer.remove();

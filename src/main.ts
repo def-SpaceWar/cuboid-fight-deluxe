@@ -4,6 +4,11 @@ import "./style.css";
 
 setupRender();
 
+//for (
+//    let scene: Scene = new Map1();
+//    (scene = await scene.run());
+//);
+
 for (
     let scene: Scene = new JoinOrCreateLobby();
     (scene = await scene.run());
