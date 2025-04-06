@@ -63,13 +63,13 @@ function isControlDown(c: Control) {
 }
 
 export type RawPlayerInput = number;
-export const PREDICTED = 0b1000000,
-    LEFT = 0b100000,
-    UP = 0b10000,
-    DOWN = 0b1000,
-    RIGHT = 0b100,
-    ATTACK = 0b10,
-    SPECIAL = 0b1;
+export const PREDICTED = 1 << 6,
+    LEFT = 1 << 5,
+    UP = 1 << 4,
+    DOWN = 1 << 3,
+    RIGHT = 1 << 2,
+    ATTACK = 1 << 1,
+    SPECIAL = 1 << 0;
 export function parseRawInput(raw: RawPlayerInput): Readonly<PlayerInput> {
     return Object.freeze({
         left: Boolean(raw & LEFT),
@@ -703,7 +703,9 @@ export class Default implements Player {
         }
         if (this.jumpTimer > 0) {
             this.jumpTimer -= DT;
-            if (this.jumpTimer <= 0 && this.doubleJumpCount > 0) this.canJump = true;
+            if (this.jumpTimer <= 0 && this.doubleJumpCount > 0) {
+                this.canJump = true;
+            }
         }
     }
 
@@ -951,6 +953,7 @@ export class Default implements Player {
             velX: this.physicsBody.vel.x,
             velY: this.physicsBody.vel.y,
             isGrounded: this.isGrounded,
+            jumpTimer: this.jumpTimer,
             canJump: this.canJump,
             doubleJumpCount: this.doubleJumpCount,
             isPhasing: this.isPhasing,
@@ -991,6 +994,7 @@ export class Default implements Player {
         this.physicsBody.vel.x = values.velX;
         this.physicsBody.vel.y = values.velY;
         this.isGrounded = values.isGrounded;
+        this.jumpTimer = values.jumpTimer;
         this.canJump = values.canJump;
         this.doubleJumpCount = values.doubleJumpCount;
         this.isPhasing = values.isPhasing;

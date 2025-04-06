@@ -233,31 +233,46 @@ export class Map1 implements GameMap {
 
                         let match = true;
                         for (const idx in data.inputs) {
-                            if (
-                                data.inputs[idx] ==
+                            const predicted =
                                     (updateLoop as UpdateLoop<State, Input>)
-                                            .inputStates[
-                                                data.tick - updateLoop.startTick
-                                            ].inputs[idx] - PREDICTED
+                                        .inputStates[
+                                            data.tick - updateLoop.startTick
+                                        ].inputs[idx],
+                                orig = data.inputs[idx];
+                            if (
+                                predicted == orig ||
+                                predicted == (orig | PREDICTED)
                             ) {
                                 (updateLoop as UpdateLoop<State, Input>)
                                     .inputStates[
                                         data.tick - updateLoop.startTick
-                                    ].inputs[idx] = data.inputs[idx];
+                                    ].inputs[idx] = orig;
                                 continue;
                             }
+                            (updateLoop as UpdateLoop<State, Input>)
+                                .inputStates[
+                                    data.tick - updateLoop.startTick
+                                ].inputs[idx] = orig;
                             match = false;
                         }
                         if (match) return;
+
+                        //console.table({
+                        //    predicted: updateLoop
+                        //        .inputStates[data.tick - updateLoop.startTick]
+                        //        .inputs,
+                        //    orig: data.inputs,
+                        //});
+
                         (updateLoop as UpdateLoop<State, Input>).rollback(
                             data.tick,
                             ({ state, inputs }) => {
                                 return {
                                     state,
-                                    inputs: inputs.map((input, idx) =>
+                                    inputs: inputs.map((i, idx) =>
                                         data.inputs[idx] != undefined
                                             ? data.inputs[idx]
-                                            : input
+                                            : i
                                     ),
                                 };
                             },
@@ -273,7 +288,7 @@ export class Map1 implements GameMap {
                     ): GameState<State, Input> {
                         const inputsToSend = {};
                         for (let i = 0; i < inputs.length; i++) {
-                            inputs[i] = inputs[i] & PREDICTED;
+                            inputs[i] = inputs[i] | PREDICTED;
                         }
                         for (const control of localControls) {
                             // @ts-ignore:
@@ -289,12 +304,14 @@ export class Map1 implements GameMap {
                             parkedInputs.delete(updateLoop.gameTick);
                         }
                         for (const connection of connections) {
+                            //setTimeout(() => {
                             connection.sendMessage(
                                 JSON.stringify({
                                     tick: updateLoop.gameTick,
                                     inputs: inputsToSend,
                                 }),
                             );
+                            //}, 500);
                         }
                         return { state, inputs };
                     }
@@ -303,6 +320,12 @@ export class Map1 implements GameMap {
                     ): GameState<State, Input> {
                         for (let i = 0; i < players.length; i++) {
                             players[i].restoreState(state.playerStates[i]);
+                        }
+
+                        if (isRollbacking) {
+                            for (let i = 0; i < inputs.length; i++) {
+                                inputs[i] = inputs[i] | PREDICTED;
+                            }
                         }
 
                         tickTimers();
@@ -333,6 +356,18 @@ export class Map1 implements GameMap {
                                 });
                             }
                         }
+
+                        /*
+                        if (updateLoop.gameTick == 200) {
+                            updateLoop.stop();
+                            for (let i = 0; i < 200; i++) {
+                                console.table([
+                                    i,
+                                    ...this.inputStates[i].inputs,
+                                ]);
+                            }
+                        }
+                        */
 
                         if (canToggleHitboxes && isPressed("Escape")) {
                             canToggleHitboxes = false;
@@ -390,10 +425,11 @@ export class Map1 implements GameMap {
                         old: GameState<State, Input>,
                     ): GameState<State, Input> {
                         for (let i = 0; i < incoming.inputs.length; i++) {
-                            if (
-                                (old.inputs[i] & PREDICTED) != old.inputs[i]
-                            ) {
+                            if ((incoming.inputs[i] & PREDICTED) == 0) continue;
+
+                            if ((old.inputs[i] & PREDICTED) == 0) {
                                 incoming.inputs[i] = old.inputs[i];
+                                continue;
                             }
                         }
                         return incoming;

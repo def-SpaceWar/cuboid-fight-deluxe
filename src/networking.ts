@@ -55,7 +55,7 @@ export class Connection {
     }
 
     async offer() {
-        this.datachannel = this.pc.createDataChannel("test", { ordered: true });
+        this.datachannel = this.pc.createDataChannel("test", {});
         this.datachannel.onopen = (_) => {};
         this.datachannel.onmessage = (e) => {
             console.log(e.data);

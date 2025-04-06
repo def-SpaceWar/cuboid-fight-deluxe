@@ -182,6 +182,7 @@ export abstract class UpdateLoop<T, I> {
     ) {
         isRollbacking = true;
         timers = this.timers[toTick - this.startTick];
+        //console.log("rollback!");
 
         this.state = updateInput(this.inputStates[toTick - this.startTick]);
         const previousTick = this.gameTick;
