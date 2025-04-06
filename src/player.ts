@@ -47,6 +47,13 @@ export const Binding = {
     },
 };
 
+type PlayerState = {
+    visualX: number;
+    visualY: number;
+    posX: number;
+    posY: number;
+};
+
 export interface PlayerInput {
     left: boolean;
     up: boolean;
@@ -186,7 +193,9 @@ export interface Player {
 
     onDestroy(): void;
 
+    getState(): PlayerState;
     saveState(): string;
+    restoreState(state: string): void;
     restoreState(state: string): void;
 }
 
@@ -687,7 +696,12 @@ export class Default implements Player {
             this.isSpecialCooldown = false;
         }
 
-        if (this.isDead) {
+        if (
+            this.map.gamemode.secondDisplay == "deaths" ||
+            (this.map.gamemode.secondDisplay == "lives" &&
+                    this.lives > 0) &&
+                this.isDead && this.lives > 0
+        ) {
             this.respawnTimer -= DT;
             if (this.respawnTimer <= 0) this.respawn();
             return;
@@ -962,6 +976,8 @@ export class Default implements Player {
 
     getState() {
         return {
+            visualX: this.visualOffset.x,
+            visualY: this.visualOffset.y,
             posX: this.physicsBody.pos.x,
             posY: this.physicsBody.pos.y,
             velX: this.physicsBody.vel.x,
@@ -1007,6 +1023,8 @@ export class Default implements Player {
 
     restoreState(state: string) {
         const values = JSON.parse(state) as ReturnType<Default["getState"]>;
+        this.visualOffset.x = values.visualX;
+        this.visualOffset.y = values.visualY;
         this.physicsBody.pos.x = values.posX;
         this.physicsBody.pos.y = values.posY;
         this.physicsBody.vel.x = values.velX;

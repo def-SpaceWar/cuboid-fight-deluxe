@@ -4,6 +4,7 @@ import {
     Controls,
     getPlayers,
     parseRawInput,
+    Player,
     PREDICTED,
     RawPlayerInput,
 } from "./player.ts";
@@ -259,13 +260,6 @@ export class Map1 implements GameMap {
                         }
                         if (match) return;
 
-                        //console.table({
-                        //    predicted: updateLoop
-                        //        .inputStates[data.tick - updateLoop.startTick]
-                        //        .inputs,
-                        //    orig: data.inputs,
-                        //});
-
                         (updateLoop as UpdateLoop<State, Input>).rollback(
                             data.tick,
                             ({ state, inputs }) => {
@@ -308,13 +302,13 @@ export class Map1 implements GameMap {
                         const tick = updateLoop.gameTick;
                         for (const connection of connections) {
                             //setTimeout(() => {
-                                connection.sendMessage(
-                                    JSON.stringify({
-                                        tick,
-                                        inputs: inputsToSend,
-                                    }),
-                                );
-                            //}, 10);
+                            connection.sendMessage(
+                                JSON.stringify({
+                                    tick,
+                                    inputs: inputsToSend,
+                                }),
+                            );
+                            //}, Math.random() * 100);
                         }
                         return { state, inputs };
                     }
@@ -358,18 +352,6 @@ export class Map1 implements GameMap {
                                 });
                             }
                         }
-
-                        /*
-                        if (updateLoop.gameTick == 200) {
-                            updateLoop.stop();
-                            for (let i = 0; i < 200; i++) {
-                                console.table([
-                                    i,
-                                    ...this.inputStates[i].inputs,
-                                ]);
-                            }
-                        }
-                        */
 
                         if (canToggleHitboxesTimer < 0) {
                             canToggleHitboxes = true;
@@ -440,6 +422,29 @@ export class Map1 implements GameMap {
                                 incoming.inputs[i] = old.inputs[i];
                                 continue;
                             }
+                        }
+                        return incoming;
+                    }
+                    postRollback(
+                        incoming: GameState<State, Input>,
+                        old: GameState<State, Input>,
+                    ): GameState<State, Input> {
+                        for (
+                            let i = 0;
+                            i < incoming.state.playerStates.length;
+                            i++
+                        ) {
+                            const data = JSON.parse(
+                                    incoming.state.playerStates[i],
+                                ) as ReturnType<Player["getState"]>,
+                                oldData = JSON.parse(
+                                    old.state.playerStates[i],
+                                ) as ReturnType<Player["getState"]>;
+                            data.visualX += oldData.posX - data.posX;
+                            data.visualY += oldData.posY - data.posY;
+                            incoming.state.playerStates[i] = JSON.stringify(
+                                data,
+                            );
                         }
                         return incoming;
                     }

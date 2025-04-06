@@ -136,7 +136,7 @@ export abstract class UpdateLoop<T, I> {
         updateInput: (orig: GameState<T, I>) => GameState<T, I>,
     ) {
         isRollbacking = true;
-        //console.log("rollback!");
+        const old = structuredClone(this.inputStates[this.gameTick - this.startTick - 1]);
 
         this.state = updateInput(this.inputStates[toTick - this.startTick]);
         const previousTick = this.gameTick;
@@ -149,8 +149,11 @@ export abstract class UpdateLoop<T, I> {
             this.state = this.tick(structuredClone(this.state));
             this.gameTick++;
         }
+        this.state = this.postRollback(this.state, old);
         isRollbacking = false;
     }
+
+    abstract postRollback(incoming: GameState<T, I>, old: GameState<T, I>): GameState<T, I>;
 
     stop() {
         this.tpsTextNode.remove();
