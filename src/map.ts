@@ -301,14 +301,14 @@ export class Map1 implements GameMap {
                         }
                         const tick = updateLoop.gameTick;
                         for (const connection of connections) {
-                            setTimeout(() => {
-                                connection.sendMessage(
-                                    JSON.stringify({
-                                        tick,
-                                        inputs: inputsToSend,
-                                    }),
-                                );
-                            }, Math.random() * 100);
+                            //setTimeout(() => {
+                            connection.sendMessage(
+                                JSON.stringify({
+                                    tick,
+                                    inputs: inputsToSend,
+                                }),
+                            );
+                            //}, Math.random() * 100);
                         }
                         return { state, inputs };
                     }
