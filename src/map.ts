@@ -307,14 +307,14 @@ export class Map1 implements GameMap {
                         }
                         const tick = updateLoop.gameTick;
                         for (const connection of connections) {
-                            setTimeout(() => {
+                            //setTimeout(() => {
                                 connection.sendMessage(
                                     JSON.stringify({
                                         tick,
                                         inputs: inputsToSend,
                                     }),
                                 );
-                            }, 10);
+                            //}, 10);
                         }
                         return { state, inputs };
                     }
@@ -379,6 +379,7 @@ export class Map1 implements GameMap {
                             isPressed("Escape")
                         ) {
                             canToggleHitboxes = false;
+                            timeout(() => canToggleHitboxes = true, .2);
                             canToggleHitboxesTimer = .2;
                             toggleHitboxes();
                         }
