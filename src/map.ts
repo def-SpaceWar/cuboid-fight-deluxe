@@ -379,7 +379,6 @@ export class Map1 implements GameMap {
                             isPressed("Escape")
                         ) {
                             canToggleHitboxes = false;
-                            timeout(() => canToggleHitboxes = true, .2);
                             canToggleHitboxesTimer = .2;
                             toggleHitboxes();
                         }
