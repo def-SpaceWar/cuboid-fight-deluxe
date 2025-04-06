@@ -48,8 +48,8 @@ export const Binding = {
 };
 
 type PlayerState = {
-    visualX: number;
-    visualY: number;
+    lagX: number;
+    lagY: number;
     posX: number;
     posY: number;
 };
@@ -248,6 +248,8 @@ const defaultTex = await loadImage(defaultImg),
 export class Default implements Player {
     visualOffset = Vector2D.zero();
     visualDiminishConstant = -20;
+    lagOffset = Vector2D.zero();
+    lagDiminishConstant = -40;
     comboColor: GLColor;
     specialColor: GLColor;
 
@@ -534,12 +536,14 @@ export class Default implements Player {
                     tint: this.color.glColor,
                     translation: this.physicsBody.pos
                         .clone()
-                        .av(this.visualOffset),
+                        .av(this.visualOffset)
+                        .av(this.lagOffset),
                 },
             );
         } else {
             const translation = this.physicsBody.pos.clone()
-                .av(this.visualOffset);
+                .av(this.visualOffset)
+                .av(this.lagOffset);
 
             drawGeometry(
                 defaultTex,
@@ -686,6 +690,7 @@ export class Default implements Player {
         ) * DT / 2;
 
         this.visualOffset.Sn(Math.exp(DT * this.visualDiminishConstant));
+        this.lagOffset.Sn(Math.exp(DT * this.lagDiminishConstant));
 
         this.attackTimer -= DT * this.abilitySpeedMultiplier;
         this.specialTimer -= DT * this.abilitySpeedMultiplier;
@@ -976,8 +981,8 @@ export class Default implements Player {
 
     getState() {
         return {
-            visualX: this.visualOffset.x,
-            visualY: this.visualOffset.y,
+            lagX: this.lagOffset.x,
+            lagY: this.lagOffset.y,
             posX: this.physicsBody.pos.x,
             posY: this.physicsBody.pos.y,
             velX: this.physicsBody.vel.x,
@@ -1023,8 +1028,8 @@ export class Default implements Player {
 
     restoreState(state: string) {
         const values = JSON.parse(state) as ReturnType<Default["getState"]>;
-        this.visualOffset.x = values.visualX;
-        this.visualOffset.y = values.visualY;
+        this.lagOffset.x = values.lagX;
+        this.lagOffset.y = values.lagY;
         this.physicsBody.pos.x = values.posX;
         this.physicsBody.pos.y = values.posY;
         this.physicsBody.vel.x = values.velX;

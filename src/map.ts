@@ -301,14 +301,14 @@ export class Map1 implements GameMap {
                         }
                         const tick = updateLoop.gameTick;
                         for (const connection of connections) {
-                            //setTimeout(() => {
-                            connection.sendMessage(
-                                JSON.stringify({
-                                    tick,
-                                    inputs: inputsToSend,
-                                }),
-                            );
-                            //}, Math.random() * 100);
+                            setTimeout(() => {
+                                connection.sendMessage(
+                                    JSON.stringify({
+                                        tick,
+                                        inputs: inputsToSend,
+                                    }),
+                                );
+                            }, Math.random() * 100);
                         }
                         return { state, inputs };
                     }
@@ -423,12 +423,7 @@ export class Map1 implements GameMap {
                                 continue;
                             }
                         }
-                        return incoming;
-                    }
-                    postRollback(
-                        incoming: GameState<State, Input>,
-                        old: GameState<State, Input>,
-                    ): GameState<State, Input> {
+
                         for (
                             let i = 0;
                             i < incoming.state.playerStates.length;
@@ -437,15 +432,16 @@ export class Map1 implements GameMap {
                             const data = JSON.parse(
                                     incoming.state.playerStates[i],
                                 ) as ReturnType<Player["getState"]>,
-                                _oldData = JSON.parse(
+                                oldData = JSON.parse(
                                     old.state.playerStates[i],
                                 ) as ReturnType<Player["getState"]>;
-                            //data.visualX += oldData.posX - data.posX;
-                            //data.visualY += oldData.posY - data.posY;
+                            data.lagX -= data.posX - oldData.posX;
+                            data.lagY -= data.posY - oldData.posY;
                             incoming.state.playerStates[i] = JSON.stringify(
                                 data,
                             );
                         }
+
                         return incoming;
                     }
                 })({ state: initialState, inputs: initialInput }),
