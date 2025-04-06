@@ -163,7 +163,7 @@ export abstract class UpdateLoop<T, I> {
         }, 1_000 / TPS);
     }
 
-    catchupToTick(tick: number = this.gameTick + 1) {
+    catchupToTick(tick: number) {
         while (this.gameTick < tick) {
             this.inputStates.push(this.getInput(this.state));
             // @ts-ignore:

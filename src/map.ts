@@ -226,7 +226,11 @@ export class Map1 implements GameMap {
                             );
                         }
 
-                        if (data.tick >= updateLoop.gameTick) {
+                        if (data.tick > updateLoop.gameTick) {
+                            updateLoop.catchupToTick(data.tick);
+                        }
+
+                        if (data.tick == updateLoop.gameTick) {
                             parkedInputs.set(data.tick, data.inputs);
                             return;
                         }
