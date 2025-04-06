@@ -437,11 +437,11 @@ export class Map1 implements GameMap {
                             const data = JSON.parse(
                                     incoming.state.playerStates[i],
                                 ) as ReturnType<Player["getState"]>,
-                                oldData = JSON.parse(
+                                _oldData = JSON.parse(
                                     old.state.playerStates[i],
                                 ) as ReturnType<Player["getState"]>;
-                            data.visualX += oldData.posX - data.posX;
-                            data.visualY += oldData.posY - data.posY;
+                            //data.visualX += oldData.posX - data.posX;
+                            //data.visualY += oldData.posY - data.posY;
                             incoming.state.playerStates[i] = JSON.stringify(
                                 data,
                             );
