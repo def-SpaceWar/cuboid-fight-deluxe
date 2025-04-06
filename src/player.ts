@@ -30,7 +30,6 @@ import {
 } from "./flags.ts";
 import { Platform } from "./platform.ts";
 import { isMousePressed, isPressed } from "./input.ts";
-import { timeout } from "./loop.ts";
 import { GameMap } from "./map.ts";
 
 type Keybind = { key: string };
@@ -258,6 +257,7 @@ export class Default implements Player {
 
     canAttack = true;
     canPressAttackKey = true;
+    canPressAttackKeyTimer = 0;
     attackCooldown = 2;
     attackTimer = 0;
     attackRange = 100;
@@ -269,10 +269,13 @@ export class Default implements Player {
 
     specialTimer = 0;
     specialCooldown = this.attackCooldown * 2;
+    healTimer = 0;
+    healsLeft = 0;
     isSpecialCooldown = false;
 
     health = 100;
     maxHealth = 100;
+    respawnTimer = 0;
     isDead = false;
     healthBar: HTMLDivElement;
     healthBarChild: HTMLDivElement;
@@ -684,7 +687,11 @@ export class Default implements Player {
             this.isSpecialCooldown = false;
         }
 
-        if (this.isDead) return;
+        if (this.isDead) {
+            this.respawnTimer -= DT;
+            if (this.respawnTimer <= 0) this.respawn();
+            return;
+        }
         if (input.up) this.jump();
         if (input.down) {
             if (this.isGrounded) this.phase();
@@ -705,6 +712,21 @@ export class Default implements Player {
             this.jumpTimer -= DT;
             if (this.jumpTimer <= 0 && this.doubleJumpCount > 0) {
                 this.canJump = true;
+            }
+        }
+        if (!this.canPressAttackKey) {
+            this.canPressAttackKeyTimer -= DT;
+            if (this.canPressAttackKeyTimer <= 0) this.canPressAttackKey = true;
+        }
+        if (this.healsLeft > 0) {
+            this.healTimer -= DT;
+            if (this.healTimer <= 0) {
+                this.healsLeft--;
+                this.healTimer += 1;
+                this.takeHealing(
+                    Math.min(this.maxHealth - this.health, 4),
+                    { type: "player", player: this },
+                );
             }
         }
     }
@@ -765,7 +787,7 @@ export class Default implements Player {
         else if (!this.canAttack) return;
         let hasHit = false;
         this.canPressAttackKey = false;
-        timeout(() => this.canPressAttackKey = true, .02);
+        this.canPressAttackKeyTimer = .02;
 
         for (let i = 0; i < this.allPlayers.length; i++) {
             const other = this.allPlayers[i];
@@ -831,27 +853,17 @@ export class Default implements Player {
         this.canAttack = false;
 
         if (this.health >= this.maxHealth) return;
-        for (let i = 0; i < 5; i++) {
-            timeout(
-                () =>
-                    this.takeHealing(
-                        Math.min(this.maxHealth - this.health, 4),
-                        { type: "player", player: this },
-                    ),
-                i,
-            );
-        }
+        this.healTimer = 1;
+        this.healsLeft = 5;
     }
 
     respawn() {
-        timeout(() => {
-            const spawnPoint = this.map.getRespawnPoint(),
-                diff = Vector2D.subtract(this.physicsBody.pos, spawnPoint);
-            this.visualOffset.av(diff);
-            this.isDead = false;
-            this.health = this.maxHealth;
-            this.physicsBody.pos.av(diff.Sn(-1));
-        }, 2);
+        const spawnPoint = this.map.getRespawnPoint(),
+            diff = Vector2D.subtract(this.physicsBody.pos, spawnPoint);
+        this.visualOffset.av(diff);
+        this.isDead = false;
+        this.health = this.maxHealth;
+        this.physicsBody.pos.av(diff.Sn(-1));
     }
 
     takeKb(kb: Vector2D) {
@@ -907,7 +919,9 @@ export class Default implements Player {
             this.map.gamemode.secondDisplay == "deaths" ||
             (this.map.gamemode.secondDisplay == "lives" &&
                 this.lives > 0)
-        ) this.respawn();
+        ) {
+            this.respawnTimer = 2;
+        }
         return origHealth;
     }
 
@@ -960,12 +974,16 @@ export class Default implements Player {
             phaseTimer: this.phaseTimer,
             canAttack: this.canAttack,
             canPressAttackKey: this.canPressAttackKey,
+            canPressAttackKeyTimer: this.canPressAttackKeyTimer,
             attackTimer: this.attackTimer,
             combo: this.combo,
             isGroundPounding: this.isGroundPounding,
             specialTimer: this.specialTimer,
+            healsLeft: this.healsLeft,
+            healTimer: this.healTimer,
             isSpecialCooldown: this.isSpecialCooldown,
             health: this.health,
+            respawnTimer: this.respawnTimer,
             isDead: this.isDead,
             kills: this.kills,
             deaths: this.deaths,
@@ -1001,12 +1019,16 @@ export class Default implements Player {
         this.phaseTimer = values.phaseTimer;
         this.canAttack = values.canAttack;
         this.canPressAttackKey = values.canPressAttackKey;
+        this.canPressAttackKeyTimer = values.canPressAttackKeyTimer;
         this.attackTimer = values.attackTimer;
         this.combo = values.combo;
         this.isGroundPounding = values.isGroundPounding;
         this.specialTimer = values.specialTimer;
+        this.healTimer = values.healTimer;
+        this.healsLeft = values.healsLeft;
         this.isSpecialCooldown = values.isSpecialCooldown;
         this.health = values.health;
+        this.respawnTimer = values.respawnTimer;
         this.isDead = values.isDead;
         this.kills = values.kills;
         this.deaths = values.deaths;

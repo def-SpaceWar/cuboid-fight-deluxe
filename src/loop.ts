@@ -1,5 +1,4 @@
 import {
-    DT,
     FPS_SAMPLE_AMOUNT,
     MAX_SAVED_TICKS,
     MIN_DT,
@@ -44,63 +43,6 @@ export function renderLoop(c: (dt: number) => unknown) {
     };
 }
 
-export type Timer =
-    | [c: () => unknown, t: number, birthTick: number]
-    | [
-        c: () => unknown,
-        t: number,
-        birthTick: number,
-        repeat: true,
-        _t: number,
-    ];
-let timers: Timer[] = [];
-
-export function tickTimers() {
-    for (let i = 0; i < timers.length; i++) {
-        const timer = timers[i];
-        timer[1] -= DT;
-        if (timer[1] > 0) continue;
-        timer[0]();
-        if (timer[3]) {
-            // @ts-ignore:
-            timer[1] += timer[4];
-            continue;
-        }
-        timers.splice(i, 1);
-        i--;
-    }
-}
-
-export function timeout(c: () => unknown, t: number) {
-    const timer: Timer = [c, t, updateLoop.gameTick];
-    timers.push(timer);
-    return timer;
-}
-
-export function repeatedTimeout(c: () => unknown, t: number): Timer;
-export function repeatedTimeout(
-    c: () => unknown,
-    initialTimeout: number,
-    repeatTime: number,
-): Timer;
-export function repeatedTimeout(
-    c: () => unknown,
-    t: number,
-    rt: number = t,
-) {
-    const timer: Timer = [c, t, updateLoop.gameTick, true, rt];
-    timers.push(timer);
-    return timer;
-}
-
-export function clearTimer(t: Timer) {
-    for (let i = 0; i < timers.length; i++) {
-        if (timers[i] != t) continue;
-        timers.splice(i, 1);
-        return;
-    }
-}
-
 export type GameState<T, I> = {
     state: T;
     inputs: I;
@@ -116,7 +58,6 @@ export abstract class UpdateLoop<T, I> {
     handle: number;
     startTick = 0;
     gameTick = 0;
-    timers: Timer[][] = [];
     inputStates: GameState<T, I>[] = [];
 
     constructor(public state: GameState<T, I>) {
@@ -147,12 +88,9 @@ export abstract class UpdateLoop<T, I> {
             this.tpsTextNode.textContent = this.avgTps().toPrecision(3);
 
             this.inputStates.push(this.getInput(this.state));
-            // @ts-ignore:
-            this.timers.push(timers.map((t) => [t[0], t[1], t[2], t[3], t[4]]));
             if (this.inputStates.length > MAX_SAVED_TICKS) {
                 this.startTick++;
                 this.inputStates.shift();
-                this.timers.shift();
             }
             this.state = this.tick(
                 structuredClone(
@@ -166,12 +104,9 @@ export abstract class UpdateLoop<T, I> {
     catchupToTick(tick: number) {
         while (this.gameTick < tick) {
             this.inputStates.push(this.getInput(this.state));
-            // @ts-ignore:
-            this.timers.push(timers.map((t) => [t[0], t[1], t[2], t[3], t[4]]));
             if (this.inputStates.length > MAX_SAVED_TICKS) {
                 this.startTick++;
                 this.inputStates.shift();
-                this.timers.shift();
             }
             this.state = this.tick(
                 structuredClone(
@@ -201,7 +136,6 @@ export abstract class UpdateLoop<T, I> {
         updateInput: (orig: GameState<T, I>) => GameState<T, I>,
     ) {
         isRollbacking = true;
-        timers = this.timers[toTick - this.startTick];
         //console.log("rollback!");
 
         this.state = updateInput(this.inputStates[toTick - this.startTick]);

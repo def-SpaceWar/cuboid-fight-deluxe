@@ -33,12 +33,10 @@ import {
     isRollbacking,
     renderLoop,
     setUpdateLoop,
-    tickTimers,
-    timeout,
     UpdateLoop,
     updateLoop,
 } from "./loop.ts";
-import { toggleHitboxes } from "./flags.ts";
+import { DT, toggleHitboxes } from "./flags.ts";
 import { JoinOrCreateLobby, Scene } from "./scene.ts";
 import { connections, isHosting } from "./networking.ts";
 
@@ -115,7 +113,8 @@ export class Map1 implements GameMap {
 
         return await new Promise<Scene>((resolve) => {
             let gameOver = false,
-                canToggleHitboxes = true;
+                canToggleHitboxes = true,
+                canToggleHitboxesTimer = 0;
             const map = (() => this)(), // gets rid of annoying warning
                 platforms = this.platforms;
 
@@ -237,7 +236,6 @@ export class Map1 implements GameMap {
 
                         let match = true;
                         for (const idx in data.inputs) {
-                            console.log(data.tick, updateLoop.startTick, updateLoop.inputStates[data.tick - updateLoop.startTick], data.inputs[idx]);
                             const predicted =
                                     (updateLoop as UpdateLoop<State, Input>)
                                         .inputStates[
@@ -245,7 +243,6 @@ export class Map1 implements GameMap {
                                         ].inputs[idx],
                                 orig = data.inputs[idx];
                             if (
-                                predicted == orig ||
                                 predicted == (orig | PREDICTED)
                             ) {
                                 (updateLoop as UpdateLoop<State, Input>)
@@ -308,15 +305,16 @@ export class Map1 implements GameMap {
                             }
                             parkedInputs.delete(updateLoop.gameTick);
                         }
+                        const tick = updateLoop.gameTick;
                         for (const connection of connections) {
-                            //setTimeout(() => {
+                            setTimeout(() => {
                                 connection.sendMessage(
                                     JSON.stringify({
-                                        tick: updateLoop.gameTick,
+                                        tick,
                                         inputs: inputsToSend,
                                     }),
                                 );
-                            //}, 500);
+                            }, 10);
                         }
                         return { state, inputs };
                     }
@@ -333,7 +331,6 @@ export class Map1 implements GameMap {
                             }
                         }
 
-                        tickTimers();
                         resolvePlatformPlayerCollisions(platforms, players);
 
                         for (let i = 0; i < platforms.length; i++) {
@@ -374,11 +371,18 @@ export class Map1 implements GameMap {
                         }
                         */
 
-                        if (canToggleHitboxes && isPressed("Escape")) {
+                        if (canToggleHitboxesTimer < 0) {
+                            canToggleHitboxes = true;
+                        }
+                        if (
+                            canToggleHitboxes &&
+                            isPressed("Escape")
+                        ) {
                             canToggleHitboxes = false;
-                            timeout(() => canToggleHitboxes = true, .2);
+                            canToggleHitboxesTimer = .2;
                             toggleHitboxes();
                         }
+                        canToggleHitboxesTimer -= DT;
 
                         if (isRollbacking) return saveState(state, inputs);
                         if (gameOver) return saveState(state, inputs);
