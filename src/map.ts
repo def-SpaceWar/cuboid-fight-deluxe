@@ -233,6 +233,7 @@ export class Map1 implements GameMap {
 
                         let match = true;
                         for (const idx in data.inputs) {
+                            console.log(updateLoop);
                             const predicted =
                                     (updateLoop as UpdateLoop<State, Input>)
                                         .inputStates[
@@ -305,12 +306,12 @@ export class Map1 implements GameMap {
                         }
                         for (const connection of connections) {
                             //setTimeout(() => {
-                            connection.sendMessage(
-                                JSON.stringify({
-                                    tick: updateLoop.gameTick,
-                                    inputs: inputsToSend,
-                                }),
-                            );
+                                connection.sendMessage(
+                                    JSON.stringify({
+                                        tick: updateLoop.gameTick,
+                                        inputs: inputsToSend,
+                                    }),
+                                );
                             //}, 500);
                         }
                         return { state, inputs };

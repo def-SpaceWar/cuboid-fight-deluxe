@@ -147,6 +147,7 @@ export abstract class UpdateLoop<T, I> {
             this.tpsTextNode.textContent = this.avgTps().toPrecision(3);
 
             this.inputStates.push(this.getInput(this.state));
+            // @ts-ignore:
             this.timers.push(timers.map((t) => [t[0], t[1], t[2], t[3], t[4]]));
             if (this.inputStates.length > MAX_SAVED_TICKS) {
                 this.startTick++;
@@ -160,6 +161,25 @@ export abstract class UpdateLoop<T, I> {
             );
             this.gameTick++;
         }, 1_000 / TPS);
+    }
+
+    catchupToTick(tick: number = this.gameTick + 1) {
+        while (this.gameTick < tick) {
+            this.inputStates.push(this.getInput(this.state));
+            // @ts-ignore:
+            this.timers.push(timers.map((t) => [t[0], t[1], t[2], t[3], t[4]]));
+            if (this.inputStates.length > MAX_SAVED_TICKS) {
+                this.startTick++;
+                this.inputStates.shift();
+                this.timers.shift();
+            }
+            this.state = this.tick(
+                structuredClone(
+                    this.inputStates[this.gameTick - this.startTick],
+                ),
+            );
+            this.gameTick++;
+        }
     }
 
     abstract getInput(initial: GameState<T, I>): GameState<T, I>;
