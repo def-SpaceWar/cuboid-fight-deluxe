@@ -233,7 +233,7 @@ export class Map1 implements GameMap {
 
                         let match = true;
                         for (const idx in data.inputs) {
-                            console.log(updateLoop);
+                            console.log(data.tick, updateLoop.startTick, updateLoop.inputStates[data.tick - updateLoop.startTick], data.inputs[idx]);
                             const predicted =
                                     (updateLoop as UpdateLoop<State, Input>)
                                         .inputStates[
