@@ -1,3 +1,4 @@
+//import { Map1 } from "./map.ts";
 import { setupRender } from "./render.ts";
 import { JoinOrCreateLobby, Scene } from "./scene.ts";
 import "./style.css";

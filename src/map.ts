@@ -16,13 +16,11 @@ import {
 } from "./platform.ts";
 import { Vector2D } from "./math.ts";
 import {
-    ambientGeometry,
     clearScreen,
     composeDisplay,
     createEndScreen,
     defaultRectColor,
     drawGeometry,
-    generateAmbientColor,
     loadImage,
     rectToGeometry,
     renderLighting,
@@ -39,7 +37,7 @@ import {
 } from "./loop.ts";
 import { DT, toggleHitboxes } from "./flags.ts";
 import { JoinOrCreateLobby, Scene } from "./scene.ts";
-import { connections, isHosting } from "./networking.ts";
+import { connections, isHosting, resetConnections } from "./networking.ts";
 
 export interface GameMap extends Scene {
     readonly gamemode: Gamemode;
@@ -73,7 +71,12 @@ export class Map1 implements GameMap {
     ];
 
     lightGeometry = new Float32Array([
-        ...ambientGeometry,
+        ...[.25, -1, 0, 0],
+        ...[-960, -222.5, 0, 0],
+        ...[-450, -222.5, 0, 1],
+        ...[-.25, 1, 0, 0],
+        ...[-960, -222.5, 0, 0],
+        ...[-450, -222.5, 0, 1],
 
         // platform 0
         ...[.25, -1, 0, 0],
@@ -81,20 +84,72 @@ export class Map1 implements GameMap {
         ...[-450, -177.5, 0, 1],
         ...[.25, -1, 0, 0],
         ...[-450, -177.5, 0, 1],
-        ...[-150, -177.5, 0, 1],
+        ...[-285, -177.5, 0, 1],
 
-        // platform 1
+        // platform 2
         ...[.25, -1, 0, 0],
-        ...[-350, 250, 0, 1],
-        ...[-350, 350, 0, 1],
+        ...[-250, -317.5, 0, 1],
+        ...[-250, -282.5, 0, 1],
         ...[.25, -1, 0, 0],
-        ...[-350, 350, 0, 1],
-        ...[150, 350, 0, 1],
+        ...[-250, -282.5, 0, 1],
+        ...[50, -282.5, 0, 1],
+
+        // platform 3
+        ...[.25, -1, 0, 0],
+        ...[-55, 137.5, 0, 1],
+        ...[-55, 162.5, 0, 1],
+        ...[.25, -1, 0, 0],
+        ...[-55, 162.5, 0, 1],
+        ...[80, 162.5, 0, 1],
+
+        // platform 4
+        ...[.25, -1, 0, 0],
+        ...[150, -117.5, 0, 1],
+        ...[150, -82.5, 0, 1],
+        ...[.25, -1, 0, 0],
+        ...[150, -82.5, 0, 1],
+        ...[450, -82.5, 0, 1],
+
+        // platform 6
+        ...[.25, -1, 0, 0],
+        ...[379, 200, 0, 1],
+        ...[386, 200, 0, 1],
+
+        // platform 5
+        ...[.25, -1, 0, 0],
+        ...[425, 42.5, 0, 1],
+        ...[425, 57.5, 0, 1],
+        ...[.25, -1, 0, 0],
+        ...[425, 57.5, 0, 1],
+        ...[575, 57.5, 0, 1],
+
+        // platform 6
+        ...[.25, -1, 0, 0],
+        ...[538, 200, 0, 1],
+        ...[538, 400, 0, 1],
+        ...[.25, -1, 0, 0],
+        ...[538, 400, 0, 1],
+        ...[675, 400, 0, 1],
+
+        ...[.25, -1, 0, 0],
+        ...[960, 400, 0, 0],
+        ...[675, 400, 0, 1],
+        ...[-.25, 1, 0, 0],
+        ...[960, 400, 0, 0],
+        ...[675, 400, 0, 1],
+
+        // bg
+        ...[-960, -540, 0, 1],
+        ...[-960, 540, 0, 1],
+        ...[960, -540, 0, 1],
+        ...[960, -540, 0, 1],
+        ...[-960, 540, 0, 1],
+        ...[960, 540, 0, 1],
     ]);
 
     lightColor = new Float32Array([
-        ...generateAmbientColor([.7, .75, .8, 1]),
-        ...(new Float32Array(256).fill(1)),
+        ...(new Float32Array(24 * 8.5).fill(1)),
+        ...(new Float32Array(24).fill(.975)),
     ]);
 
     getRespawnPoint(): Vector2D {
@@ -405,6 +460,11 @@ export class Map1 implements GameMap {
                                     updateLoop.stop();
                                     removeEndScreen();
                                     resolve(new JoinOrCreateLobby());
+
+                                    for (const connection of connections) {
+                                        connection.sendMessage("continue");
+                                    }
+                                    resetConnections();
                                 },
                             );
                         }, 2_000);

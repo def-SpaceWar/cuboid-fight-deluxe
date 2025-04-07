@@ -5,7 +5,10 @@ export const setHost = (val: boolean) => isHosting = val;
  * if isHosting, connections represents the other players
  * if not isHosting, connections[0] is the host
  */
-export const connections = [] as Connection[];
+export let connections = [] as Connection[];
+export function resetConnections() {
+    connections = [];
+}
 
 export class Connection {
     pc: RTCPeerConnection;

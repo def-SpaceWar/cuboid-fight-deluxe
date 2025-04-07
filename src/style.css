@@ -84,6 +84,7 @@ input {
     height: 24rem;
     resize: none;
     overflow: scroll;
+    scrollbar-width: none;
 }
 
 #invite-ui {

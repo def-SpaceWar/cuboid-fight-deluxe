@@ -842,7 +842,7 @@ export class Default implements Player {
                 damage /= 4;
             } else damage *= 1 + .5 * this.combo;
 
-            other.combo = 0;
+            if (!isGroundPound) other.combo = 0;
             other.takeKb(kb.Sn(this.kbMultiplier));
             other.takeDamage(
                 damage * this.attackMultiplier,
