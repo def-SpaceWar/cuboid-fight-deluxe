@@ -1,4 +1,4 @@
-export let isHosting = false;
+export let isHosting = true;
 export const setHost = (val: boolean) => isHosting = val;
 
 /**

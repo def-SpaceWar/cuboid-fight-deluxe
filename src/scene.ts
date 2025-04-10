@@ -145,6 +145,7 @@ export class Lobby implements Scene {
                     await connection.dataOpen();
                     connection.sendMessage(JSON.stringify({
                         name: this.name,
+                        // just put all lobby data here
                     }));
                     // send other lobby data too
                     // connection.datachannel!.onmessage = (e) => {...};

@@ -154,6 +154,8 @@ export abstract class UpdateLoop<T, I> {
         this.tpsTextNode.remove();
         this.tpsText.remove();
         clearInterval(this.handle);
+        // @ts-ignore:
+        setUpdateLoop(null);
     }
 }
 

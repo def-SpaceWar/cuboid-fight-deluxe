@@ -210,7 +210,7 @@ export function getPlayers(map: GameMap): Player[] {
             map,
         ),
         new Default(
-            new RGBAColor(0, .5, 1),
+            new RGBAColor(.0, .5, 1),
             2,
             "Innocent",
             players,
@@ -787,16 +787,62 @@ export class Default implements Player {
             this.attack(true);
         }
 
-        const oldY = this.physicsBody.pos.y;
-        this.physicsBody.pos.y = p.pos.y + p.hitbox.offset.y -
-            p.hitbox.h / 2 - this.hitbox.h / 2;
-        const diff = this.physicsBody.pos.y - oldY;
-        if (Math.abs(diff) > 4) this.visualOffset.y -= diff;
-        this.physicsBody.vel.y = 0;
+        if (
+            !p.isWall ||
+            p.pos.y + p.hitbox.offset.y - p.hitbox.h / 2 >
+                this.physicsBody.pos.y
+        ) {
+            const oldY = this.physicsBody.pos.y;
+            this.physicsBody.pos.y = p.pos.y + p.hitbox.offset.y -
+                p.hitbox.h / 2 - this.hitbox.h / 2;
+            const diff = this.physicsBody.pos.y - oldY;
+            if (Math.abs(diff) > 4) this.visualOffset.y -= diff;
+            this.physicsBody.vel.y = Math.min(0, this.physicsBody.vel.y);
 
-        this.isGrounded = true;
-        this.canJump = true;
-        this.doubleJumpCount = 2;
+            this.isGrounded = true;
+            this.canJump = true;
+            this.doubleJumpCount = 2;
+            return;
+        }
+
+        if (
+            p.pos.y + p.hitbox.offset.y + p.hitbox.h / 2 <
+                this.physicsBody.pos.y
+        ) {
+            const oldY = this.physicsBody.pos.y;
+            this.physicsBody.pos.y = p.pos.y + p.hitbox.offset.y +
+                p.hitbox.h / 2 + this.hitbox.h / 2;
+            const diff = this.physicsBody.pos.y - oldY;
+            if (Math.abs(diff) > 4) this.visualOffset.y -= diff;
+            this.physicsBody.vel.y = Math.max(0, this.physicsBody.vel.y);
+            return;
+        }
+
+        if (
+            p.pos.x + p.hitbox.offset.x - p.hitbox.w / 2 >
+                this.physicsBody.pos.x
+        ) {
+            const oldX = this.physicsBody.pos.x;
+            this.physicsBody.pos.x = p.pos.x + p.hitbox.offset.x -
+                p.hitbox.w / 2 - this.hitbox.w / 2;
+            const diff = this.physicsBody.pos.x - oldX;
+            if (Math.abs(diff) > 4) this.visualOffset.x -= diff;
+            this.physicsBody.vel.x = Math.min(0, this.physicsBody.vel.x);
+            return;
+        }
+
+        if (
+            p.pos.x + p.hitbox.offset.x + p.hitbox.w / 2 <
+                this.physicsBody.pos.x
+        ) {
+            const oldX = this.physicsBody.pos.x;
+            this.physicsBody.pos.x = p.pos.x + p.hitbox.offset.x +
+                p.hitbox.w / 2 + this.hitbox.w / 2;
+            const diff = this.physicsBody.pos.x - oldX;
+            if (Math.abs(diff) > 4) this.visualOffset.x -= diff;
+            this.physicsBody.vel.x = Math.max(0, this.physicsBody.vel.x);
+            return;
+        }
     }
 
     onPlayerCollision(_: Player) {}

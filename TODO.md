@@ -1,29 +1,32 @@
 # TODO
 
 - add multiplayer
-> sync end screens
+> sync end screens (done)
 > make continue go back to lobby
 > add player customization in lobby (add multiple players)
 > get it to work with 3+ clients
+- Particles (moving, jump, ground pound, attk, etc.)
+- Combo text somewhere (maybe text particle)
+- Sounds
+- Kill Buffs (killBuff(): void) to Player interface + Default
+- Upgrade System
+> Default: either choose +20% crit chance losing 20 max hp or
 - bake lighting into maps, and add alpha channel for radial glows etc.
-- Add damage zones/platforms
-> Use for dying offscreen
-> Use in the map as reddish pulsing damaging platforms
-- Add healing zones/platforms
+- Add damage zones/platforms (done), moving platforms
+> Use for dying offscreen (done)
+> Use in the map as reddish pulsing (not pulsing and doesn't have texture yet)
+  damaging platforms.
+- Add healing zones/platforms (probably another map)
 > Use in the map as greenish pulsing damaging platforms
 - Whenever a player moves, their z-index/rendering order should be on top
 > so dead players that just happen to be last don't get rendered on top of
 > other players.
 - Combo text somewhere (maybe text particle)
-- Kill Buffs (killBuff(): void) to Player interface + Default
 - Custom color selection for players
 > Min V (HSV) for a player color = 0.4 (when they get to custom select colors)
-- Particles (moving, jump, ground pound, attk, etc.)
-- Sounds
-- Upgrade System
-> Default: either choose up to +30% crit chance or up to -15% attack cooldown.
 
 ## Classes
+
 - tank:
 > turns into circle with special (can turn back with special, the special has
   the same cooldown in both forms and doesnt affect attack)
@@ -77,6 +80,11 @@
   worn or is on the ground)
 - windy class (summon wind)
 - summoning class (summon minions)
+- heavyweight
+> charge up attack (hold attack down) let go to attack
+> special is a taunt that heals 30% missing health and deals kb (no damage and
+  big range.
+> //
 
 ...
 

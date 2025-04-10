@@ -28,7 +28,7 @@ export const TEX_TO_SCREEN_RATIO = 4;
 export const CIRCLE_ACCURACY = 32;
 
 /** Amount of steps to animate a color pulse */
-export const PULSE_ANIM_STEPS = 3;
+export const PULSE_ANIM_STEPS = 120;
 
 /** Color for damage */
 export const DAMAGE_COLOR: GLColor = [1.5, 0.3, 0.5, 1];

@@ -19,7 +19,8 @@ import stoneImg from "./assets/platforms/stone.png";
 export type Platform = {
     pos: Vector2D;
     hitbox: RectangleHitbox;
-    isPhaseable: boolean;
+    readonly isPhaseable: boolean;
+    readonly isWall: boolean;
     update(): void;
     render(): void;
     onCollision(p: Player): void;
@@ -31,25 +32,24 @@ export function resolvePlatformPlayerCollisions(
 ) {
     for (let i = 0; i < players.length; i++) {
         const player = players[i];
-        if (player.physicsBody.vel.y > 0) {
-            for (let j = 0; j < platforms.length; j++) {
-                const platform = platforms[j];
-                if (
+        for (let j = 0; j < platforms.length; j++) {
+            const platform = platforms[j];
+            if (
+                !platform.isWall && (player.physicsBody.vel.y < 0 ||
                     player.physicsBody.pos.y >
-                        platform.pos.y + platform.hitbox.offset.y
-                ) continue;
-                if (
-                    !isColliding(
-                        player.physicsBody.pos,
-                        player.hitbox,
-                        platform.pos,
-                        platform.hitbox,
-                    )
-                ) continue;
+                        platform.pos.y + platform.hitbox.offset.y)
+            ) continue;
+            if (
+                !isColliding(
+                    player.physicsBody.pos,
+                    player.hitbox,
+                    platform.pos,
+                    platform.hitbox,
+                )
+            ) continue;
 
-                player.onPlatformCollision(platform);
-                platform.onCollision(player);
-            }
+            player.onPlatformCollision(platform);
+            platform.onCollision(player);
         }
     }
 }
@@ -63,7 +63,8 @@ export class GrassPlatform implements Platform {
     grassTexCoord: Float32Array;
     triangles: Float32Array;
     hitbox: RectangleHitbox;
-    isPhaseable = true;
+    readonly isPhaseable = true;
+    readonly isWall = false;
 
     constructor(
         public pos: Vector2D,
@@ -123,8 +124,7 @@ export class GrassPlatform implements Platform {
         }
     }
 
-    onCollision(p: Player) {
-        p; // generate particles!!
+    onCollision(_p: Player) {
     }
 }
 
@@ -134,7 +134,8 @@ export class StonePlatform implements Platform {
     texCoord: Float32Array;
     triangles: Float32Array;
     hitbox: RectangleHitbox;
-    isPhaseable = false;
+    readonly isPhaseable = false;
+    readonly isWall = false;
 
     constructor(
         public pos: Vector2D,
@@ -186,18 +187,18 @@ export class StonePlatform implements Platform {
         }
     }
 
-    onCollision(p: Player) {
-        p; // generate particles!!
+    onCollision(_p: Player) {
     }
 }
 
 const deathTex = await loadImage(stoneImg),
-    deathColor: GLColor = [.5, .6, .7, 1];
+    deathColor: GLColor = [1, 0.2, 0.4, 1];
 export class DeathPlatform implements Platform {
     texCoord: Float32Array;
     triangles: Float32Array;
     hitbox: RectangleHitbox;
-    isPhaseable = false;
+    readonly isPhaseable = false;
+    readonly isWall = true;
 
     constructor(
         public pos: Vector2D,
@@ -250,6 +251,6 @@ export class DeathPlatform implements Platform {
     }
 
     onCollision(p: Player) {
-        p; // generate particles!!
+        if (!p.isDead) p.takeDamage(1, { type: "environment" });
     }
 }

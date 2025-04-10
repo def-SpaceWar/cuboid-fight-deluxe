@@ -246,6 +246,10 @@ input {
     padding: 4px;
 }
 
+.player-ui-bg, .player-ui-rect, .player-ui-rect * {
+    transition: .1s all;
+}
+
 .player-ui-img {
     margin: 0;
     padding: 0;
@@ -274,6 +278,7 @@ input {
     color: #AAA;
     mix-blend-mode: multiply;
     transform: translateY(-50%);
+    transition: 0ms all;
 }
 
 .end-screen-container {

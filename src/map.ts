@@ -10,6 +10,7 @@ import {
 } from "./player.ts";
 import { Gamemode, getGamemode } from "./gamemode.ts";
 import {
+    DeathPlatform,
     GrassPlatform,
     resolvePlatformPlayerCollisions,
     StonePlatform,
@@ -61,6 +62,11 @@ export class Map1 implements GameMap {
         new GrassPlatform(Vector2D.xy(300, -100), 300, 35),
         new StonePlatform(Vector2D.xy(500, 50), 150, 15),
         new StonePlatform(Vector2D.xy(500, 300), 350, 200),
+        new DeathPlatform(Vector2D.xy(0, 590), 2120, 100),
+        new DeathPlatform(Vector2D.xy(0, -590), 2120, 100),
+        new DeathPlatform(Vector2D.xy(0, -590), 2120, 100),
+        new DeathPlatform(Vector2D.xy(1010, 0), 100, 1180),
+        new DeathPlatform(Vector2D.xy(-1010, 0), 100, 1180),
     ];
 
     respawnPoints = [
@@ -71,6 +77,7 @@ export class Map1 implements GameMap {
     ];
 
     lightGeometry = new Float32Array([
+        // left
         ...[.25, -1, 0, 0],
         ...[-960, -222.5, 0, 0],
         ...[-450, -222.5, 0, 1],
@@ -131,6 +138,7 @@ export class Map1 implements GameMap {
         ...[538, 400, 0, 1],
         ...[675, 400, 0, 1],
 
+        // right
         ...[.25, -1, 0, 0],
         ...[960, 400, 0, 0],
         ...[675, 400, 0, 1],
@@ -139,17 +147,142 @@ export class Map1 implements GameMap {
         ...[675, 400, 0, 1],
 
         // bg
+        ...[1, 0, 0, 0],
         ...[-960, -540, 0, 1],
+        ...[0, 1, 0, 0],
+
+        ...[-1, 0, 0, 0],
+        ...[960, 540, 0, 1],
+        ...[0, -1, 0, 0],
+
+        ...[-1, 0, 0, 0],
+        ...[960, -540, 0, 1],
+        ...[0, 1, 0, 0],
+
+        ...[1, 0, 0, 0],
         ...[-960, 540, 0, 1],
+        ...[0, -1, 0, 0],
+
+        // fade
+        ...[-960, 540, 0, 1],
+        ...[-960, -540, 0, 1],
         ...[960, -540, 0, 1],
         ...[960, -540, 0, 1],
         ...[-960, 540, 0, 1],
         ...[960, 540, 0, 1],
+
+        // death
+        ...[1, 0, 0, 0],
+        ...[-1060, -640, 0, 1],
+        ...[-1060, -540, 0, 1],
+        ...[0, 1, 0, 0],
+        ...[960, -640, 0, 1],
+        ...[1060, -640, 0, 1],
+        ...[-1, 0, 0, 0],
+        ...[1060, 640, 0, 1],
+        ...[1060, 540, 0, 1],
+        ...[0, -1, 0, 0],
+        ...[-960, 640, 0, 1],
+        ...[-1060, 640, 0, 1],
     ]);
 
     lightColor = new Float32Array([
-        ...(new Float32Array(24 * 8.5).fill(1)),
-        ...(new Float32Array(24).fill(.975)),
+        // left
+        ...[.08, .065, .0, 1],
+        ...[.08, .065, .0, 1],
+        ...[.08, .065, .0, 1],
+        ...[.08, .065, .0, 1],
+        ...[.08, .065, .0, 1],
+        ...[.08, .065, .0, 1],
+
+        // platform 0
+        ...[.08, .065, .0, 1],
+        ...[.0, .0, .0, 1],
+        ...[.0, .0, .0, 1],
+        ...[.08, .065, .0, 1],
+        ...[.0, .0, .0, 1],
+        ...[.0, .0, .0, 1],
+
+        // platform 2
+        ...[.08, .065, .0, 1],
+        ...[.0, .0, .0, 1],
+        ...[.0, .0, .0, 1],
+        ...[.08, .065, .0, 1],
+        ...[.0, .0, .0, 1],
+        ...[.0, .0, .0, 1],
+
+        // platform 3
+        ...[.08, .065, .0, 1],
+        ...[.0, .0, .0, 1],
+        ...[.0, .0, .0, 1],
+        ...[.08, .065, .0, 1],
+        ...[.0, .0, .0, 1],
+        ...[.0, .0, .0, 1],
+
+        // platform 4
+        ...[.08, .065, .0, 1],
+        ...[.0, .0, .0, 1],
+        ...[.0, .0, .0, 1],
+        ...[.08, .065, .0, 1],
+        ...[.0, .0, .0, 1],
+        ...[.0, .0, .0, 1],
+
+        // platform 6
+        ...[.08, .065, .0, 1],
+        ...[.0, .0, .0, 1],
+        ...[.0, .0, .0, 1],
+
+        // platform 5
+        ...[.08, .065, .0, 1],
+        ...[.0, .0, .0, 1],
+        ...[.0, .0, .0, 1],
+        ...[.08, .065, .0, 1],
+        ...[.0, .0, .0, 1],
+        ...[.0, .0, .0, 1],
+
+        // platform 6
+        ...[.08, .065, .0, 1],
+        ...[.0, .0, .0, 1],
+        ...[.0, .0, .0, 1],
+        ...[.08, .065, .0, 1],
+        ...[.0, .0, .0, 1],
+        ...[.0, .0, .0, 1],
+
+        // right
+        ...[.08, .065, .0, 1],
+        ...[.08, .065, .0, 1],
+        ...[.08, .065, .0, 1],
+        ...[.08, .065, .0, 1],
+        ...[.08, .065, .0, 1],
+        ...[.08, .065, .0, 1],
+
+        // bg
+        ...[.92 / 2.3, .935 / 2.3, .95 / 2.3, 1],
+        ...[.92 / 2.3, .935 / 2.3, .95 / 2.3, 1],
+        ...[0, 0, 0, 1],
+
+        ...[.92 / 2.3, .935 / 2.3, .95 / 2.3, 1],
+        ...[.92 / 2.3, .935 / 2.3, .95 / 2.3, 1],
+        ...[0, 0, 0, 1],
+
+        ...[0, 0, 0, 1],
+        ...[.92 / 2.3, .935 / 2.3, .95 / 2.3, 1],
+        ...[.92 / 2.3, .935 / 2.3, .95 / 2.3, 1],
+
+        ...[0, 0, 0, 1],
+        ...[.92 / 2.3, .935 / 2.3, .95 / 2.3, 1],
+        ...[.92 / 2.3, .935 / 2.3, .95 / 2.3, 1],
+
+        // fade
+        ...[.0, .0, .0, 1],
+        ...[.25, .25, .25, 1],
+        ...[.25, .25, .25, 1],
+        ...[.25, .25, .25, 1],
+        ...[.0, .0, .0, 1],
+        ...[.0, .0, .0, 1],
+
+        // death
+        ...(new Float32Array(48).fill(1)),
     ]);
 
     getRespawnPoint(): Vector2D {
@@ -168,8 +301,7 @@ export class Map1 implements GameMap {
         }
 
         return await new Promise<Scene>((resolve) => {
-            let gameOver = false,
-                canToggleHitboxes = true,
+            let canToggleHitboxes = true,
                 canToggleHitboxesTimer = 0;
             const map = (() => this)(), // gets rid of annoying warning
                 platforms = this.platforms;
@@ -204,9 +336,12 @@ export class Map1 implements GameMap {
 
             const initialState = {
                 playerStates: players.map((p) => p.saveState()),
+                gameOver: false,
+                gameOverTimer: 0,
+                createdEndscreen: false,
             };
             type State = typeof initialState;
-            const initialInput = [0, 0] as RawPlayerInput[];
+            const initialInput = [0, 0] as RawPlayerInput[]; // length of players
             type Input = typeof initialInput;
 
             const localControls = isHosting
@@ -265,6 +400,9 @@ export class Map1 implements GameMap {
                         stopRender();
                         updateLoop.stop();
                         removeEndScreen();
+                        for (const connection of connections) {
+                            connection.datachannel!.onmessage = () => {};
+                        }
                         resolve(new Map1());
                         return;
                     }
@@ -363,7 +501,7 @@ export class Map1 implements GameMap {
                                     inputs: inputsToSend,
                                 }),
                             );
-                            //}, Math.random() * 100);
+                            //}, Math.random() * 1_000);
                         }
                         return { state, inputs };
                     }
@@ -376,7 +514,7 @@ export class Map1 implements GameMap {
 
                         if (isRollbacking) {
                             for (let i = 0; i < inputs.length; i++) {
-                                inputs[i] = inputs[i] | PREDICTED;
+                                inputs[i] |= PREDICTED;
                             }
                         }
 
@@ -421,55 +559,79 @@ export class Map1 implements GameMap {
                         }
                         canToggleHitboxesTimer -= DT;
 
-                        if (isRollbacking) return saveState(state, inputs);
-                        if (gameOver) return saveState(state, inputs);
-                        if (!(gameOver = map.gamemode.isGameOver(players))) {
+                        if (state.gameOver && !state.createdEndscreen) {
+                            state.gameOverTimer += DT;
+                            if (state.gameOverTimer >= 2) {
+                                stopListeningToInput();
+                                removeEndScreen = createEndScreen(
+                                    players.length,
+                                    map.gamemode.getWinnerData(players),
+                                    map.gamemode.getLeaderboardTable(players),
+                                    () => {
+                                        for (
+                                            let i = 0;
+                                            i < players.length;
+                                            i++
+                                        ) {
+                                            players[i].onDestroy();
+                                        }
+                                        // @ts-ignore:
+                                        players = null;
+
+                                        stopRender();
+                                        updateLoop.stop();
+                                        removeEndScreen();
+
+                                        for (const connection of connections) {
+                                            connection.datachannel!.onmessage =
+                                                () => {};
+                                        }
+
+                                        setTimeout(() => {
+                                            resolve(new Map1());
+                                            for (
+                                                const connection of connections
+                                            ) {
+                                                connection.sendMessage(
+                                                    "restart",
+                                                );
+                                            }
+                                        }, 2_000);
+                                    },
+                                    () => {
+                                        for (
+                                            let i = 0;
+                                            i < players.length;
+                                            i++
+                                        ) {
+                                            players[i].onDestroy();
+                                        }
+                                        // @ts-ignore:
+                                        players = null;
+
+                                        stopRender();
+                                        updateLoop.stop();
+                                        removeEndScreen();
+                                        resolve(new JoinOrCreateLobby());
+
+                                        for (const connection of connections) {
+                                            connection.sendMessage("continue");
+                                        }
+                                        resetConnections();
+                                    },
+                                );
+                                return saveState({
+                                    ...state,
+                                    createdEndscreen: true,
+                                }, inputs);
+                            }
                             return saveState(state, inputs);
                         }
 
-                        setTimeout(() => {
-                            stopListeningToInput();
-                            removeEndScreen = createEndScreen(
-                                players.length,
-                                map.gamemode.getWinnerData(players),
-                                map.gamemode.getLeaderboardTable(players),
-                                () => {
-                                    for (let i = 0; i < players.length; i++) {
-                                        players[i].onDestroy();
-                                    }
-                                    // @ts-ignore:
-                                    players = null;
-
-                                    stopRender();
-                                    updateLoop.stop();
-                                    removeEndScreen();
-                                    resolve(new Map1());
-
-                                    for (const connection of connections) {
-                                        connection.sendMessage("restart");
-                                    }
-                                },
-                                () => {
-                                    for (let i = 0; i < players.length; i++) {
-                                        players[i].onDestroy();
-                                    }
-                                    // @ts-ignore:
-                                    players = null;
-
-                                    stopRender();
-                                    updateLoop.stop();
-                                    removeEndScreen();
-                                    resolve(new JoinOrCreateLobby());
-
-                                    for (const connection of connections) {
-                                        connection.sendMessage("continue");
-                                    }
-                                    resetConnections();
-                                },
-                            );
-                        }, 2_000);
-
-                        return saveState(state, inputs);
+                        return saveState({
+                            ...state,
+                            gameOver: map.gamemode.isGameOver(players),
+                        }, inputs);
                     }
                     mergeStates(
                         incoming: GameState<State, Input>,
