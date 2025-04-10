@@ -1,5 +1,10 @@
 # TODO
 
+- add wall-jumping (default will get wall jumping, just not the best)
+> lightweight kits get this
+> add isOnWall boolean to Player and add conditions to jump function
+> wallJumpDirection variable to store which direction to jump
+> on a wall the jump should launch away from wall
 - add multiplayer
 > sync end screens (done)
 > make continue go back to lobby
