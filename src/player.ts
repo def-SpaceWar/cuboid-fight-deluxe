@@ -156,6 +156,7 @@ export interface Player {
     physicsBody: PhysicsBody;
 
     isGrounded: boolean;
+    isOnWall: boolean;
     jumpPower: number;
     isPhasing: boolean;
 
@@ -259,6 +260,8 @@ export class Default implements Player {
     speed = 1_000;
     // airSpeed; for other classes like heavyweight
     isGrounded = false;
+    isOnWall = false;
+    wallDirection = 0;
     jumpPower = 800;
     jumpTimer = 0;
     canJump = true;
@@ -674,7 +677,8 @@ export class Default implements Player {
             ) * this.speed * this.speedMultiplier * DT / 2;
         }
         this.physicsBody.vel.y += (
-            2_500 + Number(this.isGroundPounding) * 5_000
+            2_500 + Number(this.isGroundPounding) * 5_000 -
+            Number(this.isOnWall) * 1_500
         ) * DT / 2;
 
         this.physicsBody.update(DT);
@@ -686,7 +690,8 @@ export class Default implements Player {
             ) * this.speed * this.speedMultiplier * DT / 2;
         }
         this.physicsBody.vel.y += (
-            2_500 + Number(this.isGroundPounding) * 5_000
+            2_500 + Number(this.isGroundPounding) * 5_000 -
+            Number(this.isOnWall) * 1_500
         ) * DT / 2;
 
         this.visualOffset.Sn(Math.exp(DT * this.visualDiminishConstant));
@@ -720,7 +725,8 @@ export class Default implements Player {
             this.attack();
         }
         if (input.special) this.special();
-        this.isGrounded = false;
+        this.isOnWall = this.isGrounded = false;
+        this.wallDirection = 0;
         if (this.isPhasing) {
             if ((this.phaseTimer -= DT) < 0) this.isPhasing = false;
         }
@@ -763,6 +769,9 @@ export class Default implements Player {
         }
 
         this.physicsBody.vel.y = -jumpPower;
+        if (this.isOnWall) {
+            this.physicsBody.vel.x = this.wallDirection * jumpPower / 2;
+        }
         this.jumpTimer = .2;
     }
 
@@ -828,6 +837,11 @@ export class Default implements Player {
             const diff = this.physicsBody.pos.x - oldX;
             if (Math.abs(diff) > 4) this.visualOffset.x -= diff;
             this.physicsBody.vel.x = Math.min(0, this.physicsBody.vel.x);
+
+            this.isOnWall = true;
+            this.wallDirection = -1;
+            this.canJump = true;
+            this.doubleJumpCount = 2;
             return;
         }
 
@@ -841,6 +855,11 @@ export class Default implements Player {
             const diff = this.physicsBody.pos.x - oldX;
             if (Math.abs(diff) > 4) this.visualOffset.x -= diff;
             this.physicsBody.vel.x = Math.max(0, this.physicsBody.vel.x);
+
+            this.isOnWall = true;
+            this.wallDirection = 1;
+            this.canJump = true;
+            this.doubleJumpCount = 2;
             return;
         }
     }
@@ -1034,6 +1053,8 @@ export class Default implements Player {
             velX: this.physicsBody.vel.x,
             velY: this.physicsBody.vel.y,
             isGrounded: this.isGrounded,
+            isOnWall: this.isOnWall,
+            wallDirection: this.wallDirection,
             jumpTimer: this.jumpTimer,
             canJump: this.canJump,
             doubleJumpCount: this.doubleJumpCount,
@@ -1081,6 +1102,8 @@ export class Default implements Player {
         this.physicsBody.vel.x = values.velX;
         this.physicsBody.vel.y = values.velY;
         this.isGrounded = values.isGrounded;
+        this.isOnWall = values.isOnWall;
+        this.wallDirection = values.wallDirection;
         this.jumpTimer = values.jumpTimer;
         this.canJump = values.canJump;
         this.doubleJumpCount = values.doubleJumpCount;

@@ -254,3 +254,66 @@ export class DeathPlatform implements Platform {
         if (!p.isDead) p.takeDamage(1, { type: "environment" });
     }
 }
+
+const stoneWallTex = await loadImage(stoneImg),
+    stoneWallColor: GLColor = [.5, .6, .7, 1];
+export class StoneWall implements Platform {
+    texCoord: Float32Array;
+    triangles: Float32Array;
+    hitbox: RectangleHitbox;
+    readonly isPhaseable = false;
+    readonly isWall = true;
+
+    constructor(
+        public pos: Vector2D,
+        public w: number,
+        public h: number,
+    ) {
+        const x = pos.x % 16 / TEX_TO_SCREEN_RATIO,
+            y = pos.y % 16 / TEX_TO_SCREEN_RATIO;
+        this.texCoord = rectToGeometry([
+            x,
+            y,
+            x + w / TEX_TO_SCREEN_RATIO,
+            y + h / TEX_TO_SCREEN_RATIO,
+        ]);
+
+        this.triangles = rectToGeometry([
+            this.pos.x - w / 2,
+            this.pos.y - h / 2,
+            this.pos.x + w / 2,
+            this.pos.y + h / 2,
+        ]);
+        this.hitbox = { type: "rect", offset: Vector2D.zero(), w, h };
+    }
+
+    update() {
+    }
+
+    render() {
+        drawGeometry(
+            stoneWallTex,
+            this.texCoord,
+            this.triangles,
+            defaultRectColor,
+            {
+                tint: stoneWallColor,
+                repeatX: true,
+                repeatY: true,
+                mirroredX: true,
+                mirroredY: true,
+            },
+        );
+
+        if (DEBUG_HITBOXES) {
+            drawHitbox(
+                this.hitbox,
+                this.pos,
+                [0, 0, 1, 1],
+            );
+        }
+    }
+
+    onCollision(_p: Player) {
+    }
+}

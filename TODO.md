@@ -5,17 +5,21 @@
 > add isOnWall boolean to Player and add conditions to jump function
 > wallJumpDirection variable to store which direction to jump
 > on a wall the jump should launch away from wall
-- add multiplayer
+- add online multiplayer
 > sync end screens (done)
 > make continue go back to lobby
 > add player customization in lobby (add multiple players)
 > get it to work with 3+ clients
+> make forming lobbies more convenient, and handle disconnects
 - Particles (moving, jump, ground pound, attk, etc.)
 - Combo text somewhere (maybe text particle)
+- Custom color selection for players
+> Min V (HSV) for a player color = 0.4 (when they get to custom select colors)
 - Sounds
 - Kill Buffs (killBuff(): void) to Player interface + Default
 - Upgrade System
-> Default: either choose +20% crit chance losing 20 max hp or
+> Default: either choose +20% crit chance losing 20 max hp or lose 1 jump but
+  heal 30% of missing health every 8 seconds.
 - bake lighting into maps, and add alpha channel for radial glows etc.
 - Add damage zones/platforms (done), moving platforms
 > Use for dying offscreen (done)
@@ -23,12 +27,8 @@
   damaging platforms.
 - Add healing zones/platforms (probably another map)
 > Use in the map as greenish pulsing damaging platforms
-- Whenever a player moves, their z-index/rendering order should be on top
-> so dead players that just happen to be last don't get rendered on top of
-> other players.
-- Combo text somewhere (maybe text particle)
-- Custom color selection for players
-> Min V (HSV) for a player color = 0.4 (when they get to custom select colors)
+- Save Replay functionality (map: map, inputs: {tick: input}, players: [...]}
+> let user download the file or save it to localStorage figure it out
 
 ## Classes
 
@@ -43,7 +43,7 @@
 > can ground pound in square form
 > in square form, the normal attack is
 - ninja:
-> attacks with slashes, proportional and direction based on speed
+> attacks with slashes, proportional to speed and direction based on speed
 > slashes end with 0 velocity
 > slashes can be used as movement (jump up, at immediately after jumping slash
   to go farther up etc.)
@@ -89,7 +89,13 @@
 > charge up attack (hold attack down) let go to attack
 > special is a taunt that heals 30% missing health and deals kb (no damage and
   big range.
-> //
+> no wall jump
+> slow, high health, low jumps (faithful to cuboid fight remade)
+- double trouble
+> 2 people, swap by using special
+> each has their own unique melee attack
+> share healthbar
+> one is high mobility other is low mobility
 
 ...
 

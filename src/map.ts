@@ -14,6 +14,7 @@ import {
     GrassPlatform,
     resolvePlatformPlayerCollisions,
     StonePlatform,
+    StoneWall,
 } from "./platform.ts";
 import { Vector2D } from "./math.ts";
 import {
@@ -55,6 +56,7 @@ export class Map1 implements GameMap {
     }
 
     platforms = [
+        new StoneWall(Vector2D.xy(-450, 50), 45, 300),
         new GrassPlatform(Vector2D.xy(-300, -200), 300, 45),
         new GrassPlatform(Vector2D.xy(-100, 300), 500, 100),
         new GrassPlatform(Vector2D.xy(-100, -300), 300, 35),
@@ -319,9 +321,9 @@ export class Map1 implements GameMap {
                     platforms[i].render();
                 }
 
-                for (let i = 0; i < players.length; i++) {
-                    players[i].render(dt);
-                }
+                [...players]
+                    .sort((_a, b) => Number(b.isDead))
+                    .forEach((p) => p.render(dt));
 
                 renderParticles(dt);
 
@@ -375,7 +377,6 @@ export class Map1 implements GameMap {
                         ...state,
                         playerStates: players.map((p) => p.saveState()),
                     },
-                    // TODO: make better
                     inputs: inputs.map((i) => i | PREDICTED),
                 };
             };
@@ -477,7 +478,7 @@ export class Map1 implements GameMap {
                     ): GameState<State, Input> {
                         const inputsToSend = {};
                         for (let i = 0; i < inputs.length; i++) {
-                            inputs[i] = inputs[i] | PREDICTED;
+                            inputs[i] |= PREDICTED;
                         }
                         for (const control of localControls) {
                             // @ts-ignore:
