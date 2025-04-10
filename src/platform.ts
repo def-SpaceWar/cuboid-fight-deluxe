@@ -251,7 +251,7 @@ export class DeathPlatform implements Platform {
     }
 
     onCollision(p: Player) {
-        if (!p.isDead) p.takeDamage(1, { type: "environment" });
+        if (!p.isDead) p.takeDamage(10, { type: "environment" });
     }
 }
 
