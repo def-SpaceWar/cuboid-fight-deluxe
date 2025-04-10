@@ -39,7 +39,13 @@ import {
 } from "./loop.ts";
 import { DT, toggleHitboxes } from "./flags.ts";
 import { JoinOrCreateLobby, Scene } from "./scene.ts";
-import { connections, isHosting, resetConnections } from "./networking.ts";
+import {
+    connections,
+    gameNumber,
+    isHosting,
+    resetConnections,
+    setGameNumber,
+} from "./networking.ts";
 
 export interface GameMap extends Scene {
     readonly gamemode: Gamemode;
@@ -392,18 +398,8 @@ export class Map1 implements GameMap {
                 connection.datachannel!.onmessage = (e) => {
                     if (!isHosting && e.data == "restart") {
                         console.log("RESTARTING");
-                        for (let i = 0; i < players.length; i++) {
-                            players[i].onDestroy();
-                        }
-                        // @ts-ignore:
-                        players = null;
-
-                        stopRender();
                         updateLoop.stop();
-                        removeEndScreen();
-                        for (const connection of connections) {
-                            connection.datachannel!.onmessage = () => {};
-                        }
+                        setGameNumber(gameNumber + 1);
                         resolve(new Map1());
                         return;
                     }
@@ -411,7 +407,10 @@ export class Map1 implements GameMap {
                     const data: {
                         tick: number;
                         inputs: RawPlayerInput[];
+                        gameNumber: number;
                     } = JSON.parse(e.data);
+
+                    if (data.gameNumber != gameNumber) return;
 
                     if (data.inputs) {
                         if (isHosting) {
@@ -495,14 +494,15 @@ export class Map1 implements GameMap {
                         }
                         const tick = updateLoop.gameTick;
                         for (const connection of connections) {
-                            //setTimeout(() => {
-                            connection.sendMessage(
-                                JSON.stringify({
-                                    tick,
-                                    inputs: inputsToSend,
-                                }),
-                            );
-                            //}, Math.random() * 1_000);
+                            setTimeout(() => {
+                                connection.sendMessage(
+                                    JSON.stringify({
+                                        tick,
+                                        inputs: inputsToSend,
+                                        gameNumber,
+                                    }),
+                                );
+                            }, Math.random() * 1_000);
                         }
                         return { state, inputs };
                     }
@@ -569,52 +569,21 @@ export class Map1 implements GameMap {
                                     map.gamemode.getWinnerData(players),
                                     map.gamemode.getLeaderboardTable(players),
                                     () => {
-                                        for (
-                                            let i = 0;
-                                            i < players.length;
-                                            i++
-                                        ) {
-                                            players[i].onDestroy();
-                                        }
-                                        // @ts-ignore:
-                                        players = null;
-
-                                        stopRender();
                                         updateLoop.stop();
-                                        removeEndScreen();
-
-                                        for (const connection of connections) {
-                                            connection.datachannel!.onmessage =
-                                                () => {};
+                                        setGameNumber(gameNumber + 1);
+                                        resolve(new Map1());
+                                        for (
+                                            const connection of connections
+                                        ) {
+                                            connection.sendMessage(
+                                                "restart",
+                                            );
                                         }
-
-                                        setTimeout(() => {
-                                            resolve(new Map1());
-                                            for (
-                                                const connection of connections
-                                            ) {
-                                                connection.sendMessage(
-                                                    "restart",
-                                                );
-                                            }
-                                        }, 2_000);
                                     },
                                     () => {
-                                        for (
-                                            let i = 0;
-                                            i < players.length;
-                                            i++
-                                        ) {
-                                            players[i].onDestroy();
-                                        }
-                                        // @ts-ignore:
-                                        players = null;
-
-                                        stopRender();
                                         updateLoop.stop();
-                                        removeEndScreen();
+                                        setGameNumber(0);
                                         resolve(new JoinOrCreateLobby());
-
                                         for (const connection of connections) {
                                             connection.sendMessage("continue");
                                         }
@@ -666,6 +635,20 @@ export class Map1 implements GameMap {
                         }
 
                         return incoming;
+                    }
+                    onStop() {
+                        for (
+                            let i = 0;
+                            i < players.length;
+                            i++
+                        ) {
+                            players[i].onDestroy();
+                        }
+                        // @ts-ignore:
+                        players = null;
+
+                        stopRender();
+                        removeEndScreen();
                     }
                 })({ state: initialState, inputs: initialInput }),
             );

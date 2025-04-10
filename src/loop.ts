@@ -150,7 +150,10 @@ export abstract class UpdateLoop<T, I> {
         isRollbacking = false;
     }
 
+    abstract onStop(): void;
+
     stop() {
+        this.onStop();
         this.tpsTextNode.remove();
         this.tpsText.remove();
         clearInterval(this.handle);

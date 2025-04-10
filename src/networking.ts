@@ -1,6 +1,9 @@
 export let isHosting = true;
 export const setHost = (val: boolean) => isHosting = val;
 
+export let gameNumber = 0;
+export const setGameNumber = (val: number) => gameNumber = val;
+
 /**
  * if isHosting, connections represents the other players
  * if not isHosting, connections[0] is the host
