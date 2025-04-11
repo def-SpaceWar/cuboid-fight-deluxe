@@ -494,15 +494,15 @@ export class Map1 implements GameMap {
                         }
                         const tick = updateLoop.gameTick;
                         for (const connection of connections) {
-                            setTimeout(() => {
-                                connection.sendMessage(
-                                    JSON.stringify({
-                                        tick,
-                                        inputs: inputsToSend,
-                                        gameNumber,
-                                    }),
-                                );
-                            }, Math.random() * 1_000);
+                            //setTimeout(() => {
+                            connection.sendMessage(
+                                JSON.stringify({
+                                    tick,
+                                    inputs: inputsToSend,
+                                    gameNumber,
+                                }),
+                            );
+                            //}, Math.random() * 1_000);
                         }
                         return { state, inputs };
                     }
