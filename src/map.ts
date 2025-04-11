@@ -26,6 +26,7 @@ import {
     loadImage,
     rectToGeometry,
     renderLighting,
+    rollbackTempHTML,
 } from "./render.ts";
 import { renderParticles } from "./particle.ts";
 import { isPressed, listenToInput, stopListeningToInput } from "./input.ts";
@@ -453,6 +454,7 @@ export class Map1 implements GameMap {
                         }
                         if (match) return;
 
+                        rollbackTempHTML(data.tick);
                         (updateLoop as UpdateLoop<State, Input>).rollback(
                             data.tick,
                             ({ state, inputs }) => {

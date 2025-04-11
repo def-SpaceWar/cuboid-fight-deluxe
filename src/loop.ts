@@ -49,6 +49,7 @@ export type GameState<T, I> = {
 };
 
 export let isRollbacking = false;
+export let toTick = 0;
 export abstract class UpdateLoop<T, I> {
     tpsList: Float32Array;
     avgTps: () => number;
@@ -132,10 +133,11 @@ export abstract class UpdateLoop<T, I> {
     ): GameState<T, I>;
 
     rollback(
-        toTick: number,
+        _toTick: number,
         updateInput: (orig: GameState<T, I>) => GameState<T, I>,
     ) {
         isRollbacking = true;
+        toTick = _toTick;
         this.state = updateInput(this.inputStates[toTick - this.startTick]);
         const previousTick = this.gameTick;
         this.gameTick = toTick;

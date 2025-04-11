@@ -11,9 +11,9 @@ import composeVert from "./shaders/compose.vert?raw";
 // @ts-ignore:
 import composeFrag from "./shaders/compose.frag?raw";
 import { Vector2D } from "./math.ts";
-import { CIRCLE_ACCURACY, PULSE_ANIM_STEPS } from "./flags.ts";
+import { CIRCLE_ACCURACY, DT, PULSE_ANIM_STEPS } from "./flags.ts";
 import { Winner } from "./gamemode.ts";
-import { updateLoop } from "./loop.ts";
+import { isRollbacking, toTick, updateLoop } from "./loop.ts";
 import { isHosting } from "./networking.ts";
 
 const app = document.getElementById("app")!;
@@ -881,7 +881,21 @@ export class HSVAColor {
     }
 }
 
-updateLoop; // set this to have a birthTick
+export type TempHTML = {
+    elem: HTMLDivElement;
+    timeout: number;
+    birthTick: number;
+};
+export let tempHTMLs: TempHTML[] = [];
+export function rollbackTempHTML(tick: number) {
+    tempHTMLs = tempHTMLs
+        .flatMap((t) => {
+            if (t.birthTick < tick) return t;
+            clearTimeout(t.timeout);
+            t.elem.remove();
+            return [];
+        });
+}
 export function createHTMLTemporary(
     innerText: string,
     className: string,
@@ -897,7 +911,18 @@ export function createHTMLTemporary(
     elem.style.top = `calc(50vh + ${pos.y | 0}px)`;
     elem.style.animationDuration = `${lifespan}s`;
     elem.style.opacity = "0";
-    setTimeout(() => elem.remove(), lifespan * 1_000);
+    if (isRollbacking) {
+        elem.style.animationDelay = (DT * (toTick - updateLoop.gameTick)) +
+            "s";
+        console.log(DT * (toTick - updateLoop.gameTick));
+    }
+    const timeout = setTimeout(
+        () => elem.remove(),
+        (isRollbacking
+            ? lifespan + DT * (toTick - updateLoop.gameTick)
+            : lifespan) * 1_000,
+    );
+    tempHTMLs.push({ elem, timeout, birthTick: updateLoop.gameTick });
 }
 
 export function createHTMLRender(
