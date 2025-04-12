@@ -161,6 +161,10 @@ input {
   	animation-name: fade;
 }
 
+.regenerate {
+    color: #FF66FF;
+}
+
 .damage {
     margin: 0;
     padding: 0;
@@ -169,6 +173,14 @@ input {
   	text-shadow: 2px 2px black;
   	transform: translate(-50%, -50%);
   	animation-name: fade;
+}
+
+.degenerate {
+    color: #BB4477;
+}
+
+.poison {
+    color: #448822;
 }
 
 @keyframes fade {

@@ -44,7 +44,7 @@ export class Deathmatch implements KillsGamemode {
     }
 
     getWinnerData(players: Player[]): Winner {
-        let winners: Player[] = [];
+        const winners: Player[] = [];
         for (let i = 0; i < players.length; i++) {
             const player = players[i];
             if (player.kills < this.kills) continue;
@@ -95,7 +95,7 @@ export class Deathmatch implements KillsGamemode {
         for (let i = 0; i < sortedPlayers.length; i++) {
             const player = sortedPlayers[i],
                 row = table.appendChild(document.createElement("tr"));
-            row.style.color = player.color.toCSS();
+            row.style.color = player.origColor.toCSS();
             {
                 const cell = row.appendChild(document.createElement("td"));
                 cell.innerText = player.name;
@@ -123,13 +123,12 @@ export class Stock implements LivesGamemode {
     isGameOver(players: Player[]) {
         let alivePlayers = 0;
         for (let i = 0; i < players.length; i++)
-            // @ts-ignore
-            alivePlayers += (players[i].lives > 0)
+            alivePlayers += Number(players[i].lives > 0)
         return alivePlayers <= 1;
     }
 
     getWinnerData(players: Player[]): Winner {
-        let winners: Player[] = [];
+        const winners: Player[] = [];
         for (let i = 0; i < players.length; i++) {
             const player = players[i];
             if (player.lives <= 0) continue;
@@ -182,7 +181,7 @@ export class Stock implements LivesGamemode {
         for (let i = 0; i < sortedPlayers.length; i++) {
             const player = sortedPlayers[i],
                 row = table.appendChild(document.createElement("tr"));
-            row.style.color = player.color.toCSS();
+            row.style.color = player.origColor.toCSS();
             {
                 const cell = row.appendChild(document.createElement("td"));
                 cell.innerText = player.name;

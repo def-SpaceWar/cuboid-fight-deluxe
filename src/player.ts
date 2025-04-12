@@ -24,9 +24,12 @@ import {
 import {
     DAMAGE_COLOR,
     DEBUG_HITBOXES,
+    DEGENERATE_COLOR,
     DT,
     HEAL_COLOR,
     KILL_CREDIT_TIME,
+    POISON_COLOR,
+    REGENERATE_COLOR,
 } from "./flags.ts";
 import { Platform } from "./platform.ts";
 import { isMousePressed, isPressed } from "./input.ts";
@@ -52,6 +55,7 @@ type PlayerState = {
     lagY: number;
     posX: number;
     posY: number;
+    effect: string;
 };
 
 export interface PlayerInput {
@@ -136,6 +140,12 @@ export type DamageReason =
     }
     | {
         type: "environment";
+    }
+    | {
+        type: "degenerate";
+    }
+    | {
+        type: "poison";
     };
 export type HealReason =
     | {
@@ -144,8 +154,12 @@ export type HealReason =
     }
     | {
         type: "environment";
+    }
+    | {
+        type: "regenerate";
     };
 export interface Player {
+    origColor: RGBAColor;
     color: RGBAColor;
     number: PlayerNumber;
     name: string;
@@ -172,6 +186,7 @@ export interface Player {
     lastHit?: PlayerNumber;
     lastHitTimer: number;
 
+    effect: PlayerEffectManager;
     speedMultiplier: number;
     jumpMultiplier: number;
     abilitySpeedMultiplier: number;
@@ -191,6 +206,7 @@ export interface Player {
     takeKb(kb: Vector2D): void;
     takeDamage(damage: number, reason: DamageReason): number;
     takeHealing(health: number, reason: HealReason): number;
+    killBuff(other: Player): void;
 
     onDestroy(): void;
 
@@ -247,6 +263,7 @@ const defaultTex = await loadImage(defaultImg),
     } as RectangleHitbox,
     defaultMaxKb = 3_000;
 export class Default implements Player {
+    color: RGBAColor;
     visualOffset = Vector2D.zero();
     visualDiminishConstant = -20;
     lagOffset = Vector2D.zero();
@@ -258,7 +275,7 @@ export class Default implements Player {
     physicsBody;
 
     speed = 1_000;
-    // airSpeed; for other classes like heavyweight
+    // airSpeed; for other classes like heavyweight and other tanks
     isGrounded = false;
     isOnWall = false;
     wallDirection = 0;
@@ -321,6 +338,7 @@ export class Default implements Player {
     lastHit?: PlayerNumber;
     lastHitTimer = 0;
 
+    effect: PlayerEffectManager;
     speedMultiplier = 1;
     jumpMultiplier = 1;
     abilitySpeedMultiplier = 1;
@@ -332,13 +350,19 @@ export class Default implements Player {
     healMultiplier = 1;
 
     constructor(
-        public color: RGBAColor,
+        public origColor: RGBAColor,
         public number: PlayerNumber,
         public name: string,
         public allPlayers: Player[],
         public map: GameMap,
     ) {
-        const hsv = color.toHSVA();
+        this.color = new RGBAColor(
+            origColor.r,
+            origColor.g,
+            origColor.b,
+            origColor.a,
+        );
+        const hsv = this.color.toHSVA();
         hsv.s = 1;
 
         hsv.h += 0.25;
@@ -526,6 +550,8 @@ export class Default implements Player {
             );
             this.removeText2 = remove;
         }
+
+        this.effect = new PlayerEffectManager(this);
     }
 
     render() {
@@ -682,6 +708,7 @@ export class Default implements Player {
         ) * DT / 2;
 
         this.physicsBody.update(DT);
+        this.effect.update();
 
         if (!this.isDead) {
             this.physicsBody.vel.x += (
@@ -962,27 +989,54 @@ export class Default implements Player {
     takeDamage(damage: number, reason: DamageReason) {
         const origHealth = this.health;
         this.health -= damage * this.damageMultiplier;
-        this.color.pulseFromGL(DAMAGE_COLOR, .25);
 
-        if (reason.type == "player") {
-            if (reason.isCrit) {
+        switch (reason.type) {
+            case "player":
+                if (reason.isCrit) {
+                    createHTMLTemporary(
+                        `${damage.toPrecision(3)}`,
+                        "critical-damage",
+                        ((damage / 4) + 75) | 0,
+                        this.physicsBody.pos,
+                        .5 + Math.log10(damage),
+                    );
+                } else {
+                    createHTMLTemporary(
+                        `${damage.toPrecision(3)}`,
+                        "damage",
+                        ((damage / 4) + 50) | 0,
+                        this.physicsBody.pos,
+                        .2 + Math.log10(damage) / 2,
+                    );
+                }
+
+                this.lastHit = reason.player.number;
+                this.lastHitTimer = KILL_CREDIT_TIME;
+                this.color.pulseFromGL(DAMAGE_COLOR, .25);
+                break;
+            case "environment":
+                this.color.pulseFromGL(DAMAGE_COLOR, .25);
+                break;
+            case "degenerate":
                 createHTMLTemporary(
                     `${damage.toPrecision(3)}`,
-                    "critical-damage",
-                    ((damage / 4) + 75) | 0,
-                    this.physicsBody.pos,
-                    .5 + Math.log10(damage),
-                );
-            } else {createHTMLTemporary(
-                    `${damage.toPrecision(3)}`,
-                    "damage",
+                    "damage degenerate",
                     ((damage / 4) + 50) | 0,
                     this.physicsBody.pos,
                     .2 + Math.log10(damage) / 2,
-                );}
-
-            this.lastHit = reason.player.number;
-            this.lastHitTimer = KILL_CREDIT_TIME;
+                );
+                this.color.pulseFromGL(DEGENERATE_COLOR, .25);
+                break;
+            case "poison":
+                createHTMLTemporary(
+                    `${damage.toPrecision(3)}`,
+                    "damage poison",
+                    ((damage / 4) + 50) | 0,
+                    this.physicsBody.pos,
+                    .2 + Math.log10(damage) / 2,
+                );
+                this.color.pulseFromGL(POISON_COLOR, .25);
+                break;
         }
 
         if (this.health > 0) return origHealth - this.health;
@@ -990,9 +1044,11 @@ export class Default implements Player {
         if (this.lives > 0) this.lives -= 1;
 
         if (this.lastHit) {
-            this.allPlayers.filter(
+            const playerLastHitBy = this.allPlayers.filter(
                 (p) => p.number == this.lastHit,
-            )[0].kills += 1;
+            )[0];
+            playerLastHitBy.kills += 1;
+            playerLastHitBy.killBuff(this);
             this.lastHit = undefined;
         }
 
@@ -1014,18 +1070,40 @@ export class Default implements Player {
 
         const origHealth = this.health;
         this.health += health * this.healMultiplier;
-        this.color.pulseFromGL(HEAL_COLOR, .25);
 
-        if (reason.type == "player") {
-            createHTMLTemporary(
-                `${health.toPrecision(3)}`,
-                "heal",
-                ((health / 4) + 50) | 0,
-                this.physicsBody.pos,
-                .2 + Math.log10(health) / 2,
-            );
+        switch (reason.type) {
+            case "player":
+                createHTMLTemporary(
+                    `${health.toPrecision(3)}`,
+                    "heal",
+                    ((health / 4) + 50) | 0,
+                    this.physicsBody.pos,
+                    .2 + Math.log10(health) / 2,
+                );
+                this.color.pulseFromGL(HEAL_COLOR, .25);
+                break;
+            case "environment":
+                this.color.pulseFromGL(HEAL_COLOR, .25);
+                break;
+            case "regenerate":
+                createHTMLTemporary(
+                    `${health.toPrecision(3)}`,
+                    "heal regenerate",
+                    ((health / 4) + 50) | 0,
+                    this.physicsBody.pos,
+                    .2 + Math.log10(health) / 2,
+                );
+                this.color.pulseFromGL(REGENERATE_COLOR, .25);
+                break;
         }
         return this.health - origHealth;
+    }
+
+    killBuff(_other: Player) {
+        this.effect.regenerate(1, 5, 5);
+        this.damage *= 1.1;
+        this.speed *= 1.1;
+        this.incomingKbMultiplier *= 1.1;
     }
 
     onDestroy() {
@@ -1078,6 +1156,7 @@ export class Default implements Player {
             lives: this.lives,
             lastHit: this.lastHit,
             lastHitTimer: this.lastHitTimer,
+            effect: this.effect.saveState(),
             speedMultiplier: this.speedMultiplier,
             jumpMultiplier: this.jumpMultiplier,
             abilitySpeedMultiplier: this.abilitySpeedMultiplier,
@@ -1127,6 +1206,7 @@ export class Default implements Player {
         this.lives = values.lives;
         this.lastHit = values.lastHit;
         this.lastHitTimer = values.lastHitTimer;
+        this.effect.restoreState(values.effect);
         this.speedMultiplier = values.speedMultiplier;
         this.jumpMultiplier = values.jumpMultiplier;
         this.abilitySpeedMultiplier = values.abilitySpeedMultiplier;
@@ -1135,5 +1215,114 @@ export class Default implements Player {
         this.incomingKbMultiplier = values.incomingKbMultiplier;
         this.damageMultiplier = values.damageMultiplier;
         this.healMultiplier = values.healMultiplier;
+    }
+}
+
+type Regenerate = {
+    duration: number;
+    times: number;
+    amount: number;
+    timer: number;
+};
+type Degenerate = Regenerate;
+type Poison = {
+    duration: number;
+    times: number;
+    ratio: number;
+    timer: number;
+};
+export class PlayerEffectManager {
+    regenerations: Regenerate[] = [];
+    degenerations: Degenerate[] = [];
+    poisons: Poison[] = [];
+
+    constructor(public player: Player) {}
+
+    update() {
+        for (const effect of this.regenerations) {
+            effect.timer -= DT;
+            if (effect.timer <= 0) {
+                this.player.takeHealing(effect.amount, { type: "regenerate" });
+                effect.times--;
+                effect.timer += effect.duration;
+                if (effect.times <= 0) {
+                    this.regenerations = this.regenerations.filter((e) =>
+                        e != effect
+                    );
+                }
+            }
+        }
+
+        for (const effect of this.degenerations) {
+            effect.timer -= DT;
+            if (effect.timer <= 0) {
+                this.player.takeDamage(effect.amount, { type: "degenerate" });
+                effect.times--;
+                effect.timer += effect.duration;
+                if (effect.times <= 0) {
+                    this.degenerations = this.degenerations.filter((e) =>
+                        e != effect
+                    );
+                }
+            }
+        }
+
+        for (const effect of this.poisons) {
+            effect.timer -= DT;
+            if (effect.timer <= 0) {
+                this.player.takeDamage(
+                    this.player.health * effect.ratio,
+                    { type: "poison" },
+                );
+                effect.times--;
+                effect.timer += effect.duration;
+                if (effect.times <= 0) {
+                    this.poisons = this.poisons.filter((e) => e != effect);
+                }
+            }
+        }
+    }
+
+    regenerate(
+        duration: number,
+        times: number,
+        amount: number,
+        timer: number = 0,
+    ) {
+        this.regenerations.push({ duration, times, amount, timer });
+    }
+
+    degenerate(
+        duration: number,
+        times: number,
+        amount: number,
+        timer: number = 0,
+    ) {
+        this.degenerations.push({ duration, times, amount, timer });
+    }
+
+    poison(duration: number, times: number, ratio: number, timer: number = 0) {
+        this.poisons.push({ duration, times, ratio, timer });
+    }
+
+    getState() {
+        return {
+            regenerations: this.regenerations,
+            degenerations: this.degenerations,
+            poisons: this.poisons,
+        };
+    }
+
+    saveState(): string {
+        return JSON.stringify(this.getState());
+    }
+
+    restoreState(state: string) {
+        const data = JSON.parse(state) as ReturnType<
+            PlayerEffectManager["getState"]
+        >;
+        this.regenerations = data.regenerations;
+        this.degenerations = data.degenerations;
+        this.poisons = data.poisons;
     }
 }

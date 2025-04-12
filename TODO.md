@@ -3,6 +3,10 @@
 - add online multiplayer
 > sync end screens (done)
 > make continue go back to lobby
+> Make every client stores their own lobby data and sends it to host
+> every client handles their own players, and host sends the full lobby before
+  start of every game.
+> add lobbyData somewhere in networking.ts
 > add player customization in lobby (add multiple players)
 > get it to work with 3+ clients
 > make forming lobbies more convenient, and handle disconnects
@@ -14,8 +18,8 @@
 - Kill Buffs (killBuff(): void) to Player interface + Default
 - Upgrade System
 > Default: either choose +20% crit chance losing 20 max hp or lose 1 jump but
-  heal 30% of missing health every 8 seconds.
-- bake lighting into maps, and add alpha channel for radial glows etc.
+  heal 15% of missing health every 6 seconds. Lose 50% damage but attack with
+  poison for 5% every 1 second for 5 seconds.
 - Add damage zones/platforms (done), moving platforms
 > Use for dying offscreen (done)
 > Use in the map as reddish pulsing (not pulsing and doesn't have texture yet)

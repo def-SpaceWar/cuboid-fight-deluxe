@@ -973,14 +973,15 @@ export function createEndScreen(
             const span = header.appendChild(document.createElement("span"));
             span.innerText = `[P${winnerData.player.number}] ` +
                 winnerData.player.name;
-            span.style.color = winnerData.player.color.toCSS();
+            span.style.color = winnerData.player.origColor.toCSS();
             header.appendChild(document.createTextNode(" Won!"));
             break;
         }
         case "players":
             if (winnerData.players.length >= numPlayers) {
                 header.innerText = "Everyone won!?";
-            } else {switch (winnerData.players.length) {
+            } else {
+                switch (winnerData.players.length) {
                     case 2:
                         {
                             const span = header.appendChild(
@@ -1039,7 +1040,9 @@ export function createEndScreen(
                                 .toCSS();
                         }
                         header.appendChild(document.createTextNode(" Won!"));
-                }}
+                        break;
+                }
+            }
     }
 
     endScreen.appendChild(leaderboardTable);
