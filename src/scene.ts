@@ -1,5 +1,12 @@
 import { Map1 } from "./map.ts";
-import { Connection, connections, isHosting, setHost } from "./networking.ts";
+import {
+    Connection,
+    connections,
+    isHosting,
+    setHost,
+    setPlayerNumbers,
+} from "./networking.ts";
+import { PlayerNumber } from "./player.ts";
 import { clearScreen } from "./render.ts";
 
 const app = document.getElementById("app")!;
@@ -140,19 +147,26 @@ export class Lobby implements Scene {
                 loadingInvite.value = offer;
                 navigator.clipboard.writeText(offer);
                 joinLobbyBtn.onclick = async () => {
-                    connection.acceptAnswer(acceptAnswer.value);
-                    await connection.connect();
-                    await connection.dataOpen();
-                    connection.sendMessage(JSON.stringify({
-                        name: this.name,
-                        // just put all lobby data here
-                    }));
-                    // send other lobby data too
-                    // connection.datachannel!.onmessage = (e) => {...};
-                    // send lobby data when host updates, and the clients also send their lobby data when they update to host
-                    connections.push(connection);
-                    acceptAnswer.value = "";
-                    getConnection();
+                    try {
+                        connection.acceptAnswer(acceptAnswer.value);
+                        await connection.connect();
+                        await connection.dataOpen();
+                        connection.sendMessage(JSON.stringify({
+                            name: this.name,
+                            // just put all lobby data here
+                        }));
+                        // send other lobby data too
+                        // connection.datachannel!.onmessage = (e) => {...};
+                        // send lobby data when host updates, and the clients also send their lobby data when they update to host
+                        connections.push(connection);
+                        acceptAnswer.value = "";
+                        getConnection();
+                    } catch (e) {
+                        alert(e);
+                        if (e == "failed") {
+                            getConnection();
+                        }
+                    }
                 };
             };
             getConnection();
@@ -170,10 +184,11 @@ export class Lobby implements Scene {
 
             return new Promise<Scene>((resolve) => {
                 startGame.onclick = () => {
-                    for (const connection of connections) {
-                        connection.sendMessage("start");
+                    for (let i = 0; i < connections.length; i++) {
+                        connections[i].sendMessage("start:" + (i + 2));
                     }
                     cleanScene();
+                    setPlayerNumbers([1]);
                     resolve(new Map1());
                 };
             });
@@ -196,7 +211,13 @@ export class Lobby implements Scene {
 
         return new Promise<Scene>((resolve) => {
             connections[0].datachannel!.onmessage = (e) => {
-                if (e.data == "start") {
+                const data = String(e.data);
+                if (data.startsWith("start")) {
+                    setPlayerNumbers(
+                        data.split(":")[1]
+                            .split(",")
+                            .map((s) => Number(s) as PlayerNumber),
+                    );
                     cleanScene();
                     resolve(new Map1());
                 }

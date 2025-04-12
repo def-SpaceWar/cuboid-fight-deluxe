@@ -44,6 +44,7 @@ import {
     connections,
     gameNumber,
     isHosting,
+    playerNumbers,
     resetConnections,
     setGameNumber,
 } from "./networking.ts";
@@ -350,30 +351,19 @@ export class Map1 implements GameMap {
                 createdEndscreen: false,
             };
             type State = typeof initialState;
-            const initialInput = [0, 0] as RawPlayerInput[]; // length of players
+            const initialInput = [0, 0, 0, 0] as RawPlayerInput[]; // length of players
             type Input = typeof initialInput;
 
-            const localControls = isHosting
-                ? [
-                    new Controls({
-                        left: { key: "s" },
-                        up: { key: "e" },
-                        down: { key: "d" },
-                        right: { key: "f" },
-                        attack: { key: "w" },
-                        special: { key: "q" },
-                    }, 1),
-                ]
-                : [
-                    new Controls({
-                        left: { key: "s" },
-                        up: { key: "e" },
-                        down: { key: "d" },
-                        right: { key: "f" },
-                        attack: { key: "w" },
-                        special: { key: "q" },
-                    }, 2),
-                ];
+            const localControls = [
+                new Controls({
+                    left: { key: "s" },
+                    up: { key: "e" },
+                    down: { key: "d" },
+                    right: { key: "f" },
+                    attack: { key: "w" },
+                    special: { key: "q" },
+                }, playerNumbers[0]),
+            ];
 
             const saveState = (
                 state: State,
@@ -425,8 +415,15 @@ export class Map1 implements GameMap {
                         }
 
                         if (data.tick == updateLoop.gameTick) {
+                            const orig = parkedInputs.get(data.tick);
+                            if (orig) {
+                                parkedInputs.set(data.tick, {
+                                    ...orig,
+                                    ...data.inputs,
+                                });
+                                return;
+                            }
                             parkedInputs.set(data.tick, data.inputs);
-                            return;
                         }
 
                         let match = true;
@@ -455,6 +452,7 @@ export class Map1 implements GameMap {
                         if (match) return;
 
                         rollbackTempHTML(data.tick);
+                        // rollback the end screen if it is before the end screen was made
                         (updateLoop as UpdateLoop<State, Input>).rollback(
                             data.tick,
                             ({ state, inputs }) => {
@@ -495,8 +493,8 @@ export class Map1 implements GameMap {
                             parkedInputs.delete(updateLoop.gameTick);
                         }
                         const tick = updateLoop.gameTick;
+                        //setTimeout(() => {
                         for (const connection of connections) {
-                            //setTimeout(() => {
                             connection.sendMessage(
                                 JSON.stringify({
                                     tick,
@@ -504,8 +502,8 @@ export class Map1 implements GameMap {
                                     gameNumber,
                                 }),
                             );
-                            //}, Math.random() * 1_000);
                         }
+                        //}, Math.random() * 200);
                         return { state, inputs };
                     }
                     tick(

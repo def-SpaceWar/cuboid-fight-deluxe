@@ -43,6 +43,17 @@ export function renderLoop(c: (dt: number) => unknown) {
     };
 }
 
+export function accurateInterval(fn: () => void, time: number) {
+    let nextAt = new Date().getTime() + time, timeout: number;
+    const wrapper = () => {
+            nextAt += time;
+            timeout = setTimeout(wrapper, nextAt - new Date().getTime());
+            return fn();
+        };
+    timeout = setTimeout(wrapper, nextAt - new Date().getTime());
+    return () => clearTimeout(timeout);
+}
+
 export type GameState<T, I> = {
     state: T;
     inputs: I;
@@ -56,7 +67,7 @@ export abstract class UpdateLoop<T, I> {
     tpsText: HTMLParagraphElement;
     tpsTextNode: Text;
 
-    handle: number;
+    stopInterval: () => void;
     startTick = 0;
     gameTick = 0;
     inputStates: GameState<T, I>[] = [];
@@ -78,7 +89,7 @@ export abstract class UpdateLoop<T, I> {
 
         let before = performance.now(),
             tpsIdx = 0;
-        this.handle = setInterval(() => {
+        this.stopInterval = accurateInterval(() => {
             const now = performance.now(),
                 dt = (now - before) / 1_000;
             before = now;
@@ -99,7 +110,7 @@ export abstract class UpdateLoop<T, I> {
                 ),
             );
             this.gameTick++;
-        }, 1_000 / TPS);
+        }, Math.floor(1_000 / TPS));
     }
 
     catchupToTick(tick: number) {
@@ -158,7 +169,7 @@ export abstract class UpdateLoop<T, I> {
         this.onStop();
         this.tpsTextNode.remove();
         this.tpsText.remove();
-        clearInterval(this.handle);
+        this.stopInterval();
         // @ts-ignore:
         setUpdateLoop(null);
     }

@@ -914,7 +914,6 @@ export function createHTMLTemporary(
     if (isRollbacking) {
         elem.style.animationDelay = (DT * (toTick - updateLoop.gameTick)) +
             "s";
-        console.log(DT * (toTick - updateLoop.gameTick));
     }
     const timeout = setTimeout(
         () => elem.remove(),

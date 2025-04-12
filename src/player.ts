@@ -34,6 +34,7 @@ import {
 import { Platform } from "./platform.ts";
 import { isMousePressed, isPressed } from "./input.ts";
 import { GameMap } from "./map.ts";
+import { playerDatas } from "./networking.ts";
 
 type Keybind = { key: string };
 type MouseButton = { button: number };
@@ -216,38 +217,23 @@ export interface Player {
     restoreState(state: string): void;
 }
 
+export type PlayerData = {
+    name: string;
+    color: [r: number, g: number, b: number];
+};
+
 export function getPlayers(map: GameMap): Player[] {
     const players: Player[] = [];
-    players.push(
-        new Default(
-            new RGBAColor(1, .2, .3),
-            1,
-            "Mafia",
+    for (let i = 0; i < playerDatas.length; i++) {
+        players.push(new Default(
+            new RGBAColor(...playerDatas[i].color),
+            i + 1 as PlayerNumber,
+            playerDatas[i].name,
             players,
-            map,
-        ),
-        new Default(
-            new RGBAColor(.0, .5, 1),
-            2,
-            "Innocent",
-            players,
-            map,
-        ),
-        //new Default(
-        //    new RGBAColor(.2, 1, .3),
-        //    3,
-        //    "Villager",
-        //    players,
-        //    map,
-        //),
-        //new Default(
-        //    new RGBAColor(1, .8, .3),
-        //    4,
-        //    "Mayor",
-        //    players,
-        //    map,
-        //),
-    );
+            map
+        ));
+    }
+
     return players;
 }
 
@@ -1130,6 +1116,7 @@ export class Default implements Player {
             posY: this.physicsBody.pos.y,
             velX: this.physicsBody.vel.x,
             velY: this.physicsBody.vel.y,
+            speed: this.speed,
             isGrounded: this.isGrounded,
             isOnWall: this.isOnWall,
             wallDirection: this.wallDirection,
@@ -1142,6 +1129,7 @@ export class Default implements Player {
             canPressAttackKey: this.canPressAttackKey,
             canPressAttackKeyTimer: this.canPressAttackKeyTimer,
             attackTimer: this.attackTimer,
+            damage: this.damage,
             combo: this.combo,
             isGroundPounding: this.isGroundPounding,
             specialTimer: this.specialTimer,
@@ -1180,6 +1168,7 @@ export class Default implements Player {
         this.physicsBody.pos.y = values.posY;
         this.physicsBody.vel.x = values.velX;
         this.physicsBody.vel.y = values.velY;
+        this.speed = values.speed;
         this.isGrounded = values.isGrounded;
         this.isOnWall = values.isOnWall;
         this.wallDirection = values.wallDirection;
@@ -1192,6 +1181,7 @@ export class Default implements Player {
         this.canPressAttackKey = values.canPressAttackKey;
         this.canPressAttackKeyTimer = values.canPressAttackKeyTimer;
         this.attackTimer = values.attackTimer;
+        this.damage = values.damage;
         this.combo = values.combo;
         this.isGroundPounding = values.isGroundPounding;
         this.specialTimer = values.specialTimer;

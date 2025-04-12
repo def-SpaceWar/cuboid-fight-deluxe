@@ -1,3 +1,5 @@
+import { PlayerData, PlayerNumber } from "./player.ts";
+
 export let isHosting = true;
 export const setHost = (val: boolean) => isHosting = val;
 
@@ -135,4 +137,31 @@ export class Connection {
     sendMessage(data: string) {
         this.datachannel!.send(data);
     }
+}
+
+export let playerDatas: PlayerData[] = [
+    {
+        name: "Mafia",
+        color: [1, .2, .3],
+    },
+    {
+        name: "Innocent",
+        color: [0, .5, 1],
+    },
+    {
+        name: "Villager",
+        color: [.2, 1, .3],
+    },
+    {
+        name: "Mayor",
+        color: [1, .8, .3],
+    },
+];
+export function setPlayerDatas(data: PlayerData[]) {
+    playerDatas = data;
+}
+
+export let playerNumbers: PlayerNumber[] = [];
+export function setPlayerNumbers(numbers: PlayerNumber[]) {
+    playerNumbers = numbers;
 }
