@@ -23,12 +23,13 @@ import {
     createEndScreen,
     defaultRectColor,
     drawGeometry,
+    endScreenBirthTick,
     loadImage,
     rectToGeometry,
     renderLighting,
     rollbackTempHTML,
 } from "./render.ts";
-import { renderParticles } from "./particle.ts";
+import { particles } from "./particle.ts";
 import { isPressed, listenToInput, stopListeningToInput } from "./input.ts";
 import {
     GameState,
@@ -329,11 +330,9 @@ export class Map1 implements GameMap {
                     platforms[i].render();
                 }
 
-                [...players]
-                    .sort((_a, b) => Number(b.isDead))
+                [...players, ...particles]
+                    .sort((a, b) => b.renderZ - a.renderZ)
                     .forEach((p) => p.render(dt));
-
-                renderParticles(dt);
 
                 renderLighting(this.lightGeometry, this.lightColor);
 
@@ -354,6 +353,7 @@ export class Map1 implements GameMap {
             const initialInput = [0, 0, 0, 0] as RawPlayerInput[]; // length of players
             type Input = typeof initialInput;
 
+            // should be set in the lobby
             const localControls = [
                 new Controls({
                     left: { key: "s" },
@@ -454,7 +454,9 @@ export class Map1 implements GameMap {
                         if (match) return;
 
                         rollbackTempHTML(data.tick);
-                        // TODO: rollback the end screen if it is before the end screen was made
+                        if (
+                            endScreenBirthTick >= data.tick && removeEndScreen
+                        ) removeEndScreen();
                         updateLoop.saveRollback(data.tick);
                     }
                 };
@@ -483,17 +485,17 @@ export class Map1 implements GameMap {
                             parkedInputs.delete(updateLoop.gameTick);
                         }
                         const tick = updateLoop.gameTick;
-                        //setTimeout(() => {
-                        for (const connection of connections) {
-                            connection.sendMessage(
-                                JSON.stringify({
-                                    tick,
-                                    inputs: inputsToSend,
-                                    gameNumber,
-                                }),
-                            );
-                        }
-                        //}, Math.random() * 20);
+                        setTimeout(() => {
+                            for (const connection of connections) {
+                                connection.sendMessage(
+                                    JSON.stringify({
+                                        tick,
+                                        inputs: inputsToSend,
+                                        gameNumber,
+                                    }),
+                                );
+                            }
+                        }, Math.random() * 100);
                         return { state, inputs };
                     }
                     tick(
@@ -520,6 +522,8 @@ export class Map1 implements GameMap {
                                 parseRawInput(inputs[players[i].number - 1]),
                             );
                         }
+
+                        for (const particle of particles) particle.update();
 
                         for (let i = 0; i < players.length; i++) {
                             if (
@@ -642,7 +646,7 @@ export class Map1 implements GameMap {
                     }
                 })(
                     { state: initialState, inputs: initialInput },
-                    [-1, 1, 4, 10][connections.length],
+                    connections.length == 0 ? -1 : 1,
                 ),
             );
         });

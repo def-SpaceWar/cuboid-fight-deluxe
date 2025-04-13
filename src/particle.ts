@@ -1,19 +1,26 @@
-import { Platform } from "./platform.ts";
+import { DT } from "./flags.ts";
+import { updateLoop } from "./loop.ts";
 
-export interface Particle {
-    lifespan: number;
-    render(dt: number): void;
-    onPlatformCollision(p: Platform): void;
+export abstract class Particle {
+    birthTick: number;
+    abstract lifespan: number;
+    abstract renderZ: number;
+
+    constructor() {
+        particles.push(this);
+        this.birthTick = updateLoop.gameTick;
+    }
+
+    abstract render(dt: number): void;
+
+    update() {
+        this.lifespan -= DT;
+        if (this.lifespan > 0) return;
+        particles = particles.filter((p) => p != this);
+    }
 }
 
-export const particles: Particle[] = [];
-
-export function renderParticles(dt: number) {
-    for (let i = 0; i < particles.length; i++) {
-        const particle = particles[i];
-        particle.render(dt);
-        particle.lifespan -= dt;
-        if (particle.lifespan > 0) continue;
-        particles.splice(i, 1);
-    }
+export let particles: Particle[] = [];
+export function rollbackParticles(tick: number) {
+    particles = particles.filter((p) => p.birthTick < tick);
 }

@@ -80,15 +80,23 @@ class AnswerLobby implements Scene {
         navigator.clipboard.writeText(answer);
 
         const copyAnswer = app.appendChild(document.createElement("p"));
-        copyAnswer.innerText = "Copy and send to lobby host! (auto-copied)";
-        await connection.connect();
-        connections.push(connection);
-        await connection.acquiredDataChannel!;
-
         const cleanScene = () => {
             loadingAnswer.remove();
             copyAnswer.remove();
         };
+
+        try {
+            copyAnswer.innerText = "Copy and send to lobby host! (auto-copied)";
+            await connection.connect();
+            connections.push(connection);
+            await connection.acquiredDataChannel!;
+        } catch (e) {
+            alert(e);
+            if (e == "failed") {
+                cleanScene();
+                return new JoinOrCreateLobby();
+            }
+        }
 
         return new Promise<Scene>((resolve) => {
             connection.datachannel!.onmessage = (e) => {
@@ -164,6 +172,7 @@ export class Lobby implements Scene {
                     } catch (e) {
                         alert(e);
                         if (e == "failed") {
+                            acceptAnswer.value = "";
                             getConnection();
                         }
                     }

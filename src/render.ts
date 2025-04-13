@@ -948,6 +948,7 @@ export function createHTMLRender(
     };
 }
 
+export let endScreenBirthTick = 0;
 export function createEndScreen(
     numPlayers: number,
     winnerData: Winner,
@@ -955,6 +956,8 @@ export function createEndScreen(
     restart: () => void,
     next: () => void,
 ) {
+    endScreenBirthTick = updateLoop.gameTick;
+
     const endScreenContainer = app.appendChild(document.createElement("div"));
     endScreenContainer.className = "end-screen-container";
 

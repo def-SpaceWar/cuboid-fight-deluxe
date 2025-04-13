@@ -3,8 +3,10 @@ import iconsImg from "./assets/ui/icons.png";
 // @ts-ignore:
 import defaultImg from "./assets/classes/default.png";
 import {
+    circleToGeometry,
     createHTMLRender,
     createHTMLTemporary,
+    defaultCircleColor,
     defaultRectColor,
     drawGeometry,
     fillGeometry,
@@ -35,6 +37,7 @@ import { Platform } from "./platform.ts";
 import { isMousePressed, isPressed } from "./input.ts";
 import { GameMap } from "./map.ts";
 import { playerDatas } from "./networking.ts";
+import { Particle } from "./particle.ts";
 
 type Keybind = { key: string };
 type MouseButton = { button: number };
@@ -198,6 +201,7 @@ export interface Player {
     damageMultiplier: number;
     healMultiplier: number;
 
+    renderZ: number;
     render(dt: number): void;
     renderUi(dt: number): void;
     update(input: PlayerInput): void;
@@ -225,13 +229,15 @@ export type PlayerData = {
 export function getPlayers(map: GameMap): Player[] {
     const players: Player[] = [];
     for (let i = 0; i < playerDatas.length; i++) {
-        players.push(new Default(
-            new RGBAColor(...playerDatas[i].color),
-            i + 1 as PlayerNumber,
-            playerDatas[i].name,
-            players,
-            map
-        ));
+        players.push(
+            new Default(
+                new RGBAColor(...playerDatas[i].color),
+                i + 1 as PlayerNumber,
+                playerDatas[i].name,
+                players,
+                map,
+            ),
+        );
     }
 
     return players;
@@ -250,6 +256,7 @@ const defaultTex = await loadImage(defaultImg),
     defaultMaxKb = 3_000;
 export class Default implements Player {
     color: RGBAColor;
+    renderZ = 0;
     visualOffset = Vector2D.zero();
     visualDiminishConstant = -20;
     lagOffset = Vector2D.zero();
@@ -541,6 +548,7 @@ export class Default implements Player {
     }
 
     render() {
+        this.renderZ = -1 * Number(this.isDead);
         if (this.isDead) {
             drawGeometry(
                 defaultTex,
@@ -886,6 +894,13 @@ export class Default implements Player {
         this.canPressAttackKey = false;
         this.canPressAttackKeyTimer = .02;
 
+        new DefaultAttackParticle(
+            this.physicsBody.pos.clone(),
+            this.attackRange * this.attackRangeMultiplier *
+                (isGroundPound ? Math.sqrt(2) : 1),
+            this.origColor.glColor,
+        );
+
         for (let i = 0; i < this.allPlayers.length; i++) {
             const other = this.allPlayers[i];
             if (other == this || other.isDead) continue;
@@ -1205,6 +1220,38 @@ export class Default implements Player {
         this.incomingKbMultiplier = values.incomingKbMultiplier;
         this.damageMultiplier = values.damageMultiplier;
         this.healMultiplier = values.healMultiplier;
+    }
+}
+const defaultAttackParticleGeometry = circleToGeometry(Vector2D.zero(), 1);
+class DefaultAttackParticle extends Particle {
+    renderZ = -0.5;
+    lifespan = 0.5;
+    scale: Vector2D;
+
+    constructor(
+        public pos: Vector2D,
+        radius: number,
+        public color: GLColor,
+    ) {
+        super();
+        this.scale = Vector2D.xy(radius, radius);
+    }
+
+    render() {
+        fillGeometry(
+            defaultAttackParticleGeometry,
+            defaultCircleColor,
+            {
+                tint: [
+                    this.color[0],
+                    this.color[1],
+                    this.color[2],
+                    this.lifespan ** 2,
+                ],
+                scale: this.scale,
+                translation: this.pos,
+            },
+        );
     }
 }
 
