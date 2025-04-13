@@ -75,10 +75,6 @@ class AnswerLobby implements Scene {
         loadingAnswer.disabled = true;
 
         const connection = new Connection();
-        const answer = await connection.answer(this.offer);
-        loadingAnswer.value = answer;
-        navigator.clipboard.writeText(answer);
-
         const copyAnswer = app.appendChild(document.createElement("p"));
         const cleanScene = () => {
             loadingAnswer.remove();
@@ -86,6 +82,9 @@ class AnswerLobby implements Scene {
         };
 
         try {
+            const answer = await connection.answer(this.offer);
+            loadingAnswer.value = answer;
+            navigator.clipboard.writeText(answer);
             copyAnswer.innerText = "Copy and send to lobby host! (auto-copied)";
             await connection.connect();
             connections.push(connection);
