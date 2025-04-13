@@ -15,6 +15,10 @@ import dirtImg from "./assets/platforms/dirt.png";
 import grassImg from "./assets/platforms/grass.png";
 // @ts-ignore:
 import stoneImg from "./assets/platforms/stone.png";
+// @ts-ignore:
+import stoneWallImg from "./assets/platforms/stone_wall.png";
+// @ts-ignore:
+import deathImg from "./assets/platforms/death.png";
 
 export type Platform = {
     pos: Vector2D;
@@ -48,8 +52,8 @@ export function resolvePlatformPlayerCollisions(
                 )
             ) continue;
 
-            player.onPlatformCollision(platform);
             platform.onCollision(player);
+            player.onPlatformCollision(platform);
         }
     }
 }
@@ -191,7 +195,70 @@ export class StonePlatform implements Platform {
     }
 }
 
-const deathTex = await loadImage(stoneImg),
+const stoneWallTex = await loadImage(stoneWallImg),
+    stoneWallColor: GLColor = [.75, .825, .9, 1];
+export class StoneWall implements Platform {
+    texCoord: Float32Array;
+    triangles: Float32Array;
+    hitbox: RectangleHitbox;
+    readonly isPhaseable = false;
+    readonly isWall = true;
+
+    constructor(
+        public pos: Vector2D,
+        public w: number,
+        public h: number,
+    ) {
+        const x = pos.x % 16 / TEX_TO_SCREEN_RATIO,
+            y = pos.y % 16 / TEX_TO_SCREEN_RATIO;
+        this.texCoord = rectToGeometry([
+            x,
+            y,
+            x + w / TEX_TO_SCREEN_RATIO,
+            y + h / TEX_TO_SCREEN_RATIO,
+        ]);
+
+        this.triangles = rectToGeometry([
+            this.pos.x - w / 2,
+            this.pos.y - h / 2,
+            this.pos.x + w / 2,
+            this.pos.y + h / 2,
+        ]);
+        this.hitbox = { type: "rect", offset: Vector2D.zero(), w, h };
+    }
+
+    update() {
+    }
+
+    render() {
+        drawGeometry(
+            stoneWallTex,
+            this.texCoord,
+            this.triangles,
+            defaultRectColor,
+            {
+                tint: stoneWallColor,
+                repeatX: true,
+                repeatY: true,
+                mirroredX: false,
+                mirroredY: false,
+            },
+        );
+
+        if (DEBUG_HITBOXES) {
+            drawHitbox(
+                this.hitbox,
+                this.pos,
+                [0, 0, 1, 1],
+            );
+        }
+    }
+
+    onCollision(_p: Player) {
+    }
+}
+
+const deathTex = await loadImage(deathImg),
     deathColor: GLColor = [1, 0.2, 0.4, 1];
 export class DeathPlatform implements Platform {
     texCoord: Float32Array;
@@ -236,8 +303,8 @@ export class DeathPlatform implements Platform {
                 tint: deathColor,
                 repeatX: true,
                 repeatY: true,
-                mirroredX: true,
-                mirroredY: true,
+                mirroredX: false,
+                mirroredY: false,
             },
         );
 
@@ -252,68 +319,5 @@ export class DeathPlatform implements Platform {
 
     onCollision(p: Player) {
         if (!p.isDead) p.takeDamage(10, { type: "environment" });
-    }
-}
-
-const stoneWallTex = await loadImage(stoneImg),
-    stoneWallColor: GLColor = [.5, .6, .7, 1];
-export class StoneWall implements Platform {
-    texCoord: Float32Array;
-    triangles: Float32Array;
-    hitbox: RectangleHitbox;
-    readonly isPhaseable = false;
-    readonly isWall = true;
-
-    constructor(
-        public pos: Vector2D,
-        public w: number,
-        public h: number,
-    ) {
-        const x = pos.x % 16 / TEX_TO_SCREEN_RATIO,
-            y = pos.y % 16 / TEX_TO_SCREEN_RATIO;
-        this.texCoord = rectToGeometry([
-            x,
-            y,
-            x + w / TEX_TO_SCREEN_RATIO,
-            y + h / TEX_TO_SCREEN_RATIO,
-        ]);
-
-        this.triangles = rectToGeometry([
-            this.pos.x - w / 2,
-            this.pos.y - h / 2,
-            this.pos.x + w / 2,
-            this.pos.y + h / 2,
-        ]);
-        this.hitbox = { type: "rect", offset: Vector2D.zero(), w, h };
-    }
-
-    update() {
-    }
-
-    render() {
-        drawGeometry(
-            stoneWallTex,
-            this.texCoord,
-            this.triangles,
-            defaultRectColor,
-            {
-                tint: stoneWallColor,
-                repeatX: true,
-                repeatY: true,
-                mirroredX: true,
-                mirroredY: true,
-            },
-        );
-
-        if (DEBUG_HITBOXES) {
-            drawHitbox(
-                this.hitbox,
-                this.pos,
-                [0, 0, 1, 1],
-            );
-        }
-    }
-
-    onCollision(_p: Player) {
     }
 }

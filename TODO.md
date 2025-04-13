@@ -15,11 +15,10 @@
 - Custom color selection for players
 > Min V (HSV) for a player color = 0.4 (when they get to custom select colors)
 - Sounds
-- Kill Buffs (killBuff(): void) to Player interface + Default
 - Upgrade System
 > Default: either choose +20% crit chance losing 20 max hp or lose 1 jump but
   heal 15% of missing health every 6 seconds. Lose 50% damage but attack with
-  poison for 5% every 1 second for 5 seconds.
+  poison for 5% every 1 second for 5 seconds (27% HP over 5 seconds).
 - Add damage zones/platforms (done), moving platforms
 > Use for dying offscreen (done)
 > Use in the map as reddish pulsing (not pulsing and doesn't have texture yet)

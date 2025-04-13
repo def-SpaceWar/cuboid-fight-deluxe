@@ -659,11 +659,18 @@ export class Default implements Player {
         const color = this.color.toCSS(),
             darkenedColor = this.color.darken(1.3).toCSS();
 
-        if (this.health > 0) {
+        if (this.health > 1000) {
+            this.healthText.textContent = this.health.toPrecision(1) + "|" +
+                this.maxHealth.toPrecision(3);
+        } else if (this.health > this.maxHealth) {
+            this.healthText.textContent = this.health.toPrecision(3) + "|" +
+                this.maxHealth;
+        } else if (this.health > 0) {
             if (this.health < 0.01) {
                 this.healthText.textContent = this.health.toExponential(2);
             } else this.healthText.textContent = this.health.toPrecision(3);
         } else this.healthText.textContent = "0";
+
         this.healthBarChild.style.width =
             (this.health / this.maxHealth * 100).toFixed(0) + "%";
 
