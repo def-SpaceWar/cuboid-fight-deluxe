@@ -424,6 +424,7 @@ export class Map1 implements GameMap {
                                 return;
                             }
                             parkedInputs.set(data.tick, data.inputs);
+                            return;
                         }
 
                         let match = true;
@@ -434,6 +435,7 @@ export class Map1 implements GameMap {
                                             data.tick - updateLoop.startTick
                                         ].inputs[idx],
                                 orig = data.inputs[idx];
+
                             if (
                                 predicted == (orig | PREDICTED)
                             ) {
@@ -452,20 +454,8 @@ export class Map1 implements GameMap {
                         if (match) return;
 
                         rollbackTempHTML(data.tick);
-                        // rollback the end screen if it is before the end screen was made
-                        (updateLoop as UpdateLoop<State, Input>).rollback(
-                            data.tick,
-                            ({ state, inputs }) => {
-                                return {
-                                    state,
-                                    inputs: inputs.map((i, idx) =>
-                                        data.inputs[idx] != undefined
-                                            ? data.inputs[idx]
-                                            : i
-                                    ),
-                                };
-                            },
-                        );
+                        // TODO: rollback the end screen if it is before the end screen was made
+                        updateLoop.saveRollback(data.tick);
                     }
                 };
             }
@@ -493,17 +483,17 @@ export class Map1 implements GameMap {
                             parkedInputs.delete(updateLoop.gameTick);
                         }
                         const tick = updateLoop.gameTick;
-                        //setTimeout(() => {
-                        for (const connection of connections) {
-                            connection.sendMessage(
-                                JSON.stringify({
-                                    tick,
-                                    inputs: inputsToSend,
-                                    gameNumber,
-                                }),
-                            );
-                        }
-                        //}, Math.random() * 200);
+                        setTimeout(() => {
+                            for (const connection of connections) {
+                                connection.sendMessage(
+                                    JSON.stringify({
+                                        tick,
+                                        inputs: inputsToSend,
+                                        gameNumber,
+                                    }),
+                                );
+                            }
+                        }, Math.random() * 20);
                         return { state, inputs };
                     }
                     tick(
@@ -650,7 +640,10 @@ export class Map1 implements GameMap {
                         stopRender();
                         removeEndScreen();
                     }
-                })({ state: initialState, inputs: initialInput }),
+                })(
+                    { state: initialState, inputs: initialInput },
+                    [-1, 1, 4, 10][connections.length],
+                ),
             );
         });
     }

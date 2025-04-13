@@ -10,7 +10,7 @@ export const TPS_SAMPLE_AMOUNT = 25;
 export const MIN_DT = 0.04; // 25 FPS/TPS
 
 /** Ticks per second (faster to make more realistic, slower for better networking) */
-export const TPS = 60;
+export const TPS = 66;
 export const DT = Math.floor(1_000 / TPS) / 1_000;
 export const MAX_SAVED_TICKS = 600;
 

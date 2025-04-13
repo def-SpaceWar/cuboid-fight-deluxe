@@ -46,10 +46,10 @@ export function renderLoop(c: (dt: number) => unknown) {
 export function accurateInterval(fn: () => void, time: number) {
     let nextAt = new Date().getTime() + time, timeout: number;
     const wrapper = () => {
-            nextAt += time;
-            timeout = setTimeout(wrapper, nextAt - new Date().getTime());
-            return fn();
-        };
+        nextAt += time;
+        timeout = setTimeout(wrapper, nextAt - new Date().getTime());
+        return fn();
+    };
     timeout = setTimeout(wrapper, nextAt - new Date().getTime());
     return () => clearTimeout(timeout);
 }
@@ -71,8 +71,12 @@ export abstract class UpdateLoop<T, I> {
     startTick = 0;
     gameTick = 0;
     inputStates: GameState<T, I>[] = [];
+    updateInputs: { [tick: number]: boolean } = {};
 
-    constructor(public state: GameState<T, I>) {
+    constructor(
+        public state: GameState<T, I>,
+        public rollbackThreshold: number,
+    ) {
         this.tpsList = new Float32Array(TPS_SAMPLE_AMOUNT),
             this.avgTps = () => {
                 let sum = 0;
@@ -110,6 +114,7 @@ export abstract class UpdateLoop<T, I> {
                 ),
             );
             this.gameTick++;
+            this.rollback();
         }, Math.floor(1_000 / TPS));
     }
 
@@ -143,13 +148,20 @@ export abstract class UpdateLoop<T, I> {
         old: GameState<T, I>,
     ): GameState<T, I>;
 
-    rollback(
-        _toTick: number,
-        updateInput: (orig: GameState<T, I>) => GameState<T, I>,
+    saveRollback(
+        toTick: number,
     ) {
+        this.updateInputs[toTick] = true;
+    }
+
+    rollback() {
+        const ticks = Object.keys(this.updateInputs).map((s) => Number(s));
+        if (
+            ticks.length < this.rollbackThreshold && this.rollbackThreshold > 0
+        ) return;
         isRollbacking = true;
-        toTick = _toTick;
-        this.state = updateInput(this.inputStates[toTick - this.startTick]);
+        toTick = Math.min(...ticks);
+        this.state = this.inputStates[toTick - this.startTick];
         const previousTick = this.gameTick;
         this.gameTick = toTick;
         while (this.gameTick < previousTick) {
@@ -160,6 +172,7 @@ export abstract class UpdateLoop<T, I> {
             this.state = this.tick(structuredClone(this.state));
             this.gameTick++;
         }
+        this.updateInputs = {};
         isRollbacking = false;
     }
 

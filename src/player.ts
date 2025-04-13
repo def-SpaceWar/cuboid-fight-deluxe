@@ -729,15 +729,15 @@ export class Default implements Player {
             if (this.respawnTimer <= 0) this.respawn();
             return;
         }
-        if (input.up) this.jump();
-        if (input.down) {
+        if (input.up && !this.isDead) this.jump();
+        if (input.down && !this.isDead) {
             if (this.isGrounded) this.phase();
             else this.groundPound();
         }
-        if (input.attack && this.canPressAttackKey) {
+        if (input.attack && this.canPressAttackKey && !this.isDead) {
             this.attack();
         }
-        if (input.special) this.special();
+        if (input.special && !this.isDead) this.special();
         this.isOnWall = this.isGrounded = false;
         this.wallDirection = 0;
         if (this.isPhasing) {
