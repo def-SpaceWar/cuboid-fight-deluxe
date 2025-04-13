@@ -331,7 +331,7 @@ export class Map1 implements GameMap {
                 }
 
                 [...players, ...particles]
-                    .sort((a, b) => b.renderZ - a.renderZ)
+                    .sort((a, b) => a.renderZ - b.renderZ)
                     .forEach((p) => p.render(dt));
 
                 renderLighting(this.lightGeometry, this.lightColor);
