@@ -483,17 +483,17 @@ export class Map1 implements GameMap {
                             parkedInputs.delete(updateLoop.gameTick);
                         }
                         const tick = updateLoop.gameTick;
-                        setTimeout(() => {
-                            for (const connection of connections) {
-                                connection.sendMessage(
-                                    JSON.stringify({
-                                        tick,
-                                        inputs: inputsToSend,
-                                        gameNumber,
-                                    }),
-                                );
-                            }
-                        }, Math.random() * 20);
+                        //setTimeout(() => {
+                        for (const connection of connections) {
+                            connection.sendMessage(
+                                JSON.stringify({
+                                    tick,
+                                    inputs: inputsToSend,
+                                    gameNumber,
+                                }),
+                            );
+                        }
+                        //}, Math.random() * 20);
                         return { state, inputs };
                     }
                     tick(

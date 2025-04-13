@@ -110,7 +110,7 @@ export abstract class UpdateLoop<T, I> {
             }
             this.state = this.tick(
                 structuredClone(
-                    this.inputStates[this.gameTick - this.startTick],
+                    this.state,
                 ),
             );
             this.gameTick++;
@@ -127,7 +127,7 @@ export abstract class UpdateLoop<T, I> {
             }
             this.state = this.tick(
                 structuredClone(
-                    this.inputStates[this.gameTick - this.startTick],
+                    this.state,
                 ),
             );
             this.gameTick++;
@@ -157,7 +157,7 @@ export abstract class UpdateLoop<T, I> {
     rollback() {
         const ticks = Object.keys(this.updateInputs).map((s) => Number(s));
         if (
-            ticks.length < this.rollbackThreshold && this.rollbackThreshold > 0
+            ticks.length < this.rollbackThreshold || this.rollbackThreshold < 0
         ) return;
         isRollbacking = true;
         toTick = Math.min(...ticks);
@@ -169,7 +169,11 @@ export abstract class UpdateLoop<T, I> {
                 this.state,
                 this.inputStates[this.gameTick - this.startTick],
             );
-            this.state = this.tick(structuredClone(this.state));
+            this.state = this.tick(
+                structuredClone(
+                    this.inputStates[this.gameTick - this.startTick],
+                ),
+            );
             this.gameTick++;
         }
         this.updateInputs = {};
