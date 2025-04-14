@@ -134,8 +134,12 @@ const playerUiCoords = {
     2: Vector2D.xy(20, 105),
     3: Vector2D.xy(20, 190),
     4: Vector2D.xy(20, 275),
+    5: Vector2D.xy(20, 20),
+    6: Vector2D.xy(20, 105),
+    7: Vector2D.xy(20, 190),
+    8: Vector2D.xy(20, 275),
 };
-export type PlayerNumber = 1 | 2 | 3 | 4;
+export type PlayerNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 export type DamageReason =
     | {
         type: "player";
@@ -221,23 +225,31 @@ export interface Player {
     restoreState(state: string): void;
 }
 
-export type PlayerData = {
-    name: string;
+export type PlayerClassData = {
+    class: "default";
     color: [r: number, g: number, b: number];
 };
-
+export type PlayerData = {
+    name: string;
+    classData: PlayerClassData;
+};
 export function getPlayers(map: GameMap): Player[] {
     const players: Player[] = [];
     for (let i = 0; i < playerDatas.length; i++) {
-        players.push(
-            new Default(
-                new RGBAColor(...playerDatas[i].color),
-                i + 1 as PlayerNumber,
-                playerDatas[i].name,
-                players,
-                map,
-            ),
-        );
+        const playerData = playerDatas[i];
+        switch (playerData.classData.class) {
+            case "default":
+                players.push(
+                    new Default(
+                        new RGBAColor(...playerDatas[i].classData.color),
+                        i + 1 as PlayerNumber,
+                        playerDatas[i].name,
+                        players,
+                        map,
+                    ),
+                );
+                break;
+        }
     }
 
     return players;
@@ -379,7 +391,8 @@ export class Default implements Player {
                 "player-ui-bg",
                 0,
                 uiCoords,
-                true,
+                this.number < 5,
+                this.number > 4,
             );
 
             this.uiBg = elem;
@@ -392,7 +405,8 @@ export class Default implements Player {
                 "player-ui-rect",
                 0,
                 Vector2D.add(uiCoords, Vector2D.xy(10, 10)),
-                true,
+                this.number < 5,
+                this.number > 4,
             );
 
             elem.style.width = "172px";
@@ -414,7 +428,8 @@ export class Default implements Player {
                 "player-ui-text",
                 50,
                 Vector2D.add(uiCoords, Vector2D.xy(15, 34)),
-                true,
+                this.number < 5,
+                this.number > 4,
             );
             this.healthText = elem.appendChild(
                 document.createTextNode(this.health.toPrecision(3)),
@@ -428,7 +443,8 @@ export class Default implements Player {
                 "player-ui-rect",
                 0,
                 Vector2D.add(uiCoords, Vector2D.xy(258, 10)),
-                true,
+                this.number < 5,
+                this.number > 4,
             );
 
             elem.style.width = "44px";
@@ -450,7 +466,8 @@ export class Default implements Player {
                 "player-ui-img",
                 0,
                 Vector2D.add(uiCoords, Vector2D.xy(203, 10)),
-                true,
+                this.number < 5,
+                this.number > 4,
             );
 
             const img = elem.appendChild(document.createElement("img"));
@@ -467,7 +484,8 @@ export class Default implements Player {
                 "player-ui-text",
                 50,
                 Vector2D.add(uiCoords, Vector2D.xy(263, 34)),
-                true,
+                this.number < 5,
+                this.number > 4,
             );
             this.text1 = elem.appendChild(
                 document.createTextNode("0"),
@@ -481,7 +499,8 @@ export class Default implements Player {
                 "player-ui-rect",
                 0,
                 Vector2D.add(uiCoords, Vector2D.xy(378, 10)),
-                true,
+                this.number < 5,
+                this.number > 4,
             );
 
             elem.style.width = "44px";
@@ -503,7 +522,8 @@ export class Default implements Player {
                 "player-ui-img",
                 0,
                 Vector2D.add(uiCoords, Vector2D.xy(323, 10)),
-                true,
+                this.number < 5,
+                this.number > 4,
             );
 
             const img = elem.appendChild(document.createElement("img"));
@@ -519,7 +539,8 @@ export class Default implements Player {
                 "player-ui-img",
                 0,
                 Vector2D.add(uiCoords, Vector2D.xy(323, 10)),
-                true,
+                this.number < 5,
+                this.number > 4,
             );
 
             const img = elem.appendChild(document.createElement("img"));
@@ -536,7 +557,8 @@ export class Default implements Player {
                 "player-ui-text",
                 50,
                 Vector2D.add(uiCoords, Vector2D.xy(383, 34)),
-                true,
+                this.number < 5,
+                this.number > 4,
             );
             this.text2 = elem.appendChild(
                 document.createTextNode("0"),

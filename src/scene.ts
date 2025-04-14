@@ -3,10 +3,11 @@ import {
     Connection,
     connections,
     isHosting,
+    setClientName,
     setHost,
     setPlayerNumbers,
 } from "./networking.ts";
-import { PlayerNumber } from "./player.ts";
+import { PlayerData, PlayerNumber } from "./player.ts";
 import { clearScreen } from "./render.ts";
 
 const app = document.getElementById("app")!;
@@ -74,7 +75,7 @@ class AnswerLobby implements Scene {
         loadingAnswer.placeholder = "Loading...";
         loadingAnswer.disabled = true;
 
-        const connection = new Connection();
+        const connection = new Connection("host");
         const copyAnswer = app.appendChild(document.createElement("p"));
         const cleanScene = () => {
             loadingAnswer.remove();
@@ -100,7 +101,9 @@ class AnswerLobby implements Scene {
         return new Promise<Scene>((resolve) => {
             connection.datachannel!.onmessage = (e) => {
                 cleanScene();
-                resolve(new Lobby(false, JSON.parse(e.data).name));
+                const data = JSON.parse(e.data);
+                setClientName(data.client);
+                resolve(new Lobby(false, data.name));
             };
         });
     }
@@ -149,7 +152,9 @@ export class Lobby implements Scene {
             joinLobbyBtn.innerText = "Accept Answer";
 
             const getConnection = async () => {
-                const connection = new Connection();
+                const connection = new Connection(
+                    "client" + connections.length,
+                );
                 const offer = await connection.offer();
                 loadingInvite.value = offer;
                 navigator.clipboard.writeText(offer);
@@ -160,13 +165,30 @@ export class Lobby implements Scene {
                         await connection.dataOpen();
                         connection.sendMessage(JSON.stringify({
                             name: this.name,
-                            // just put all lobby data here
+                            client: connection.name,
                         }));
-                        // send other lobby data too
-                        // connection.datachannel!.onmessage = (e) => {...};
-                        // send lobby data when host updates, and the clients also send their lobby data when they update to host
+                        connection.datachannel!.onmessage = (e) => {
+                            const data = JSON.parse(e.data);
+
+                            if (data.startsWith("lobbydata")) {
+                                const playerInfos = JSON.parse(
+                                    data.split(":")[1],
+                                );
+
+                                for (const name in playerInfos) {
+                                    console.log(name);
+                                }
+
+                                for (const c of connections) {
+                                    if (c == connection) continue;
+                                    c.sendMessage(e.data);
+                                }
+                            }
+                        };
+
                         connections.push(connection);
                         acceptAnswer.value = "";
+
                         getConnection();
                     } catch (e) {
                         alert(e);
@@ -202,7 +224,8 @@ export class Lobby implements Scene {
             });
         }
 
-        connections[0]; // host
+        const host = connections[0];
+        host.sendMessage("getlobbydata");
 
         const lobbyUI = app.appendChild(
             document.createElement("div"),
@@ -218,18 +241,65 @@ export class Lobby implements Scene {
         };
 
         return new Promise<Scene>((resolve) => {
-            connections[0].datachannel!.onmessage = (e) => {
+            host.datachannel!.onmessage = (e) => {
                 const data = String(e.data);
                 if (data.startsWith("start")) {
                     setPlayerNumbers(
                         data.split(":")[1]
                             .split(",")
                             .map((s) => Number(s) as PlayerNumber),
-                    );
+                    ); // change this to PlayerData[] and PlayerNumber[]
                     cleanScene();
                     resolve(new Map1());
+                    return;
+                }
+
+                if (data.startsWith("lobbydata")) {
+                    const playerInfos = JSON.parse(data.split(":")[1]);
+                    for (const name in playerInfos) {
+                        console.log(name);
+                    }
+                    // "host": PlayerData[]
+                    // "client0": PlayerData[]
+                    // "client1": PlayerData[]
+                    // "client2": PlayerData[]
+                    // render all of them
                 }
             };
         });
+    }
+}
+
+// create elems and whatever
+interface PlayerManager {
+    id: string;
+    set(datas: PlayerData[]): void;
+    set(): PlayerData[];
+}
+
+class InteractivePlayerManager implements PlayerManager {
+    constructor(public id: string, parent: HTMLElement) {
+        // make all elements
+    }
+
+    set(datas: PlayerData[]) {}
+
+    get() {
+        return [];
+    }
+}
+
+class DisplayPlayerManager implements PlayerManager {
+    constructor(public id: string, parent: HTMLElement) {
+        // make all elements
+        // do on click functionality
+        // on value change functionality
+        // yada yada yada
+    }
+
+    set(datas: PlayerData[]) {}
+
+    get() {
+        return [];
     }
 }

@@ -20,7 +20,7 @@ export class Connection {
     datachannel?: RTCDataChannel;
     id?: string;
 
-    constructor() {
+    constructor(public name: string) {
         this.pc = new RTCPeerConnection(
             import.meta.env.DEV
                 ? {
@@ -142,26 +142,76 @@ export class Connection {
 export let playerDatas: PlayerData[] = [
     {
         name: "Mafia",
-        color: [1, .2, .3],
+        classData: {
+            class: "default",
+            color: [1, .2, .3],
+        },
     },
     {
         name: "Innocent",
-        color: [0, .5, 1],
+        classData: {
+            class: "default",
+            color: [0, .5, 1],
+        },
     },
     {
         name: "Villager",
-        color: [.2, 1, .3],
+        classData: {
+            class: "default",
+            color: [.2, 1, .3],
+        },
     },
     {
         name: "Mayor",
-        color: [1, .8, .3],
+        classData: {
+            class: "default",
+            color: [1, .8, .3],
+        },
+    },
+    {
+        name: "King",
+        classData: {
+            class: "default",
+            color: [.6, .2, .9],
+        },
+    },
+    {
+        name: "Jester",
+        classData: {
+            class: "default",
+            color: [1, .6, 1],
+        },
+    },
+    {
+        name: "Politician",
+        classData: {
+            class: "default",
+            color: [.1, .2, .8],
+        },
+    },
+    {
+        name: "Dictator",
+        classData: {
+            class: "default",
+            color: [1, .6, .1],
+        },
     },
 ];
 export function setPlayerDatas(data: PlayerData[]) {
     playerDatas = data;
 }
 
-export let playerNumbers: PlayerNumber[] = [];
+export let playerNumbers: PlayerNumber[] = [1];
 export function setPlayerNumbers(numbers: PlayerNumber[]) {
     playerNumbers = numbers;
+}
+
+export let localPlayerDatas: PlayerData[] = [];
+export function setLocalPlayerDatas(data: PlayerData[]) {
+    localPlayerDatas = data;
+}
+
+export let clientName: string = "";
+export function setClientName(name: string) {
+    clientName = name;
 }

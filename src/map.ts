@@ -40,7 +40,7 @@ import {
     updateLoop,
 } from "./loop.ts";
 import { DT, toggleHitboxes } from "./flags.ts";
-import { JoinOrCreateLobby, Scene } from "./scene.ts";
+import { Lobby, Scene } from "./scene.ts";
 import {
     connections,
     gameNumber,
@@ -85,6 +85,10 @@ export class Map1 implements GameMap {
         Vector2D.x(375),
         Vector2D.x(475),
         Vector2D.x(-200),
+        Vector2D.xy(0, -400),
+        Vector2D.xy(325, -400),
+        Vector2D.x(625),
+        Vector2D.xy(-400, -400),
     ];
 
     lightGeometry = new Float32Array([
@@ -297,7 +301,7 @@ export class Map1 implements GameMap {
     ]);
 
     getRespawnPoint(): Vector2D {
-        return this.respawnPoints[updateLoop.gameTick % 4];
+        return this.respawnPoints[updateLoop.gameTick % 8];
     }
 
     async run() {
@@ -350,7 +354,7 @@ export class Map1 implements GameMap {
                 createdEndscreen: false,
             };
             type State = typeof initialState;
-            const initialInput = [0, 0, 0, 0] as RawPlayerInput[]; // length of players
+            const initialInput = [0, 0, 0, 0, 0, 0, 0, 0] as RawPlayerInput[]; // length of players
             type Input = typeof initialInput;
 
             // should be set in the lobby
@@ -485,17 +489,17 @@ export class Map1 implements GameMap {
                             parkedInputs.delete(updateLoop.gameTick);
                         }
                         const tick = updateLoop.gameTick;
-                        setTimeout(() => {
-                            for (const connection of connections) {
-                                connection.sendMessage(
-                                    JSON.stringify({
-                                        tick,
-                                        inputs: inputsToSend,
-                                        gameNumber,
-                                    }),
-                                );
-                            }
-                        }, Math.random() * 100);
+                        //setTimeout(() => {
+                        for (const connection of connections) {
+                            connection.sendMessage(
+                                JSON.stringify({
+                                    tick,
+                                    inputs: inputsToSend,
+                                    gameNumber,
+                                }),
+                            );
+                        }
+                        //}, Math.random() * 100);
                         return { state, inputs };
                     }
                     tick(
@@ -577,7 +581,7 @@ export class Map1 implements GameMap {
                                     () => {
                                         updateLoop.stop();
                                         setGameNumber(0);
-                                        resolve(new JoinOrCreateLobby());
+                                        resolve(new Lobby());
                                         for (const connection of connections) {
                                             connection.sendMessage("continue");
                                         }

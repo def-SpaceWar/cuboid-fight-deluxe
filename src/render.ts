@@ -930,6 +930,7 @@ export function createHTMLRender(
     fontSize: number,
     pos: Vector2D,
     isTopLeft: boolean = false,
+    isTopRight: boolean = false,
 ) {
     const elem = app.appendChild(document.createElement("div"));
     elem.innerText = innerText;
@@ -937,6 +938,9 @@ export function createHTMLRender(
     elem.style.fontSize = `${fontSize}px`;
     if (isTopLeft) {
         elem.style.left = `${pos.x | 0}px`;
+        elem.style.top = `${pos.y | 0}px`;
+    } else if (isTopRight) {
+        elem.style.right = `${pos.x | 0}px`;
         elem.style.top = `${pos.y | 0}px`;
     } else {
         elem.style.left = `calc(50vw + ${pos.x | 0}px)`;

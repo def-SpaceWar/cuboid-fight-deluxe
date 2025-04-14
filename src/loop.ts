@@ -5,6 +5,7 @@ import {
     TPS,
     TPS_SAMPLE_AMOUNT,
 } from "./flags.ts";
+import { connections } from "./networking.ts";
 const app = document.getElementById("app")!;
 
 export function renderLoop(c: () => unknown): () => void;
@@ -43,24 +44,28 @@ export function renderLoop(c: (dt: number) => unknown) {
     };
 }
 
-export function accurateInterval(fn: () => void, time: number) {
-    let nextAt = new Date().getTime() + time, timeout: number;
-    const wrapper = () => {
-        nextAt += time;
+export function modifiedInterval(fn: () => void, time: number) {
+    if (connections.length > 0) {
+        let nextAt = new Date().getTime() + time, timeout: number;
+        const wrapper = () => {
+            nextAt += time;
+            timeout = setTimeout(wrapper, nextAt - new Date().getTime());
+            return fn();
+        };
         timeout = setTimeout(wrapper, nextAt - new Date().getTime());
-        return fn();
-    };
-    timeout = setTimeout(wrapper, nextAt - new Date().getTime());
-    return () => clearTimeout(timeout);
+        return () => clearTimeout(timeout);
+    }
+
+    const i = setInterval(fn, time);
+    return () => clearInterval(i);
 }
 
+export let isRollbacking = false;
+export let toTick = 0;
 export type GameState<T, I> = {
     state: T;
     inputs: I;
 };
-
-export let isRollbacking = false;
-export let toTick = 0;
 export abstract class UpdateLoop<T, I> {
     tpsList: Float32Array;
     avgTps: () => number;
@@ -93,7 +98,7 @@ export abstract class UpdateLoop<T, I> {
 
         let before = performance.now(),
             tpsIdx = 0;
-        this.stopInterval = accurateInterval(() => {
+        this.stopInterval = modifiedInterval(() => {
             const now = performance.now(),
                 dt = (now - before) / 1_000;
             before = now;
