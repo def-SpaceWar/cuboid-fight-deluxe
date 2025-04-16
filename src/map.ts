@@ -45,6 +45,8 @@ import {
     connections,
     gameNumber,
     isHosting,
+    localControls,
+    playerDatas,
     playerNumbers,
     resetConnections,
     setGameNumber,
@@ -321,7 +323,7 @@ export class Map1 implements GameMap {
             const map = (() => this)(), // gets rid of annoying warning
                 platforms = this.platforms;
 
-            const stopRender = renderLoop((dt: number) => {
+            const stopRender = renderLoop(() => {
                 clearScreen();
                 drawGeometry(
                     map1BgTex,
@@ -336,38 +338,37 @@ export class Map1 implements GameMap {
 
                 [...players, ...particles]
                     .sort((a, b) => a.renderZ - b.renderZ)
-                    .forEach((p) => p.render(dt));
+                    .forEach((p) => p.render());
 
                 renderLighting(this.lightGeometry, this.lightColor);
 
                 composeDisplay();
 
                 for (let i = 0; i < players.length; i++) {
-                    players[i].renderUi(dt);
+                    players[i].renderUi();
                 }
             });
 
             const initialState = {
-                playerStates: players.map((p) => p.saveState()),
-                gameOver: false,
-                gameOverTimer: 0,
-                createdEndscreen: false,
-            };
+                    playerStates: players.map((p) => p.saveState()),
+                    gameOver: false,
+                    gameOverTimer: 0,
+                    createdEndscreen: false,
+                },
+                initialInput = new Array<RawPlayerInput>(playerDatas.length)
+                    .fill(0);
             type State = typeof initialState;
-            const initialInput = [0, 0, 0, 0, 0, 0, 0, 0] as RawPlayerInput[]; // length of players
             type Input = typeof initialInput;
 
-            // should be set in the lobby
-            const localControls = [
-                new Controls({
-                    left: { key: "s" },
-                    up: { key: "e" },
-                    down: { key: "d" },
-                    right: { key: "f" },
-                    attack: { key: "w" },
-                    special: { key: "q" },
-                }, playerNumbers[0]),
-            ];
+            const controls: Controls[] = [];
+            for (let i = 0; i < playerNumbers.length; i++) {
+                controls.push(
+                    new Controls(
+                        localControls[i],
+                        playerNumbers[i],
+                    ),
+                );
+            }
 
             const saveState = (
                 state: State,
@@ -405,64 +406,65 @@ export class Map1 implements GameMap {
                         gameNumber: number;
                     } = JSON.parse(e.data);
 
-                    if (data.gameNumber != gameNumber) return;
+                    if (data.gameNumber != gameNumber || !data.inputs) return;
 
-                    if (data.inputs) {
-                        if (isHosting) {
-                            otherConnections.forEach((c) =>
-                                c.sendMessage(e.data)
-                            );
-                        }
+                    if (isHosting) {
+                        otherConnections.forEach((c) => c.sendMessage(e.data));
+                    }
 
-                        if (data.tick > updateLoop.gameTick) {
-                            updateLoop.catchupToTick(data.tick);
-                        }
+                    if (data.tick > updateLoop.gameTick) {
+                        updateLoop.catchupToTick(data.tick);
+                    }
 
-                        if (data.tick == updateLoop.gameTick) {
-                            const orig = parkedInputs.get(data.tick);
-                            if (orig) {
-                                parkedInputs.set(data.tick, {
-                                    ...orig,
-                                    ...data.inputs,
-                                });
-                                return;
-                            }
-                            parkedInputs.set(data.tick, data.inputs);
+                    if (data.tick == updateLoop.gameTick) {
+                        const orig = parkedInputs.get(data.tick);
+                        if (orig) {
+                            parkedInputs.set(data.tick, {
+                                ...orig,
+                                ...data.inputs,
+                            });
                             return;
                         }
+                        parkedInputs.set(data.tick, data.inputs);
+                        return;
+                    }
 
-                        let match = true;
-                        for (const idx in data.inputs) {
-                            const predicted =
-                                    (updateLoop as UpdateLoop<State, Input>)
-                                        .inputStates[
-                                            data.tick - updateLoop.startTick
-                                        ].inputs[idx],
-                                orig = data.inputs[idx];
-
-                            if (
-                                predicted == (orig | PREDICTED)
-                            ) {
+                    let match = true;
+                    for (const idx in data.inputs) {
+                        const predicted =
                                 (updateLoop as UpdateLoop<State, Input>)
                                     .inputStates[
                                         data.tick - updateLoop.startTick
-                                    ].inputs[idx] = orig;
-                                continue;
-                            }
+                                    ].inputs[idx],
+                            orig = data.inputs[idx];
+
+                        if (
+                            predicted == (orig | PREDICTED)
+                        ) {
                             (updateLoop as UpdateLoop<State, Input>)
                                 .inputStates[
                                     data.tick - updateLoop.startTick
                                 ].inputs[idx] = orig;
-                            match = false;
+                            continue;
                         }
-                        if (match) return;
-
-                        rollbackTempHTML(data.tick);
-                        if (
-                            endScreenBirthTick >= data.tick && removeEndScreen
-                        ) removeEndScreen();
-                        updateLoop.saveRollback(data.tick);
+                        (updateLoop as UpdateLoop<State, Input>)
+                            .inputStates[
+                                data.tick - updateLoop.startTick
+                            ].inputs[idx] = orig;
+                        match = false;
                     }
+
+                    if (match) return;
+
+                    rollbackTempHTML(data.tick);
+                    if (
+                        endScreenBirthTick >= data.tick && removeEndScreen
+                    ) {
+                        removeEndScreen();
+                        // @ts-ignore:
+                        removeEndScreen = null;
+                    }
+                    updateLoop.saveRollback(data.tick);
                 };
             }
 
@@ -475,7 +477,7 @@ export class Map1 implements GameMap {
                         for (let i = 0; i < inputs.length; i++) {
                             inputs[i] |= PREDICTED;
                         }
-                        for (const control of localControls) {
+                        for (const control of controls) {
                             // @ts-ignore:
                             inputsToSend[control.playerNumber - 1] =
                                 inputs[control.playerNumber - 1] =
@@ -581,7 +583,7 @@ export class Map1 implements GameMap {
                                     () => {
                                         updateLoop.stop();
                                         setGameNumber(0);
-                                        resolve(new Lobby());
+                                        resolve(new Lobby(true, "host"));
                                         for (const connection of connections) {
                                             connection.sendMessage("continue");
                                         }

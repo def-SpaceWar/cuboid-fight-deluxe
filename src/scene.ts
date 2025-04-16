@@ -1,10 +1,12 @@
 import { Map1 } from "./map.ts";
 import {
+    clientName,
     Connection,
     connections,
     isHosting,
     setClientName,
     setHost,
+    setPlayerDatas,
     setPlayerNumbers,
 } from "./networking.ts";
 import { PlayerData, PlayerNumber } from "./player.ts";
@@ -115,19 +117,37 @@ export class Lobby implements Scene {
     }
 
     run() {
+        const playerManagers: PlayerManager[] = [];
         if (isHosting) {
             const inviteUI = app.appendChild(
                 document.createElement("div"),
             );
             inviteUI.id = "invite-ui";
 
-            const lobbyUI = app.appendChild(
+            const lobbyUIContainer = app.appendChild(
+                document.createElement("div"),
+            );
+            lobbyUIContainer.id = "lobby-ui-container-host";
+
+            const lobbyUI = lobbyUIContainer.appendChild(
                 document.createElement("div"),
             );
             lobbyUI.id = "lobby-ui-host";
 
             const heading = lobbyUI.appendChild(document.createElement("h1"));
             heading.innerText = this.name;
+
+            const lobbyPlayerManagerContainer = lobbyUI.appendChild(
+                document.createElement("div"),
+            );
+            lobbyPlayerManagerContainer.id = "lobby-player-manager-container";
+
+            playerManagers.push(
+                new InteractivePlayerManager(
+                    "host",
+                    lobbyPlayerManagerContainer,
+                ),
+            );
 
             const loadingInvite = inviteUI.appendChild(
                 document.createElement("textarea"),
@@ -168,31 +188,67 @@ export class Lobby implements Scene {
                             client: connection.name,
                         }));
                         connection.datachannel!.onmessage = (e) => {
-                            const data = JSON.parse(e.data);
+                            const data = String(e.data);
 
                             if (data.startsWith("lobbydata")) {
-                                const playerInfos = JSON.parse(
-                                    data.split(":")[1],
+                                const lobbyData: {
+                                    [k: string]: PlayerData[];
+                                } = JSON.parse(
+                                    data.split("::")[1],
                                 );
 
-                                for (const name in playerInfos) {
-                                    console.log(name);
+                                for (const name in lobbyData) {
+                                    playerManagers
+                                        .filter((m) => m.id == name)[0]
+                                        .set(lobbyData[name]);
                                 }
 
                                 for (const c of connections) {
                                     if (c == connection) continue;
                                     c.sendMessage(e.data);
                                 }
+                                return;
+                            }
+
+                            if (data.startsWith("getlobbydata")) {
+                                const lobbyData: {
+                                    // TODO: gamemode: GameModeData;
+                                    [k: string]: PlayerData[];
+                                } = {};
+                                lobbyData["host"] = playerManagers[0].get();
+                                for (let i = 0; i < connections.length; i++) {
+                                    const name = "client" + i,
+                                        playerManager =
+                                            playerManagers.filter((p) =>
+                                                p.id == name
+                                            )[0];
+                                    lobbyData["client" + i] = playerManager
+                                        .get();
+                                }
+                                connections.map((c) =>
+                                    c.sendMessage(
+                                        "lobbydata::" +
+                                            JSON.stringify(lobbyData),
+                                    )
+                                );
+                                return;
                             }
                         };
 
                         connections.push(connection);
                         acceptAnswer.value = "";
+                        playerManagers.push(
+                            new DisplayPlayerManager(
+                                connection.name,
+                                lobbyPlayerManagerContainer,
+                            ),
+                        );
 
                         getConnection();
                     } catch (e) {
                         alert(e);
                         if (e == "failed") {
+                            loadingInvite.value = "";
                             acceptAnswer.value = "";
                             getConnection();
                         }
@@ -203,10 +259,15 @@ export class Lobby implements Scene {
 
             const cleanScene = () => {
                 inviteUI.remove();
-                lobbyUI.remove();
+                lobbyUIContainer.remove();
             };
 
-            const startGame = lobbyUI.appendChild(
+            const settingsUI = lobbyUIContainer.appendChild(
+                document.createElement("div"),
+            );
+            settingsUI.id = "settings-ui-host";
+
+            const startGame = settingsUI.appendChild(
                 document.createElement("button"),
             );
             startGame.id = "create-lobby";
@@ -214,11 +275,33 @@ export class Lobby implements Scene {
 
             return new Promise<Scene>((resolve) => {
                 startGame.onclick = () => {
+                    const gameData: {
+                        // TODO: gamemode: GameModeData;
+                        [k: string]: PlayerData[];
+                    } = {};
+                    gameData["host"] = playerManagers[0].get();
                     for (let i = 0; i < connections.length; i++) {
-                        connections[i].sendMessage("start:" + (i + 2));
+                        const name = "client" + i,
+                            playerManager = playerManagers.filter((p) =>
+                                p.id == name
+                            )[0];
+                        gameData["client" + i] = playerManager.get();
                     }
+                    connections.map((c) =>
+                        c.sendMessage(
+                            "start::" + JSON.stringify(gameData),
+                        )
+                    );
+
+                    const playerNumbers: PlayerNumber[] = [],
+                        localPlayerDatas = playerManagers[0].get();
+                    for (let i = 0; i < localPlayerDatas.length; i++) {
+                        playerNumbers.push(i + 1 as PlayerNumber);
+                    }
+
                     cleanScene();
-                    setPlayerNumbers([1]);
+                    setPlayerNumbers(playerNumbers);
+                    setPlayerDatas(playerManagers.flatMap((m) => m.get()));
                     resolve(new Map1());
                 };
             });
@@ -227,7 +310,10 @@ export class Lobby implements Scene {
         const host = connections[0];
         host.sendMessage("getlobbydata");
 
-        const lobbyUI = app.appendChild(
+        const lobbyUIContainer = app.appendChild(document.createElement("div"));
+        lobbyUIContainer.id = "lobby-ui-container";
+
+        const lobbyUI = lobbyUIContainer.appendChild(
             document.createElement("div"),
         );
         lobbyUI.id = "lobby-ui";
@@ -235,36 +321,85 @@ export class Lobby implements Scene {
         const heading = lobbyUI.appendChild(document.createElement("h1"));
         heading.innerText = this.name;
 
-        // not host code
+        const lobbyPlayerManagerContainer = lobbyUI.appendChild(
+            document.createElement("div"),
+        );
+        lobbyPlayerManagerContainer.id = "lobby-player-manager-container";
+
+        playerManagers.push(
+            new InteractivePlayerManager(
+                clientName,
+                lobbyPlayerManagerContainer,
+            ),
+        );
+
         const cleanScene = () => {
-            lobbyUI.remove();
+            lobbyUIContainer.remove();
         };
+
+        const settingsUI = lobbyUIContainer.appendChild(
+            document.createElement("div"),
+        );
+        settingsUI.id = "settings-ui";
 
         return new Promise<Scene>((resolve) => {
             host.datachannel!.onmessage = (e) => {
                 const data = String(e.data);
+
+                if (data.startsWith("lobbydata")) {
+                    const lobbyData: {
+                        [k: string]: PlayerData[];
+                    } = JSON.parse(
+                        data.split("::")[1],
+                    );
+
+                    for (const name in lobbyData) {
+                        const manager = playerManagers
+                            .filter((m) => m.id == name);
+                        if (manager.length == 0) {
+                            playerManagers.push(
+                                new DisplayPlayerManager(
+                                    name,
+                                    lobbyPlayerManagerContainer,
+                                ),
+                            );
+                            continue;
+                        }
+                        manager[0].set(lobbyData[name]);
+                    }
+                }
+
                 if (data.startsWith("start")) {
-                    setPlayerNumbers(
-                        data.split(":")[1]
-                            .split(",")
-                            .map((s) => Number(s) as PlayerNumber),
-                    ); // change this to PlayerData[] and PlayerNumber[]
+                    const gameData: {
+                        [k: string]: PlayerData[];
+                    } = JSON.parse(data.split("::")[1]);
+
+                    const playerNumbers: PlayerNumber[] = [],
+                        playerDatas: PlayerData[] = [];
+                    let playerCount = 0;
+                    for (const name in gameData) {
+                        if (name == clientName) {
+                            for (let i = 0; i < gameData[name].length; i++) {
+                                playerNumbers.push(
+                                    ++playerCount as PlayerNumber,
+                                );
+                                playerDatas.push(gameData[name][i]);
+                            }
+                            continue;
+                        }
+                        playerDatas.push(...gameData[name]);
+                        playerCount += gameData[name].length;
+                    }
+
                     cleanScene();
+                    setPlayerNumbers(playerNumbers);
+                    setPlayerDatas(playerDatas);
                     resolve(new Map1());
                     return;
                 }
 
-                if (data.startsWith("lobbydata")) {
-                    const playerInfos = JSON.parse(data.split(":")[1]);
-                    for (const name in playerInfos) {
-                        console.log(name);
-                    }
-                    // "host": PlayerData[]
-                    // "client0": PlayerData[]
-                    // "client1": PlayerData[]
-                    // "client2": PlayerData[]
-                    // render all of them
-                }
+                //if (data.startsWith("lobbyData")) {
+                //}
             };
         });
     }
@@ -274,32 +409,95 @@ export class Lobby implements Scene {
 interface PlayerManager {
     id: string;
     set(datas: PlayerData[]): void;
-    set(): PlayerData[];
+    get(): PlayerData[];
 }
 
 class InteractivePlayerManager implements PlayerManager {
+    container: HTMLDivElement;
+    datas: PlayerData[] = [
+        {
+            name: "hehehe HAost",
+            classData: {
+                class: "default",
+                color: [1, .2, .3],
+            },
+        },
+        //{
+        //    name: "hehehe HA 2",
+        //    classData: {
+        //        class: "default",
+        //        color: [0, 1, 1],
+        //    },
+        //},
+    ];
+
     constructor(public id: string, parent: HTMLElement) {
-        // make all elements
+        this.container = parent.appendChild(document.createElement("div"));
+        this.container.id = "lobby-interactive-player-manager";
+        const containerTitle = this.container.appendChild(
+            document.createElement("h2"),
+        );
+        containerTitle.innerText = id + " (you)";
+
+        const newPlayerBtn = containerTitle.appendChild(
+            document.createElement("button"),
+        );
+        newPlayerBtn.innerText = "+";
+
+        newPlayerBtn.onclick = () => {
+            //console.log("new player!");
+        };
     }
 
-    set(datas: PlayerData[]) {}
+    addPlayer() {
+        //
+    }
+
+    // on data change or smth like that
+
+    set(datas: PlayerData[]) {
+        // update visuals too
+        this.datas = datas;
+    }
 
     get() {
-        return [];
+        return this.datas;
     }
 }
 
 class DisplayPlayerManager implements PlayerManager {
+    container: HTMLDivElement;
+    datas: PlayerData[] = [
+        {
+            name: "hehehe HA " + Math.random().toFixed(3),
+            classData: {
+                class: "default",
+                color: [Math.random(), Math.random(), Math.random()],
+            },
+        },
+        //{
+        //    name: "hehehe HA " + Math.random(),
+        //    classData: {
+        //        class: "default",
+        //        color: [Math.random(), 1, Math.random()],
+        //    },
+        //},
+    ];
+
     constructor(public id: string, parent: HTMLElement) {
-        // make all elements
-        // do on click functionality
-        // on value change functionality
-        // yada yada yada
+        this.container = parent.appendChild(document.createElement("div"));
+        this.container.id = "lobby-display-player-manager";
+        const containerTitle = this.container.appendChild(
+            document.createElement("h2"),
+        );
+        containerTitle.innerText = id;
     }
 
-    set(datas: PlayerData[]) {}
+    set(datas: PlayerData[]) {
+        this.datas = datas;
+    }
 
     get() {
-        return [];
+        return this.datas;
     }
 }

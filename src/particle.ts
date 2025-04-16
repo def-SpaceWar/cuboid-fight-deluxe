@@ -11,7 +11,7 @@ export abstract class Particle {
         this.birthTick = updateLoop.gameTick;
     }
 
-    abstract render(dt: number): void;
+    abstract render(): void;
 
     update() {
         this.lifespan -= DT;

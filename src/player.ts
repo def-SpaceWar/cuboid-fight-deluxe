@@ -168,7 +168,6 @@ export type HealReason =
     };
 export interface Player {
     origColor: RGBAColor;
-    color: RGBAColor;
     number: PlayerNumber;
     name: string;
     allPlayers: Player[];
@@ -206,8 +205,8 @@ export interface Player {
     healMultiplier: number;
 
     renderZ: number;
-    render(dt: number): void;
-    renderUi(dt: number): void;
+    render(): void;
+    renderUi(): void;
     update(input: PlayerInput): void;
     onPlatformCollision(p: Platform): void;
     onPlayerCollision(p: Player): void;

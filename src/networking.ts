@@ -34,32 +34,34 @@ export class Connection {
                 }
                 : {
                     iceServers: [
-                        { "urls": "stun:stun.relay.metered.ca:80" },
                         {
-                            "urls": "turn:global.relay.metered.ca:80",
-                            "username": "36c84ec55e36a8f40e69e86a",
-                            "credential": "jG6bGW1qKk0N+lU1",
+                            urls: "stun:stun.relay.metered.ca:80",
                         },
                         {
-                            "urls":
-                                "turn:global.relay.metered.ca:80?transport=tcp",
-                            "username": "36c84ec55e36a8f40e69e86a",
-                            "credential": "jG6bGW1qKk0N+lU1",
+                            urls: "turn:us-east.relay.metered.ca:80",
+                            username: "3caf2a1e6b66b87c7125cb9a",
+                            credential: "1VEGtRXY6PxtSz07",
                         },
+                        //{
+                        //    urls:
+                        //        "turn:us-east.relay.metered.ca:80?transport=tcp",
+                        //    username: "3caf2a1e6b66b87c7125cb9a",
+                        //    credential: "1VEGtRXY6PxtSz07",
+                        //},
                         {
-                            "urls": "turn:global.relay.metered.ca:443",
-                            "username": "36c84ec55e36a8f40e69e86a",
-                            "credential": "jG6bGW1qKk0N+lU1",
+                            urls: "turn:us-east.relay.metered.ca:443",
+                            username: "3caf2a1e6b66b87c7125cb9a",
+                            credential: "1VEGtRXY6PxtSz07",
                         },
-                        {
-                            "urls":
-                                "turns:global.relay.metered.ca:443?transport=tcp",
-                            "username": "36c84ec55e36a8f40e69e86a",
-                            "credential": "jG6bGW1qKk0N+lU1",
-                        },
+                        //{
+                        //    urls:
+                        //        "turns:us-east.relay.metered.ca:443?transport=tcp",
+                        //    username: "3caf2a1e6b66b87c7125cb9a",
+                        //    credential: "1VEGtRXY6PxtSz07",
+                        //},
                     ],
                 },
-        ); //, { "optional": [{ "DtlsSrtpKeyAgreement": true }] });
+        );
     }
 
     async offer() {
@@ -206,10 +208,24 @@ export function setPlayerNumbers(numbers: PlayerNumber[]) {
     playerNumbers = numbers;
 }
 
-export let localPlayerDatas: PlayerData[] = [];
-export function setLocalPlayerDatas(data: PlayerData[]) {
-    localPlayerDatas = data;
-}
+export const localControls = [
+    {
+        left: { key: "s" },
+        up: { key: "e" },
+        down: { key: "d" },
+        right: { key: "f" },
+        attack: { key: "w" },
+        special: { key: "q" },
+    },
+    {
+        left: { key: "ArrowLeft" },
+        up: { key: "ArrowUp" },
+        down: { key: "ArrowDown" },
+        right: { key: "ArrowRight" },
+        attack: { key: "/" },
+        special: { key: "." },
+    },
+];
 
 export let clientName: string = "";
 export function setClientName(name: string) {

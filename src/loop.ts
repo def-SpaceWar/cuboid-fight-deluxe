@@ -9,8 +9,7 @@ import { connections } from "./networking.ts";
 const app = document.getElementById("app")!;
 
 export function renderLoop(c: () => unknown): () => void;
-export function renderLoop(c: (dt: number) => unknown): () => void;
-export function renderLoop(c: (dt: number) => unknown) {
+export function renderLoop(c: () => unknown) {
     const fpsList = new Float32Array(FPS_SAMPLE_AMOUNT),
         avgFps = () => {
             let sum = 0;
@@ -35,7 +34,7 @@ export function renderLoop(c: (dt: number) => unknown) {
         fpsTextNode.textContent = avgFps().toPrecision(3);
 
         handle = requestAnimationFrame(loop);
-        c(Math.min(dt, MIN_DT));
+        c();
     }
     return () => {
         fpsTextNode.remove();

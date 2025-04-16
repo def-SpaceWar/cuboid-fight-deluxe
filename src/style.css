@@ -99,9 +99,10 @@ input {
     flex-direction: column;
     background-color: #252525;
     scale: .9;
+    border-radius: 2rem;
 }
 
-#lobby-ui, #lobby-ui-host {
+#lobby-ui-container, #lobby-ui-container-host {
     position: absolute;
     top: 0;
     left: 0;
@@ -112,11 +113,82 @@ input {
     flex-direction: row;
     background-color: #252525;
     scale: .9;
+    border-radius: 2rem;
 }
 
-#lobby-ui-host {
+#lobby-ui-container-host {
     left: 40vw;
     width: 60vw;
+}
+
+#lobby-ui,#lobby-ui-host {
+    height: 90%;
+    overflow-y: scroll;
+    scrollbar-width: none;
+}
+
+#lobby-player-manager-container {
+    margin-bottom: 10vh;
+}
+
+#lobby-interactive-player-manager {
+    background-color: #202020;
+    border: #55DD11 .25rem solid;
+    padding: 0;
+    min-height: 12rem;
+    margin-bottom: 1rem;
+    border-radius: 1rem;
+}
+
+#lobby-display-player-manager {
+    background-color: #202020;
+    border: #3377FF .25rem solid;
+    padding: 0;
+    min-height: 12rem;
+    margin-bottom: 1rem;
+    border-radius: 1rem;
+}
+
+#lobby-interactive-player-manager h2 {
+    background-color: #55DD11;
+    text-align: left;
+    margin: 0;
+    color: #252525;
+}
+
+#lobby-interactive-player-manager h2 button {
+    color: #55DD11;
+    margin: 0;
+    background-color: #252525;
+    border: none;
+    font-size: 3rem;
+    margin: 0;
+    padding: 0;
+    margin-left: 2rem;
+    width: 3rem;
+    height: 3rem;
+    text-align: center;
+    text-orientation: sideways-right;
+}
+
+#lobby-display-player-manager h2 {
+    background-color: #3377FF;
+    text-align: left;
+    margin: 0;
+    color: #252525;
+}
+
+#settings-ui,#settings-ui-host {
+    position: absolute;
+    top: 80%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 20%;
+    border-radius: 2rem;
+    background: #1D1D1D;
 }
 
 #accept-lobby {
