@@ -48,7 +48,6 @@ import {
     localControls,
     playerDatas,
     playerNumbers,
-    resetConnections,
     setGameNumber,
 } from "./networking.ts";
 
@@ -392,12 +391,18 @@ export class Map1 implements GameMap {
                     c != connection
                 );
                 connection.datachannel!.onmessage = (e) => {
-                    if (!isHosting && e.data == "restart") {
-                        console.log("RESTARTING");
-                        updateLoop.stop();
-                        setGameNumber(gameNumber + 1);
-                        resolve(new Map1());
-                        return;
+                    if (!isHosting) {
+                        if (e.data == "restart") {
+                            updateLoop.stop();
+                            setGameNumber(gameNumber + 1);
+                            resolve(new Map1());
+                            return;
+                        }
+                        if (e.data == "continue") {
+                            updateLoop.stop();
+                            setGameNumber(0);
+                            resolve(new Lobby());
+                        }
                     }
 
                     const data: {
@@ -572,22 +577,14 @@ export class Map1 implements GameMap {
                                         updateLoop.stop();
                                         setGameNumber(gameNumber + 1);
                                         resolve(new Map1());
-                                        for (
-                                            const connection of connections
-                                        ) {
-                                            connection.sendMessage(
-                                                "restart",
-                                            );
+                                        for (const connection of connections) {
+                                            connection.sendMessage("restart");
                                         }
                                     },
                                     () => {
                                         updateLoop.stop();
                                         setGameNumber(0);
-                                        resolve(new Lobby(true, "host"));
-                                        for (const connection of connections) {
-                                            connection.sendMessage("continue");
-                                        }
-                                        resetConnections();
+                                        resolve(new Lobby(true));
                                     },
                                 );
                                 return saveState({
@@ -648,6 +645,7 @@ export class Map1 implements GameMap {
                         players = null;
 
                         stopRender();
+                        clearScreen();
                         removeEndScreen();
                     }
                 })(

@@ -227,7 +227,20 @@ export const localControls = [
     },
 ];
 
+export let lobbyName: string = "";
+export function setLobbyName(name: string) {
+    lobbyName = name;
+}
+
 export let clientName: string = "";
 export function setClientName(name: string) {
     clientName = name;
+}
+
+export let gameData: {
+    // TODO: gamemode: GameModeData;
+    [k: string]: PlayerData[];
+} = {};
+export function setGameData(data: typeof gameData) {
+    gameData = data;
 }

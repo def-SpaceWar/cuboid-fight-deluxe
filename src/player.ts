@@ -242,7 +242,7 @@ export function getPlayers(map: GameMap): Player[] {
                     new Default(
                         new RGBAColor(...playerDatas[i].classData.color),
                         i + 1 as PlayerNumber,
-                        playerDatas[i].name,
+                        playerDatas[i].name || "Unnamed " + (i + 1),
                         players,
                         map,
                     ),

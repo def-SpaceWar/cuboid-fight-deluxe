@@ -3,9 +3,13 @@ import {
     clientName,
     Connection,
     connections,
+    gameData,
     isHosting,
+    lobbyName,
     setClientName,
+    setGameData,
     setHost,
+    setLobbyName,
     setPlayerDatas,
     setPlayerNumbers,
 } from "./networking.ts";
@@ -60,7 +64,8 @@ export class JoinOrCreateLobby implements Scene {
 
             createLobbyBtn.onclick = () => {
                 cleanScene();
-                resolve(new Lobby(true, lobbyName.value));
+                setHost(true);
+                resolve(new Lobby());
             };
         });
     }
@@ -105,20 +110,68 @@ class AnswerLobby implements Scene {
                 cleanScene();
                 const data = JSON.parse(e.data);
                 setClientName(data.client);
-                resolve(new Lobby(false, data.name));
+                setLobbyName(data.name);
+                setHost(false);
+                resolve(new Lobby());
             };
         });
     }
 }
 
 export class Lobby implements Scene {
-    constructor(isHost: boolean, public name: string) {
-        setHost(isHost);
-    }
+    constructor(public isContinuing = false) {}
 
     run() {
         const playerManagers: PlayerManager[] = [];
+
         if (isHosting) {
+            if (this.isContinuing) {
+                for (const connection of connections) {
+                    connection.sendMessage("continue");
+                    connection.datachannel!.onmessage = (e) => {
+                        const data = String(e.data);
+
+                        if (data.startsWith("lobbydata")) {
+                            const lobbyData: typeof gameData = JSON.parse(
+                                data.split("::")[1],
+                            );
+
+                            for (const name in lobbyData) {
+                                playerManagers
+                                    .filter((m) => m.id == name)[0]
+                                    .set(lobbyData[name]);
+                            }
+
+                            for (const c of connections) {
+                                if (c == connection) continue;
+                                c.sendMessage(e.data);
+                            }
+                            return;
+                        }
+
+                        if (data.startsWith("getlobbydata")) {
+                            const lobbyData: typeof gameData = {};
+                            lobbyData["host"] = playerManagers[0].get();
+                            for (let i = 0; i < connections.length; i++) {
+                                const name = "client" + i,
+                                    playerManager = playerManagers.filter((m) =>
+                                        m.id == name
+                                    )[0];
+                                lobbyData["client" + i] = playerManager
+                                    .get();
+                            }
+                            connections.map((c) =>
+                                c.sendMessage(
+                                    "lobbydata::" +
+                                        JSON.stringify(lobbyData),
+                                )
+                            );
+                            return;
+                        }
+                    };
+                }
+            }
+
             const inviteUI = app.appendChild(
                 document.createElement("div"),
             );
@@ -129,25 +182,36 @@ export class Lobby implements Scene {
             );
             lobbyUIContainer.id = "lobby-ui-container-host";
 
+            const cleanScene = () => {
+                inviteUI.remove();
+                lobbyUIContainer.remove();
+            };
+
             const lobbyUI = lobbyUIContainer.appendChild(
                 document.createElement("div"),
             );
             lobbyUI.id = "lobby-ui-host";
 
             const heading = lobbyUI.appendChild(document.createElement("h1"));
-            heading.innerText = this.name;
+            heading.innerText = lobbyName;
 
             const lobbyPlayerManagerContainer = lobbyUI.appendChild(
                 document.createElement("div"),
             );
             lobbyPlayerManagerContainer.id = "lobby-player-manager-container";
 
-            playerManagers.push(
-                new InteractivePlayerManager(
-                    "host",
-                    lobbyPlayerManagerContainer,
-                ),
+            const hostManager = new InteractivePlayerManager(
+                "host",
+                lobbyPlayerManagerContainer,
+                () =>
+                    connections.forEach((c) =>
+                        c.sendMessage(
+                            "lobbydata::" +
+                                JSON.stringify({ "host": hostManager.get() }),
+                        )
+                    ),
             );
+            playerManagers.push(hostManager);
 
             const loadingInvite = inviteUI.appendChild(
                 document.createElement("textarea"),
@@ -171,6 +235,26 @@ export class Lobby implements Scene {
             joinLobbyBtn.id = "accept-lobby";
             joinLobbyBtn.innerText = "Accept Answer";
 
+            if (Object.keys(gameData).length > 0) {
+                for (const name in gameData) {
+                    const manager = playerManagers
+                        .filter((m) => m.id == name);
+                    if (manager.length == 0) {
+                        playerManagers[
+                            playerManagers.push(
+                                new DisplayPlayerManager(
+                                    name,
+                                    lobbyPlayerManagerContainer,
+                                ),
+                            ) - 1
+                        ].set(gameData[name]);
+                        continue;
+                    }
+                    manager[0].set(gameData[name]);
+                }
+                setGameData({});
+            }
+
             const getConnection = async () => {
                 const connection = new Connection(
                     "client" + connections.length,
@@ -184,16 +268,14 @@ export class Lobby implements Scene {
                         await connection.connect();
                         await connection.dataOpen();
                         connection.sendMessage(JSON.stringify({
-                            name: this.name,
+                            name: lobbyName,
                             client: connection.name,
                         }));
                         connection.datachannel!.onmessage = (e) => {
                             const data = String(e.data);
 
                             if (data.startsWith("lobbydata")) {
-                                const lobbyData: {
-                                    [k: string]: PlayerData[];
-                                } = JSON.parse(
+                                const lobbyData: typeof gameData = JSON.parse(
                                     data.split("::")[1],
                                 );
 
@@ -211,16 +293,13 @@ export class Lobby implements Scene {
                             }
 
                             if (data.startsWith("getlobbydata")) {
-                                const lobbyData: {
-                                    // TODO: gamemode: GameModeData;
-                                    [k: string]: PlayerData[];
-                                } = {};
-                                lobbyData["host"] = playerManagers[0].get();
+                                const lobbyData: typeof gameData = {};
+                                lobbyData["host"] = hostManager.get();
                                 for (let i = 0; i < connections.length; i++) {
                                     const name = "client" + i,
                                         playerManager =
-                                            playerManagers.filter((p) =>
-                                                p.id == name
+                                            playerManagers.filter((m) =>
+                                                m.id == name
                                             )[0];
                                     lobbyData["client" + i] = playerManager
                                         .get();
@@ -257,11 +336,6 @@ export class Lobby implements Scene {
             };
             getConnection();
 
-            const cleanScene = () => {
-                inviteUI.remove();
-                lobbyUIContainer.remove();
-            };
-
             const settingsUI = lobbyUIContainer.appendChild(
                 document.createElement("div"),
             );
@@ -275,11 +349,7 @@ export class Lobby implements Scene {
 
             return new Promise<Scene>((resolve) => {
                 startGame.onclick = () => {
-                    const gameData: {
-                        // TODO: gamemode: GameModeData;
-                        [k: string]: PlayerData[];
-                    } = {};
-                    gameData["host"] = playerManagers[0].get();
+                    gameData["host"] = hostManager.get();
                     for (let i = 0; i < connections.length; i++) {
                         const name = "client" + i,
                             playerManager = playerManagers.filter((p) =>
@@ -294,7 +364,7 @@ export class Lobby implements Scene {
                     );
 
                     const playerNumbers: PlayerNumber[] = [],
-                        localPlayerDatas = playerManagers[0].get();
+                        localPlayerDatas = hostManager.get();
                     for (let i = 0; i < localPlayerDatas.length; i++) {
                         playerNumbers.push(i + 1 as PlayerNumber);
                     }
@@ -313,29 +383,37 @@ export class Lobby implements Scene {
         const lobbyUIContainer = app.appendChild(document.createElement("div"));
         lobbyUIContainer.id = "lobby-ui-container";
 
+        const cleanScene = () => {
+            lobbyUIContainer.remove();
+        };
+
         const lobbyUI = lobbyUIContainer.appendChild(
             document.createElement("div"),
         );
         lobbyUI.id = "lobby-ui";
 
         const heading = lobbyUI.appendChild(document.createElement("h1"));
-        heading.innerText = this.name;
+        heading.innerText = lobbyName;
 
         const lobbyPlayerManagerContainer = lobbyUI.appendChild(
             document.createElement("div"),
         );
         lobbyPlayerManagerContainer.id = "lobby-player-manager-container";
 
-        playerManagers.push(
-            new InteractivePlayerManager(
+        {
+            const manager = new InteractivePlayerManager(
                 clientName,
                 lobbyPlayerManagerContainer,
-            ),
-        );
-
-        const cleanScene = () => {
-            lobbyUIContainer.remove();
-        };
+                () => {
+                    const data: typeof gameData = {};
+                    data[clientName] = manager.get();
+                    host.sendMessage(
+                        "lobbydata::" + JSON.stringify(data),
+                    );
+                },
+            );
+            playerManagers.push(manager);
+        }
 
         const settingsUI = lobbyUIContainer.appendChild(
             document.createElement("div"),
@@ -347,9 +425,7 @@ export class Lobby implements Scene {
                 const data = String(e.data);
 
                 if (data.startsWith("lobbydata")) {
-                    const lobbyData: {
-                        [k: string]: PlayerData[];
-                    } = JSON.parse(
+                    const lobbyData: typeof gameData = JSON.parse(
                         data.split("::")[1],
                     );
 
@@ -357,12 +433,14 @@ export class Lobby implements Scene {
                         const manager = playerManagers
                             .filter((m) => m.id == name);
                         if (manager.length == 0) {
-                            playerManagers.push(
-                                new DisplayPlayerManager(
-                                    name,
-                                    lobbyPlayerManagerContainer,
-                                ),
-                            );
+                            playerManagers[
+                                playerManagers.push(
+                                    new DisplayPlayerManager(
+                                        name,
+                                        lobbyPlayerManagerContainer,
+                                    ),
+                                ) - 1
+                            ].set(lobbyData[name]);
                             continue;
                         }
                         manager[0].set(lobbyData[name]);
@@ -370,25 +448,29 @@ export class Lobby implements Scene {
                 }
 
                 if (data.startsWith("start")) {
-                    const gameData: {
-                        [k: string]: PlayerData[];
-                    } = JSON.parse(data.split("::")[1]);
+                    const receivedGameData: typeof gameData = JSON.parse(
+                        data.split("::")[1],
+                    );
 
                     const playerNumbers: PlayerNumber[] = [],
                         playerDatas: PlayerData[] = [];
                     let playerCount = 0;
-                    for (const name in gameData) {
+                    for (const name in receivedGameData) {
                         if (name == clientName) {
-                            for (let i = 0; i < gameData[name].length; i++) {
+                            for (
+                                let i = 0;
+                                i < receivedGameData[name].length;
+                                i++
+                            ) {
                                 playerNumbers.push(
                                     ++playerCount as PlayerNumber,
                                 );
-                                playerDatas.push(gameData[name][i]);
+                                playerDatas.push(receivedGameData[name][i]);
                             }
                             continue;
                         }
-                        playerDatas.push(...gameData[name]);
-                        playerCount += gameData[name].length;
+                        playerDatas.push(...receivedGameData[name]);
+                        playerCount += receivedGameData[name].length;
                     }
 
                     cleanScene();
@@ -397,9 +479,6 @@ export class Lobby implements Scene {
                     resolve(new Map1());
                     return;
                 }
-
-                //if (data.startsWith("lobbyData")) {
-                //}
             };
         });
     }
@@ -412,26 +491,149 @@ interface PlayerManager {
     get(): PlayerData[];
 }
 
+function rgbToHex(color: [r: number, g: number, b: number]): string {
+    let r = Math.floor(color[0] * 255).toString(16),
+        g = Math.floor(color[1] * 255).toString(16),
+        b = Math.floor(color[2] * 255).toString(16);
+    while (r.length < 2) r = "0" + r;
+    while (g.length < 2) g = "0" + g;
+    while (b.length < 2) b = "0" + b;
+    return "#" + r + g + b;
+}
+
+function hexToRGB(hex: string): [r: number, g: number, b: number] {
+    return [
+        parseInt(hex.slice(1, 3), 16) / 255,
+        parseInt(hex.slice(3, 5), 16) / 255,
+        parseInt(hex.slice(5, 7), 16) / 255,
+    ];
+}
+
+class InteractivePlayerData {
+    container: HTMLDivElement;
+    removeButton: HTMLButtonElement;
+    nameInput: HTMLInputElement;
+    classSelector: HTMLSelectElement;
+    classSpecificElements: HTMLElement[] = [];
+
+    data: PlayerData = {
+        name: "",
+        // @ts-ignore:
+        classData: {},
+    };
+
+    constructor(
+        public id: number,
+        parent: HTMLElement,
+        public onvalue: () => void,
+        public onremove: () => void,
+    ) {
+        this.container = parent.appendChild(document.createElement("div"));
+        this.container.id = "interactive-player-data";
+
+        this.removeButton = this.container.appendChild(
+            document.createElement("button"),
+        );
+        this.removeButton.id = "interactive-player-remove";
+        this.removeButton.innerText = "X";
+        this.removeButton.onclick = () => this.remove();
+
+        this.nameInput = this.container.appendChild(
+            document.createElement("input"),
+        );
+        this.nameInput.placeholder = "Unnamed #";
+        this.nameInput.maxLength = 16;
+        this.nameInput.onchange = () => {
+            this.data.name = this.nameInput.value;
+            this.onvalue();
+        };
+
+        this.classSelector = this.container.appendChild(
+            document.createElement("select"),
+        );
+
+        {
+            const option = this.classSelector.appendChild(
+                document.createElement("option"),
+            );
+            option.value = "default" as PlayerData["classData"]["class"];
+            option.innerText = "Default";
+        }
+
+        this.classSelector.selectedIndex = 0;
+        (this.classSelector.onchange = () => {
+            // @ts-ignore:
+            this.data.classData = {
+                class: this.classSelector
+                    .value as PlayerData["classData"]["class"],
+            };
+            this.changeClass();
+        })();
+    }
+
+    changeClass() {
+        for (let i = 0; i < this.classSpecificElements.length; i++) {
+            this.classSpecificElements[i].remove();
+        }
+        this.classSpecificElements = [];
+        switch (this.data.classData.class) {
+            case "default": {
+                const colorPicker = this.container.appendChild(
+                    document.createElement("input"),
+                );
+                this.classSpecificElements.push(colorPicker);
+                colorPicker.type = "color";
+                colorPicker.value = this.data.classData.color
+                    ? rgbToHex(this.data.classData.color)
+                    : [
+                        "#FF334C",
+                        "#007FFF",
+                        "#33FF4C",
+                        "#FFCC4C",
+                        "#9933E5",
+                        "#FF99FF",
+                        "#1933CC",
+                        "#FF9919",
+                    ][Math.floor(Math.random() * 8)];
+                (colorPicker.onchange = () => {
+                    this.data.classData.color = hexToRGB(
+                        colorPicker.value,
+                    );
+
+                    this.onvalue();
+                })();
+                break;
+            }
+        }
+        this.onvalue();
+    }
+
+    set(data: PlayerData) {
+        this.nameInput.value = data.name;
+        this.data = data;
+        this.classSelector.value = data.classData.class;
+        this.changeClass();
+    }
+
+    get() {
+        return this.data;
+    }
+
+    remove() {
+        this.container.remove();
+        this.onremove();
+    }
+}
+
 class InteractivePlayerManager implements PlayerManager {
     container: HTMLDivElement;
-    datas: PlayerData[] = [
-        {
-            name: "hehehe HAost",
-            classData: {
-                class: "default",
-                color: [1, .2, .3],
-            },
-        },
-        //{
-        //    name: "hehehe HA 2",
-        //    classData: {
-        //        class: "default",
-        //        color: [0, 1, 1],
-        //    },
-        //},
-    ];
+    datas: InteractivePlayerData[] = [];
 
-    constructor(public id: string, parent: HTMLElement) {
+    constructor(
+        public id: string,
+        parent: HTMLElement,
+        public onvalue: () => void,
+    ) {
         this.container = parent.appendChild(document.createElement("div"));
         this.container.id = "lobby-interactive-player-manager";
         const containerTitle = this.container.appendChild(
@@ -445,44 +647,107 @@ class InteractivePlayerManager implements PlayerManager {
         newPlayerBtn.innerText = "+";
 
         newPlayerBtn.onclick = () => {
-            //console.log("new player!");
+            this.addPlayer();
+            this.onvalue();
         };
     }
 
     addPlayer() {
-        //
+        const data = new InteractivePlayerData(
+            this.datas.length,
+            this.container,
+            this.onvalue,
+            () => {
+                const newDatas: PlayerData[] = this.datas.filter((d) =>
+                    d != data
+                ).map((d) => d.get());
+                this.set(newDatas);
+            },
+        );
+        this.datas.push(data);
     }
 
-    // on data change or smth like that
-
     set(datas: PlayerData[]) {
-        // update visuals too
-        this.datas = datas;
+        this.datas.map((d) => d.container.remove());
+        this.datas = [];
+        for (let i = 0; i < datas.length; i++) {
+            const data = new InteractivePlayerData(
+                this.datas.length,
+                this.container,
+                this.onvalue,
+                () => {
+                    const newDatas: PlayerData[] = this.datas.filter((d) =>
+                        d != data
+                    ).map((d) => d.get());
+                    this.set(newDatas);
+                },
+            );
+            data.set(datas[i]);
+            this.datas.push(data);
+        }
+        this.onvalue();
     }
 
     get() {
-        return this.datas;
+        return this.datas.map((d) => d.get());
+    }
+}
+
+class DisplayPlayerData {
+    container: HTMLDivElement;
+    nameInput: HTMLInputElement;
+    classSelector: HTMLSelectElement;
+    classSpecificElements: HTMLElement[] = [];
+
+    constructor(
+        parent: HTMLElement,
+        public data: PlayerData,
+    ) {
+        this.container = parent.appendChild(document.createElement("div"));
+        this.container.id = "display-player-data";
+
+        this.nameInput = this.container.appendChild(
+            document.createElement("input"),
+        );
+        this.nameInput.placeholder = "Unnamed #";
+        this.nameInput.maxLength = 16;
+        this.nameInput.value = data.name;
+        this.nameInput.disabled = true;
+
+        this.classSelector = this.container.appendChild(
+            document.createElement("select"),
+        );
+
+        {
+            const option = this.classSelector.appendChild(
+                document.createElement("option"),
+            );
+            option.value = data.classData.class;
+            option.innerText = data.classData.class[0].toUpperCase() +
+                data.classData.class.slice(1);
+        }
+
+        this.classSelector.disabled = true;
+
+        switch (data.classData.class) {
+            case "default": {
+                const colorPicker = this.container.appendChild(
+                    document.createElement("input"),
+                );
+                this.classSpecificElements.push(colorPicker);
+                colorPicker.type = "color";
+                colorPicker.value = rgbToHex(this.data.classData.color);
+                colorPicker.disabled = true;
+                break;
+            }
+        }
     }
 }
 
 class DisplayPlayerManager implements PlayerManager {
     container: HTMLDivElement;
-    datas: PlayerData[] = [
-        {
-            name: "hehehe HA " + Math.random().toFixed(3),
-            classData: {
-                class: "default",
-                color: [Math.random(), Math.random(), Math.random()],
-            },
-        },
-        //{
-        //    name: "hehehe HA " + Math.random(),
-        //    classData: {
-        //        class: "default",
-        //        color: [Math.random(), 1, Math.random()],
-        //    },
-        //},
-    ];
+    displays: DisplayPlayerData[] = [];
+    datas: PlayerData[] = [];
 
     constructor(public id: string, parent: HTMLElement) {
         this.container = parent.appendChild(document.createElement("div"));
@@ -495,6 +760,11 @@ class DisplayPlayerManager implements PlayerManager {
 
     set(datas: PlayerData[]) {
         this.datas = datas;
+        this.displays.map((d) => d.container.remove());
+        this.displays = [];
+        for (const data of datas) {
+            this.displays.push(new DisplayPlayerData(this.container, data));
+        }
     }
 
     get() {
