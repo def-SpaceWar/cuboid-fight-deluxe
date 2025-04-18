@@ -1,32 +1,33 @@
 # TODO
 
-- add online multiplayer
-> sync end screens (done)
-> make continue go back to lobby
-> Make every client stores their own lobby data and sends it to host
-> every client handles their own players, and host sends the full lobby before
-  start of every game.
-> add lobbyData somewhere in networking.ts
-> add player customization in lobby (add multiple players)
-> get it to work with 3+ clients
-> make forming lobbies more convenient, and handle disconnects
+- Subclasses System
+> Default: either choose +20% crit chance losing 20 max hp or lose 1 jump but
+  heal 30% of missing health every 4 seconds. Lose 50% damage but attack with
+  poison for 5% every 1 second for 5 seconds (27% HP over 5 seconds).
+> Default:
+> Precise Default:
+> Persistent Default:
+> Poisonous Default:
 - Particles (moving, jump, ground pound, attk, etc.)
 - Combo text somewhere (maybe text particle)
-- Custom color selection for players
-> Min V (HSV) for a player color = 0.4 (when they get to custom select colors)
+- add +1 kill or -1 life text (just add more texts)
+- add online multiplayer
+> add controls to lobby
+> customize gamemode (and display it on clients)
+> make forming lobbies more convenient, and handle disconnects
+- Add moving platforms (all platforms must save state too)
+- make animated textures for platforms
+> death platform can be veiny with red pulsing through it
+> (it would look very cool)
 - Sounds
-- Upgrade System
-> Default: either choose +20% crit chance losing 20 max hp or lose 1 jump but
-  heal 15% of missing health every 6 seconds. Lose 50% damage but attack with
-  poison for 5% every 1 second for 5 seconds (27% HP over 5 seconds).
-- Add damage zones/platforms (done), moving platforms
-> Use for dying offscreen (done)
-> Use in the map as reddish pulsing (not pulsing and doesn't have texture yet)
-  damaging platforms.
+> sync them exactly how the particles are synced up
 - Add healing zones/platforms (probably another map)
 > Use in the map as greenish pulsing damaging platforms
 - Save Replay functionality (map: map, inputs: {tick: input}, players: [...]}
 > let user download the file or save it to localStorage figure it out
+- Add camera (update vertex shader)
+> I have no idea if I still want a camera
+> Camera's only on certain maps (larger maps)
 
 ## Classes
 
@@ -82,7 +83,11 @@
 > guantlet is a part of it, if it dies, the guantlet dies (whether its being
   worn or is on the ground)
 - windy class (summon wind)
-- summoning class (summon minions)
+> attack = cone shaped gust of wind at the nearest player
+> massive range
+> low damage
+> special does pure knockback in a larger radius and heals
+> low health mobility
 - heavyweight
 > charge up attack (hold attack down) let go to attack
 > special is a taunt that heals 30% missing health and deals kb (no damage and
@@ -94,9 +99,8 @@
 > each has their own unique melee attack
 > share healthbar
 > one is high mobility other is low mobility
-
+- summoning class (summon minions)
+> hell no not yet
 ...
 
-- Add camera (update vertex shader)
-> I have no idea if I still want a camera
 - jsx animations? (or for something else)

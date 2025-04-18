@@ -226,6 +226,7 @@ export interface Player {
 
 export type PlayerClassData = {
     class: "default";
+    subclass: "" | "precise" | "persistant" | "poisonous";
     color: [r: number, g: number, b: number];
 };
 export type PlayerData = {
@@ -237,10 +238,14 @@ export function getPlayers(map: GameMap): Player[] {
     for (let i = 0; i < playerDatas.length; i++) {
         const playerData = playerDatas[i];
         switch (playerData.classData.class) {
-            case "default":
+            case "default": {
+                let color = new RGBAColor(...playerDatas[i].classData.color);
+                const hsva = color.toHSVA();
+                if (hsva.v < 0.4) hsva.v = 0.4, color = hsva.toRGBA();
                 players.push(
                     new Default(
-                        new RGBAColor(...playerDatas[i].classData.color),
+                        playerDatas[i].classData.subclass,
+                        color,
                         i + 1 as PlayerNumber,
                         playerDatas[i].name || "Unnamed " + (i + 1),
                         players,
@@ -248,6 +253,7 @@ export function getPlayers(map: GameMap): Player[] {
                     ),
                 );
                 break;
+            }
         }
     }
 
@@ -255,8 +261,6 @@ export function getPlayers(map: GameMap): Player[] {
 }
 
 const defaultTex = await loadImage(defaultImg),
-    defaultTexCoord = rectToGeometry([0, 0, 16, 16]),
-    defaultDeadTexCoord = rectToGeometry([16, 0, 32, 16]),
     defaultGeometry = rectToGeometry([-25, -25, 25, 25]),
     defaultHitbox = {
         type: "rect",
@@ -274,6 +278,8 @@ export class Default implements Player {
     lagDiminishConstant = -40;
     comboColor: GLColor;
     specialColor: GLColor;
+    texCoord = rectToGeometry([0, 0, 16, 16]);
+    deadTexCoord = rectToGeometry([16, 0, 32, 16]);
 
     hitbox: RectangleHitbox = defaultHitbox;
     physicsBody;
@@ -353,13 +359,35 @@ export class Default implements Player {
     damageMultiplier = 1;
     healMultiplier = 1;
 
+    persistantHealTimer = 4;
+
     constructor(
+        public subclass: "" | "precise" | "persistant" | "poisonous",
         public origColor: RGBAColor,
         public number: PlayerNumber,
         public name: string,
         public allPlayers: Player[],
         public map: GameMap,
     ) {
+        switch (this.subclass) {
+            case "":
+                break;
+            case "precise":
+                this.maxHealth = 80;
+                this.health = 80;
+                this.texCoord = rectToGeometry([0, 16, 16, 32]);
+                this.deadTexCoord = rectToGeometry([16, 16, 32, 32]);
+                break;
+            case "persistant":
+                this.texCoord = rectToGeometry([0, 32, 16, 48]);
+                this.deadTexCoord = rectToGeometry([16, 32, 32, 48]);
+                break;
+            case "poisonous":
+                this.texCoord = rectToGeometry([0, 48, 16, 64]);
+                this.deadTexCoord = rectToGeometry([16, 48, 32, 64]);
+                break;
+        }
+
         this.color = new RGBAColor(
             origColor.r,
             origColor.g,
@@ -573,7 +601,7 @@ export class Default implements Player {
         if (this.isDead) {
             drawGeometry(
                 defaultTex,
-                defaultDeadTexCoord,
+                this.deadTexCoord,
                 defaultGeometry,
                 defaultRectColor,
                 {
@@ -591,7 +619,7 @@ export class Default implements Player {
 
             drawGeometry(
                 defaultTex,
-                defaultTexCoord,
+                this.texCoord,
                 defaultGeometry,
                 defaultRectColor,
                 { tint: this.color.glColor, translation },
@@ -803,6 +831,16 @@ export class Default implements Player {
                 );
             }
         }
+        if (this.subclass == "persistant") {
+            this.persistantHealTimer -= DT;
+            if (this.persistantHealTimer <= 0) {
+                this.persistantHealTimer += 4;
+                this.takeHealing(
+                    0.3 * (this.maxHealth - this.health),
+                    { type: "player", player: this },
+                );
+            }
+        }
     }
 
     jump() {
@@ -859,7 +897,7 @@ export class Default implements Player {
 
             this.isGrounded = true;
             this.canJump = true;
-            this.doubleJumpCount = 2;
+            this.doubleJumpCount = 2 - Number(this.subclass == "persistant");
             return;
         }
 
@@ -945,14 +983,27 @@ export class Default implements Player {
             if (!isGroundPound) this.combo++;
             hasHit = true;
 
-            let damage = Math.max(
+            let damage: number,
+                isCrit = false;
+
+            if (this.subclass == "precise") {
+                damage = Math.max(
+                    this.attackRange / Math.sqrt(squaredDistance) / 0.8 *
+                        this.damage,
+                    this.damage ** 1.5,
+                );
+            } else {
+                damage = Math.max(
                     this.attackRange / Math.sqrt(squaredDistance) * this.damage,
                     this.damage ** 1.5,
-                ),
-                isCrit = false;
+                );
+            }
+
             if (damage >= this.damage ** 2.5) {
                 isCrit = true, damage = this.damage ** 2.5;
             }
+
+            if (this.subclass == "poisonous") damage /= 2;
 
             const kb = Vector2D
                 .subtract(other.physicsBody.pos, this.physicsBody.pos)
@@ -969,6 +1020,9 @@ export class Default implements Player {
                 damage * this.attackMultiplier,
                 { type: "player", player: this, isCrit },
             );
+            if (this.subclass == "poisonous") {
+                other.effect.poison(1, 5, .05);
+            }
         }
 
         if (isGroundPound) return;
@@ -1196,6 +1250,7 @@ export class Default implements Player {
             incomingKbMultiplier: this.incomingKbMultiplier,
             damageMultiplier: this.damageMultiplier,
             healMultiplier: this.healMultiplier,
+            persistantHealTimer: this.persistantHealTimer,
         };
     }
 
@@ -1248,6 +1303,7 @@ export class Default implements Player {
         this.incomingKbMultiplier = values.incomingKbMultiplier;
         this.damageMultiplier = values.damageMultiplier;
         this.healMultiplier = values.healMultiplier;
+        this.persistantHealTimer = values.persistantHealTimer;
     }
 }
 const defaultAttackParticleGeometry = circleToGeometry(Vector2D.zero(), 1);

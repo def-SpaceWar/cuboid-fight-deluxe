@@ -65,6 +65,7 @@ export class JoinOrCreateLobby implements Scene {
             createLobbyBtn.onclick = () => {
                 cleanScene();
                 setHost(true);
+                setLobbyName(lobbyName.value);
                 resolve(new Lobby());
             };
         });
@@ -578,6 +579,54 @@ class InteractivePlayerData {
         this.classSpecificElements = [];
         switch (this.data.classData.class) {
             case "default": {
+                const subclassSelector = this.container.appendChild(
+                    document.createElement("select"),
+                );
+                this.classSpecificElements.push(subclassSelector);
+
+                {
+                    const option = subclassSelector.appendChild(
+                        document.createElement("option"),
+                    );
+                    option.value = "" as (typeof this.data.classData.subclass);
+                    option.innerText = "(Base)";
+                }
+
+                {
+                    const option = subclassSelector.appendChild(
+                        document.createElement("option"),
+                    );
+                    option.value =
+                        "precise" as (typeof this.data.classData.subclass);
+                    option.innerText = "Precise";
+                }
+
+                {
+                    const option = subclassSelector.appendChild(
+                        document.createElement("option"),
+                    );
+                    option.value =
+                        "persistant" as (typeof this.data.classData.subclass);
+                    option.innerText = "Persistant";
+                }
+
+                {
+                    const option = subclassSelector.appendChild(
+                        document.createElement("option"),
+                    );
+                    option.value =
+                        "poisonous" as (typeof this.data.classData.subclass);
+                    option.innerText = "Poisonous";
+                }
+
+                if (this.data.classData.subclass) {
+                    subclassSelector.value = this.data.classData.subclass;
+                }
+                (subclassSelector.onchange = () => {
+                    this.data.classData.subclass = subclassSelector
+                        .value as PlayerData["classData"]["subclass"];
+                    this.onvalue();
+                })();
                 const colorPicker = this.container.appendChild(
                     document.createElement("input"),
                 );
@@ -599,7 +648,6 @@ class InteractivePlayerData {
                     this.data.classData.color = hexToRGB(
                         colorPicker.value,
                     );
-
                     this.onvalue();
                 })();
                 break;
@@ -731,6 +779,48 @@ class DisplayPlayerData {
 
         switch (data.classData.class) {
             case "default": {
+                const subclassSelector = this.container.appendChild(
+                    document.createElement("select"),
+                );
+                this.classSpecificElements.push(subclassSelector);
+
+                {
+                    const option = subclassSelector.appendChild(
+                        document.createElement("option"),
+                    );
+                    option.value = "" as (typeof this.data.classData.subclass);
+                    option.innerText = "(Base)";
+                }
+
+                {
+                    const option = subclassSelector.appendChild(
+                        document.createElement("option"),
+                    );
+                    option.value =
+                        "precise" as (typeof this.data.classData.subclass);
+                    option.innerText = "Precise";
+                }
+
+                {
+                    const option = subclassSelector.appendChild(
+                        document.createElement("option"),
+                    );
+                    option.value =
+                        "persistant" as (typeof this.data.classData.subclass);
+                    option.innerText = "Persistant";
+                }
+
+                {
+                    const option = subclassSelector.appendChild(
+                        document.createElement("option"),
+                    );
+                    option.value =
+                        "poisonous" as (typeof this.data.classData.subclass);
+                    option.innerText = "Poisonous";
+                }
+
+                subclassSelector.value = this.data.classData.subclass;
+
                 const colorPicker = this.container.appendChild(
                     document.createElement("input"),
                 );
