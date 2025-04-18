@@ -1072,6 +1072,7 @@ export class Default implements Player {
     }
 
     takeDamage(damage: number, reason: DamageReason) {
+        if (this.isDead) return 0;
         const origHealth = this.health;
         this.health -= damage * this.damageMultiplier;
 
