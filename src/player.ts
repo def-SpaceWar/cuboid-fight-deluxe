@@ -1074,6 +1074,7 @@ export class Default implements Player {
     takeDamage(damage: number, reason: DamageReason) {
         if (this.isDead) return 0;
         const origHealth = this.health;
+        if (damage < 0) return origHealth;
         this.health -= damage * this.damageMultiplier;
 
         switch (reason.type) {
@@ -1153,8 +1154,8 @@ export class Default implements Player {
 
     takeHealing(health: number, reason: HealReason) {
         if (this.isDead) return 0;
-
         const origHealth = this.health;
+        if (health < 0) return origHealth;
         this.health += health * this.healMultiplier;
 
         switch (reason.type) {
