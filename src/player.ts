@@ -379,6 +379,8 @@ export class Default implements Player {
                 this.deadTexCoord = rectToGeometry([16, 16, 32, 32]);
                 break;
             case "persistant":
+                this.maxHealth = 75;
+                this.health = 75;
                 this.texCoord = rectToGeometry([0, 32, 16, 48]);
                 this.deadTexCoord = rectToGeometry([16, 32, 32, 48]);
                 break;

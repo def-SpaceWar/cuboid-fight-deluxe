@@ -820,6 +820,7 @@ class DisplayPlayerData {
                 }
 
                 subclassSelector.value = this.data.classData.subclass;
+                subclassSelector.disabled = true;
 
                 const colorPicker = this.container.appendChild(
                     document.createElement("input"),
