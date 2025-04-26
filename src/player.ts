@@ -1,6 +1,4 @@
-// @ts-ignore:
 import iconsImg from "./assets/ui/icons.png";
-// @ts-ignore:
 import defaultImg from "./assets/classes/default.png";
 import {
     circleToGeometry,
@@ -32,6 +30,7 @@ import {
     KILL_CREDIT_TIME,
     POISON_COLOR,
     REGENERATE_COLOR,
+    RESTORE_COLOR,
 } from "./flags.ts";
 import { Platform } from "./platform.ts";
 import { isMousePressed, isPressed } from "./input.ts";
@@ -55,10 +54,8 @@ export const Binding = {
 };
 
 type PlayerState = {
-    lagX: number;
-    lagY: number;
-    posX: number;
-    posY: number;
+    lags: string[];
+    physicsBodies: string[];
     effect: string;
 };
 
@@ -139,42 +136,47 @@ const playerUiCoords = {
     7: Vector2D.xy(20, 190),
     8: Vector2D.xy(20, 275),
 };
-export type PlayerNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+export type PlayerNumber =
+    | 1
+    | 2
+    | 3
+    | 4
+    | 5
+    | 6
+    | 7
+    | 8;
+export enum PlayerTeam {
+    red,
+    orange,
+    yellow,
+    green,
+    aqua,
+    blue,
+    purple,
+    magenta,
+    juggernaut,
+}
 export type DamageReason =
-    | {
-        type: "player";
-        player: Player;
-        isCrit: boolean;
-    }
-    | {
-        type: "environment";
-    }
-    | {
-        type: "degenerate";
-    }
-    | {
-        type: "poison";
-    };
+    | { type: "player"; player: Player; isCrit: boolean }
+    | { type: "environment" }
+    | { type: "degenerate" }
+    | { type: "poison" };
 export type HealReason =
-    | {
-        type: "player";
-        player: Player;
-    }
-    | {
-        type: "environment";
-    }
-    | {
-        type: "regenerate";
-    };
+    | { type: "player"; player: Player }
+    | { type: "environment" }
+    | { type: "regenerate" }
+    | { type: "restore" };
 export interface Player {
+    team?: PlayerTeam;
     origColor: RGBAColor;
     number: PlayerNumber;
     name: string;
     allPlayers: Player[];
     map: GameMap;
 
-    hitbox: Hitbox;
-    physicsBody: PhysicsBody;
+    lagOffsets: Vector2D[];
+    hitboxes: Hitbox[];
+    physicsBodies: PhysicsBody[];
 
     isGrounded: boolean;
     isOnWall: boolean;
@@ -208,10 +210,10 @@ export interface Player {
     render(): void;
     renderUi(): void;
     update(input: PlayerInput): void;
-    onPlatformCollision(p: Platform): void;
+    onPlatformCollision(p: Platform, index: number): void;
     onPlayerCollision(p: Player): void;
 
-    takeKb(kb: Vector2D): void;
+    takeKb(kb: Vector2D, index: number): void;
     takeDamage(damage: number, reason: DamageReason): number;
     takeHealing(health: number, reason: HealReason): number;
     killBuff(other: Player): void;
@@ -226,7 +228,7 @@ export interface Player {
 
 export type PlayerClassData = {
     class: "default";
-    subclass: "" | "precise" | "persistant" | "poisonous";
+    subclass: DefaultSubclass;
     color: [r: number, g: number, b: number];
 };
 export type PlayerData = {
@@ -260,29 +262,32 @@ export function getPlayers(map: GameMap): Player[] {
     return players;
 }
 
+export type DefaultSubclass = "" | "precise" | "persistant" | "poisonous";
 const defaultTex = await loadImage(defaultImg),
     defaultGeometry = rectToGeometry([-25, -25, 25, 25]),
-    defaultHitbox = {
+    defaultHitbox = [{
         type: "rect",
         offset: Vector2D.zero(),
         w: 50,
         h: 50,
-    } as RectangleHitbox,
+    } as RectangleHitbox],
     defaultMaxKb = 3_000;
 export class Default implements Player {
+    team?: PlayerTeam;
     color: RGBAColor;
     renderZ = 0;
     visualOffset = Vector2D.zero();
     visualDiminishConstant = -20;
-    lagOffset = Vector2D.zero();
-    lagDiminishConstant = -40;
+
     comboColor: GLColor;
     specialColor: GLColor;
     texCoord = rectToGeometry([0, 0, 16, 16]);
     deadTexCoord = rectToGeometry([16, 0, 32, 16]);
 
-    hitbox: RectangleHitbox = defaultHitbox;
-    physicsBody;
+    lagOffsets;
+    lagDiminishConstant = -40;
+    hitboxes = defaultHitbox;
+    physicsBodies;
 
     speed = 1_000;
     // airSpeed; for other classes like heavyweight and other tanks
@@ -359,34 +364,36 @@ export class Default implements Player {
     damageMultiplier = 1;
     healMultiplier = 1;
 
-    persistantHealTimer = 4;
-
     constructor(
-        public subclass: "" | "precise" | "persistant" | "poisonous",
+        public subclass: DefaultSubclass,
         public origColor: RGBAColor,
         public number: PlayerNumber,
         public name: string,
         public allPlayers: Player[],
         public map: GameMap,
     ) {
+        this.effect = new PlayerEffectManager(this);
+
         switch (this.subclass) {
             case "":
                 break;
             case "precise":
-                this.maxHealth = 80;
-                this.health = 80;
+                this.health = this.maxHealth = 80;
                 this.texCoord = rectToGeometry([0, 16, 16, 32]);
                 this.deadTexCoord = rectToGeometry([16, 16, 32, 32]);
+                this.attackRangeMultiplier = .8;
                 break;
             case "persistant":
-                this.maxHealth = 75;
-                this.health = 75;
+                this.health = this.maxHealth = 85;
                 this.texCoord = rectToGeometry([0, 32, 16, 48]);
                 this.deadTexCoord = rectToGeometry([16, 32, 32, 48]);
+                this.effect.restore(4, -1, .3, 4);
                 break;
             case "poisonous":
+                this.health = this.maxHealth = 70;
                 this.texCoord = rectToGeometry([0, 48, 16, 64]);
                 this.deadTexCoord = rectToGeometry([16, 48, 32, 64]);
+                this.kbMultiplier = .5;
                 break;
         }
 
@@ -407,10 +414,11 @@ export class Default implements Player {
         if (hsv.h > 1) hsv.h -= 1;
         this.specialColor = hsv.toRGBA().glColor;
 
-        this.physicsBody = makePhysicsBody({
+        this.lagOffsets = [Vector2D.zero()];
+        this.physicsBodies = [makePhysicsBody({
             xDrag: 0.04,
             yDrag: 0.2,
-        });
+        })];
 
         const uiCoords = playerUiCoords[this.number];
 
@@ -594,8 +602,6 @@ export class Default implements Player {
             );
             this.removeText2 = remove;
         }
-
-        this.effect = new PlayerEffectManager(this);
     }
 
     render() {
@@ -608,16 +614,16 @@ export class Default implements Player {
                 defaultRectColor,
                 {
                     tint: this.color.glColor,
-                    translation: this.physicsBody.pos
+                    translation: this.physicsBodies[0].pos
                         .clone()
                         .av(this.visualOffset)
-                        .av(this.lagOffset),
+                        .av(this.lagOffsets[0]),
                 },
             );
         } else {
-            const translation = this.physicsBody.pos.clone()
+            const translation = this.physicsBodies[0].pos.clone()
                 .av(this.visualOffset)
-                .av(this.lagOffset);
+                .av(this.lagOffsets[0]);
 
             drawGeometry(
                 defaultTex,
@@ -678,7 +684,7 @@ export class Default implements Player {
                         offset: Vector2D.zero(),
                         r: this.attackRange * this.attackRangeMultiplier,
                     },
-                    this.physicsBody.pos,
+                    this.physicsBodies[0].pos,
                     [1, 0, 0, 1],
                 );
             }
@@ -691,7 +697,7 @@ export class Default implements Player {
                         r: this.attackRange * this.attackRangeMultiplier *
                             Math.SQRT2,
                     },
-                    this.physicsBody.pos,
+                    this.physicsBodies[0].pos,
                     [1, 0, 0, 1],
                 );
             }
@@ -699,8 +705,8 @@ export class Default implements Player {
 
         if (DEBUG_HITBOXES) {
             drawHitbox(
-                this.hitbox,
-                this.physicsBody.pos,
+                this.hitboxes[0],
+                this.physicsBodies[0].pos,
                 [0, 1, 0.5, 1],
             );
         }
@@ -749,32 +755,32 @@ export class Default implements Player {
 
     update(input: Readonly<PlayerInput>) {
         if (!this.isDead) {
-            this.physicsBody.vel.x += (
+            this.physicsBodies[0].vel.x += (
                 Number(input.right) -
                 Number(input.left)
             ) * this.speed * this.speedMultiplier * DT / 2;
         }
-        this.physicsBody.vel.y += (
+        this.physicsBodies[0].vel.y += (
             2_500 + Number(this.isGroundPounding) * 5_000 -
             Number(this.isOnWall) * 1_500
         ) * DT / 2;
 
-        this.physicsBody.update(DT);
+        this.physicsBodies[0].update(DT);
         this.effect.update();
 
         if (!this.isDead) {
-            this.physicsBody.vel.x += (
+            this.physicsBodies[0].vel.x += (
                 Number(input.right) -
                 Number(input.left)
             ) * this.speed * this.speedMultiplier * DT / 2;
         }
-        this.physicsBody.vel.y += (
+        this.physicsBodies[0].vel.y += (
             2_500 + Number(this.isGroundPounding) * 5_000 -
             Number(this.isOnWall) * 1_500
         ) * DT / 2;
 
         this.visualOffset.Sn(Math.exp(DT * this.visualDiminishConstant));
-        this.lagOffset.Sn(Math.exp(DT * this.lagDiminishConstant));
+        this.lagOffsets[0].Sn(Math.exp(DT * this.lagDiminishConstant));
 
         this.attackTimer -= DT * this.abilitySpeedMultiplier;
         this.specialTimer -= DT * this.abilitySpeedMultiplier;
@@ -833,16 +839,6 @@ export class Default implements Player {
                 );
             }
         }
-        if (this.subclass == "persistant") {
-            this.persistantHealTimer -= DT;
-            if (this.persistantHealTimer <= 0) {
-                this.persistantHealTimer += 4;
-                this.takeHealing(
-                    0.3 * (this.maxHealth - this.health),
-                    { type: "player", player: this },
-                );
-            }
-        }
     }
 
     jump() {
@@ -857,9 +853,9 @@ export class Default implements Player {
             this.doubleJumpCount--;
         }
 
-        this.physicsBody.vel.y = -jumpPower;
+        this.physicsBodies[0].vel.y = -jumpPower;
         if (this.isOnWall) {
-            this.physicsBody.vel.x = this.wallDirection * jumpPower / 2;
+            this.physicsBodies[0].vel.x = this.wallDirection * jumpPower / 2;
         }
         this.jumpTimer = .2;
     }
@@ -888,14 +884,17 @@ export class Default implements Player {
         if (
             !p.isWall ||
             p.pos.y + p.hitbox.offset.y - p.hitbox.h / 2 >
-                this.physicsBody.pos.y
+                this.physicsBodies[0].pos.y
         ) {
-            const oldY = this.physicsBody.pos.y;
-            this.physicsBody.pos.y = p.pos.y + p.hitbox.offset.y -
-                p.hitbox.h / 2 - this.hitbox.h / 2;
-            const diff = this.physicsBody.pos.y - oldY;
+            const oldY = this.physicsBodies[0].pos.y;
+            this.physicsBodies[0].pos.y = p.pos.y + p.hitbox.offset.y -
+                p.hitbox.h / 2 - this.hitboxes[0].h / 2;
+            const diff = this.physicsBodies[0].pos.y - oldY;
             if (Math.abs(diff) > 4) this.visualOffset.y -= diff;
-            this.physicsBody.vel.y = Math.min(0, this.physicsBody.vel.y);
+            this.physicsBodies[0].vel.y = Math.min(
+                0,
+                this.physicsBodies[0].vel.y,
+            );
 
             this.isGrounded = true;
             this.canJump = true;
@@ -905,50 +904,59 @@ export class Default implements Player {
 
         if (
             p.pos.y + p.hitbox.offset.y + p.hitbox.h / 2 <
-                this.physicsBody.pos.y
+                this.physicsBodies[0].pos.y
         ) {
-            const oldY = this.physicsBody.pos.y;
-            this.physicsBody.pos.y = p.pos.y + p.hitbox.offset.y +
-                p.hitbox.h / 2 + this.hitbox.h / 2;
-            const diff = this.physicsBody.pos.y - oldY;
+            const oldY = this.physicsBodies[0].pos.y;
+            this.physicsBodies[0].pos.y = p.pos.y + p.hitbox.offset.y +
+                p.hitbox.h / 2 + this.hitboxes[0].h / 2;
+            const diff = this.physicsBodies[0].pos.y - oldY;
             if (Math.abs(diff) > 4) this.visualOffset.y -= diff;
-            this.physicsBody.vel.y = Math.max(0, this.physicsBody.vel.y);
+            this.physicsBodies[0].vel.y = Math.max(
+                0,
+                this.physicsBodies[0].vel.y,
+            );
             return;
         }
 
         if (
             p.pos.x + p.hitbox.offset.x - p.hitbox.w / 2 >
-                this.physicsBody.pos.x
+                this.physicsBodies[0].pos.x
         ) {
-            const oldX = this.physicsBody.pos.x;
-            this.physicsBody.pos.x = p.pos.x + p.hitbox.offset.x -
-                p.hitbox.w / 2 - this.hitbox.w / 2;
-            const diff = this.physicsBody.pos.x - oldX;
+            const oldX = this.physicsBodies[0].pos.x;
+            this.physicsBodies[0].pos.x = p.pos.x + p.hitbox.offset.x -
+                p.hitbox.w / 2 - this.hitboxes[0].w / 2;
+            const diff = this.physicsBodies[0].pos.x - oldX;
             if (Math.abs(diff) > 4) this.visualOffset.x -= diff;
-            this.physicsBody.vel.x = Math.min(0, this.physicsBody.vel.x);
+            this.physicsBodies[0].vel.x = Math.min(
+                0,
+                this.physicsBodies[0].vel.x,
+            );
 
             this.isOnWall = true;
             this.wallDirection = -1;
             this.canJump = true;
-            this.doubleJumpCount = 2;
+            this.doubleJumpCount = 3 - Number(this.subclass == "persistant");
             return;
         }
 
         if (
             p.pos.x + p.hitbox.offset.x + p.hitbox.w / 2 <
-                this.physicsBody.pos.x
+                this.physicsBodies[0].pos.x
         ) {
-            const oldX = this.physicsBody.pos.x;
-            this.physicsBody.pos.x = p.pos.x + p.hitbox.offset.x +
-                p.hitbox.w / 2 + this.hitbox.w / 2;
-            const diff = this.physicsBody.pos.x - oldX;
+            const oldX = this.physicsBodies[0].pos.x;
+            this.physicsBodies[0].pos.x = p.pos.x + p.hitbox.offset.x +
+                p.hitbox.w / 2 + this.hitboxes[0].w / 2;
+            const diff = this.physicsBodies[0].pos.x - oldX;
             if (Math.abs(diff) > 4) this.visualOffset.x -= diff;
-            this.physicsBody.vel.x = Math.max(0, this.physicsBody.vel.x);
+            this.physicsBodies[0].vel.x = Math.max(
+                0,
+                this.physicsBodies[0].vel.x,
+            );
 
             this.isOnWall = true;
             this.wallDirection = 1;
             this.canJump = true;
-            this.doubleJumpCount = 2;
+            this.doubleJumpCount = 3 - Number(this.subclass == "persistant");
             return;
         }
     }
@@ -963,7 +971,7 @@ export class Default implements Player {
         this.canPressAttackKeyTimer = .02;
 
         new DefaultAttackParticle(
-            this.physicsBody.pos.clone(),
+            this.physicsBodies[0].pos.clone(),
             this.attackRange * this.attackRangeMultiplier *
                 (isGroundPound ? Math.sqrt(2) : 1),
             this.origColor.glColor,
@@ -972,58 +980,71 @@ export class Default implements Player {
         for (let i = 0; i < this.allPlayers.length; i++) {
             const other = this.allPlayers[i];
             if (other == this || other.isDead) continue;
-            let squaredDistance = Vector2D.squaredDistance(
-                this.physicsBody.pos,
-                other.physicsBody.pos,
-            );
-            if (isGroundPound) squaredDistance /= 2;
-            if (
-                squaredDistance > (
-                            this.attackRange * this.attackRangeMultiplier
-                        ) ** 2
-            ) continue;
-            if (!isGroundPound) this.combo++;
-            hasHit = true;
-
-            let damage: number,
-                isCrit = false;
-
-            if (this.subclass == "precise") {
-                damage = Math.max(
-                    this.attackRange / Math.sqrt(squaredDistance) / 0.8 *
-                        this.damage,
-                    this.damage ** 1.5,
-                );
-            } else {
-                damage = Math.max(
-                    this.attackRange / Math.sqrt(squaredDistance) * this.damage,
-                    this.damage ** 1.5,
-                );
+            if (this.map.gamemode.isTeamMode && other.team! == this.team!) {
+                continue;
             }
+            for (let i = 0; i < other.physicsBodies.length; i++) {
+                const otherPhysicsBody = other.physicsBodies[i];
+                let squaredDistance = Vector2D.squaredDistance(
+                    this.physicsBodies[0].pos,
+                    otherPhysicsBody.pos,
+                );
+                if (isGroundPound) squaredDistance /= 2;
+                if (
+                    squaredDistance > (
+                                this.attackRange * this.attackRangeMultiplier
+                            ) ** 2
+                ) continue;
+                if (!isGroundPound) this.combo++;
+                hasHit = true;
 
-            if (damage >= this.damage ** 2.5) {
-                isCrit = true, damage = this.damage ** 2.5;
-            }
+                let damage: number,
+                    isCrit = false;
 
-            if (this.subclass == "poisonous") damage /= 2;
+                if (this.subclass == "precise") {
+                    damage = Math.max(
+                        this.attackRange / Math.sqrt(squaredDistance) / 0.8 *
+                            this.damage,
+                        this.damage ** 1.5,
+                    );
+                } else {
+                    damage = Math.max(
+                        this.attackRange / Math.sqrt(squaredDistance) *
+                            this.damage,
+                        this.damage ** 1.5,
+                    );
+                }
 
-            const kb = Vector2D
-                .subtract(other.physicsBody.pos, this.physicsBody.pos)
-                .Sn(this.attackPower);
+                if (damage >= this.damage ** 2.5) {
+                    isCrit = true, damage = this.damage ** 2.5;
+                }
 
-            if (isGroundPound) {
-                kb.Sn(this.jumpPower / 1000);
-                damage /= 4;
-            } else damage *= 1 + .5 * this.combo;
+                const kb = Vector2D
+                    .subtract(otherPhysicsBody.pos, this.physicsBodies[0].pos)
+                    .Sn(this.attackPower);
 
-            if (!isGroundPound) other.combo = 0;
-            other.takeKb(kb.Sn(this.kbMultiplier));
-            other.takeDamage(
-                damage * this.attackMultiplier,
-                { type: "player", player: this, isCrit },
-            );
-            if (this.subclass == "poisonous") {
-                other.effect.poison(1, 5, .05);
+                if (isGroundPound) {
+                    kb.Sn(this.jumpPower / 1000);
+                    damage /= 4;
+                } else damage *= 1 + .5 * this.combo;
+
+                if (!isGroundPound) other.combo = 0;
+
+                switch (this.subclass) {
+                    case "poisonous":
+                        damage /= 2;
+                        other.effect.poison(1, 5, .05);
+                        break;
+                    case "precise":
+                        other.effect.damageBoost(3, 1.4);
+                        break;
+                }
+
+                other.takeKb(kb.Sn(this.kbMultiplier), i);
+                other.takeDamage(
+                    damage * this.attackMultiplier,
+                    { type: "player", player: this, isCrit },
+                );
             }
         }
 
@@ -1055,11 +1076,12 @@ export class Default implements Player {
 
     respawn() {
         const spawnPoint = this.map.getRespawnPoint(),
-            diff = Vector2D.subtract(this.physicsBody.pos, spawnPoint);
+            diff = Vector2D.subtract(this.physicsBodies[0].pos, spawnPoint);
         this.visualOffset.av(diff);
         this.isDead = false;
         this.health = this.maxHealth;
-        this.physicsBody.pos.av(diff.Sn(-1));
+        this.physicsBodies[0].vel.Sn(0);
+        this.physicsBodies[0].pos.av(diff.Sn(-1));
     }
 
     takeKb(kb: Vector2D) {
@@ -1068,14 +1090,15 @@ export class Default implements Player {
         if (squaredMagnitude > defaultMaxKb ** 2) {
             kb.Sn(defaultMaxKb / Math.sqrt(squaredMagnitude));
         }
-        this.physicsBody.vel.av(kb.Sn(this.incomingKbMultiplier));
+        this.physicsBodies[0].vel.av(kb.Sn(this.incomingKbMultiplier));
     }
 
     takeDamage(damage: number, reason: DamageReason) {
         if (this.isDead) return 0;
         const origHealth = this.health;
         if (damage < 0) return origHealth;
-        this.health -= damage * this.damageMultiplier;
+        damage *= this.damageMultiplier;
+        this.health -= damage;
 
         switch (reason.type) {
             case "player":
@@ -1084,7 +1107,7 @@ export class Default implements Player {
                         `${damage.toPrecision(3)}`,
                         "critical-damage",
                         ((damage / 4) + 75) | 0,
-                        this.physicsBody.pos,
+                        this.physicsBodies[0].pos,
                         .5 + Math.log10(damage),
                     );
                 } else {
@@ -1092,7 +1115,7 @@ export class Default implements Player {
                         `${damage.toPrecision(3)}`,
                         "damage",
                         ((damage / 4) + 50) | 0,
-                        this.physicsBody.pos,
+                        this.physicsBodies[0].pos,
                         .2 + Math.log10(damage) / 2,
                     );
                 }
@@ -1109,7 +1132,7 @@ export class Default implements Player {
                     `${damage.toPrecision(3)}`,
                     "damage degenerate",
                     ((damage / 4) + 50) | 0,
-                    this.physicsBody.pos,
+                    this.physicsBodies[0].pos,
                     .2 + Math.log10(damage) / 2,
                 );
                 this.color.pulseFromGL(DEGENERATE_COLOR, .25);
@@ -1119,7 +1142,7 @@ export class Default implements Player {
                     `${damage.toPrecision(3)}`,
                     "damage poison",
                     ((damage / 4) + 50) | 0,
-                    this.physicsBody.pos,
+                    this.physicsBodies[0].pos,
                     .2 + Math.log10(damage) / 2,
                 );
                 this.color.pulseFromGL(POISON_COLOR, .25);
@@ -1156,7 +1179,8 @@ export class Default implements Player {
         if (this.isDead) return 0;
         const origHealth = this.health;
         if (health < 0) return origHealth;
-        this.health += health * this.healMultiplier;
+        health *= this.healMultiplier;
+        this.health += health;
 
         switch (reason.type) {
             case "player":
@@ -1164,7 +1188,7 @@ export class Default implements Player {
                     `${health.toPrecision(3)}`,
                     "heal",
                     ((health / 4) + 50) | 0,
-                    this.physicsBody.pos,
+                    this.physicsBodies[0].pos,
                     .2 + Math.log10(health) / 2,
                 );
                 this.color.pulseFromGL(HEAL_COLOR, .25);
@@ -1177,19 +1201,39 @@ export class Default implements Player {
                     `${health.toPrecision(3)}`,
                     "heal regenerate",
                     ((health / 4) + 50) | 0,
-                    this.physicsBody.pos,
+                    this.physicsBodies[0].pos,
                     .2 + Math.log10(health) / 2,
                 );
                 this.color.pulseFromGL(REGENERATE_COLOR, .25);
+                break;
+            case "restore":
+                createHTMLTemporary(
+                    `${health.toPrecision(3)}`,
+                    "heal restore",
+                    ((health / 4) + 50) | 0,
+                    this.physicsBodies[0].pos,
+                    .2 + Math.log10(health) / 2,
+                );
+                this.color.pulseFromGL(RESTORE_COLOR, .25);
                 break;
         }
         return this.health - origHealth;
     }
 
     killBuff(_other: Player) {
-        this.effect.regenerate(1, 5, 5);
-        this.damage *= 1.1;
-        this.speed *= 1.1;
+        this.effect.regenerate(1, 2, 5);
+        this.effect.restore(1, 2, .2);
+        this.effect.healBoost(2, 2);
+        this.effect.damageBoost(2, .5);
+        this.effect.attackBoost(2, 2);
+        this.effect.attackRangeBoost(2, 2);
+        this.effect.kbBoost(2, 3);
+        this.effect.incomingKbBoost(2, .2);
+        this.effect.speedBoost(2, 2);
+        this.effect.jumpBoost(2, 2);
+        this.effect.abilityBoost(2, 2);
+        this.attackMultiplier *= 1.1;
+        this.speedMultiplier *= 1.1;
         this.incomingKbMultiplier *= 1.1;
     }
 
@@ -1211,12 +1255,8 @@ export class Default implements Player {
 
     getState() {
         return {
-            lagX: this.lagOffset.x,
-            lagY: this.lagOffset.y,
-            posX: this.physicsBody.pos.x,
-            posY: this.physicsBody.pos.y,
-            velX: this.physicsBody.vel.x,
-            velY: this.physicsBody.vel.y,
+            lags: [this.lagOffsets[0].saveState()],
+            physicsBodies: [this.physicsBodies[0].saveState()],
             speed: this.speed,
             isGrounded: this.isGrounded,
             isOnWall: this.isOnWall,
@@ -1254,7 +1294,6 @@ export class Default implements Player {
             incomingKbMultiplier: this.incomingKbMultiplier,
             damageMultiplier: this.damageMultiplier,
             healMultiplier: this.healMultiplier,
-            persistantHealTimer: this.persistantHealTimer,
         };
     }
 
@@ -1264,12 +1303,8 @@ export class Default implements Player {
 
     restoreState(state: string) {
         const values = JSON.parse(state) as ReturnType<Default["getState"]>;
-        this.lagOffset.x = values.lagX;
-        this.lagOffset.y = values.lagY;
-        this.physicsBody.pos.x = values.posX;
-        this.physicsBody.pos.y = values.posY;
-        this.physicsBody.vel.x = values.velX;
-        this.physicsBody.vel.y = values.velY;
+        this.lagOffsets[0].restoreState(values.lags[0]);
+        this.physicsBodies[0].restoreState(values.physicsBodies[0]);
         this.speed = values.speed;
         this.isGrounded = values.isGrounded;
         this.isOnWall = values.isOnWall;
@@ -1307,7 +1342,6 @@ export class Default implements Player {
         this.incomingKbMultiplier = values.incomingKbMultiplier;
         this.damageMultiplier = values.damageMultiplier;
         this.healMultiplier = values.healMultiplier;
-        this.persistantHealTimer = values.persistantHealTimer;
     }
 }
 const defaultAttackParticleGeometry = circleToGeometry(Vector2D.zero(), 1);
@@ -1343,23 +1377,28 @@ class DefaultAttackParticle extends Particle {
     }
 }
 
-type Regenerate = {
+type Boost = {
     duration: number;
-    times: number;
     amount: number;
-    timer: number;
 };
-type Degenerate = Regenerate;
-type Poison = {
-    duration: number;
+type RepeatedBoost = Boost & {
     times: number;
-    ratio: number;
     timer: number;
 };
 export class PlayerEffectManager {
-    regenerations: Regenerate[] = [];
-    degenerations: Degenerate[] = [];
-    poisons: Poison[] = [];
+    regenerations: RepeatedBoost[] = [];
+    degenerations: RepeatedBoost[] = [];
+    restorations: RepeatedBoost[] = [];
+    poisons: RepeatedBoost[] = [];
+    healBoosts: Boost[] = [];
+    damageBoosts: Boost[] = [];
+    attackBoosts: Boost[] = [];
+    attackRangeBoosts: Boost[] = [];
+    kbBoosts: Boost[] = [];
+    incomingKbBoosts: Boost[] = [];
+    speedBoosts: Boost[] = [];
+    jumpBoosts: Boost[] = [];
+    abilityBoosts: Boost[] = [];
 
     constructor(public player: Player) {}
 
@@ -1368,9 +1407,10 @@ export class PlayerEffectManager {
             effect.timer -= DT;
             if (effect.timer <= 0) {
                 this.player.takeHealing(effect.amount, { type: "regenerate" });
-                effect.times--;
                 effect.timer += effect.duration;
-                if (effect.times <= 0) {
+                if (effect.times == -1) continue;
+                effect.times--;
+                if (effect.times == 0) {
                     this.regenerations = this.regenerations.filter((e) =>
                         e != effect
                     );
@@ -1382,10 +1422,30 @@ export class PlayerEffectManager {
             effect.timer -= DT;
             if (effect.timer <= 0) {
                 this.player.takeDamage(effect.amount, { type: "degenerate" });
-                effect.times--;
                 effect.timer += effect.duration;
-                if (effect.times <= 0) {
+                if (effect.times == -1) continue;
+                effect.times--;
+                if (effect.times == 0) {
                     this.degenerations = this.degenerations.filter((e) =>
+                        e != effect
+                    );
+                }
+            }
+        }
+
+        for (const effect of this.restorations) {
+            effect.timer -= DT;
+            if (effect.timer <= 0) {
+                this.player.takeHealing(
+                    (this.player.maxHealth - this.player.health) *
+                        effect.amount,
+                    { type: "restore" },
+                );
+                effect.timer += effect.duration;
+                if (effect.times == -1) continue;
+                effect.times--;
+                if (effect.times == 0) {
+                    this.restorations = this.restorations.filter((e) =>
                         e != effect
                     );
                 }
@@ -1396,14 +1456,97 @@ export class PlayerEffectManager {
             effect.timer -= DT;
             if (effect.timer <= 0) {
                 this.player.takeDamage(
-                    this.player.health * effect.ratio,
+                    this.player.health * effect.amount,
                     { type: "poison" },
                 );
-                effect.times--;
                 effect.timer += effect.duration;
-                if (effect.times <= 0) {
+                if (effect.times == -1) continue;
+                effect.times--;
+                if (effect.times == 0) {
                     this.poisons = this.poisons.filter((e) => e != effect);
                 }
+            }
+        }
+
+        for (const effect of this.healBoosts) {
+            effect.duration -= DT;
+            if (effect.duration <= 0) {
+                this.player.healMultiplier /= effect.amount;
+                this.healBoosts = this.healBoosts.filter((e) => e != effect);
+            }
+        }
+
+        for (const effect of this.damageBoosts) {
+            effect.duration -= DT;
+            if (effect.duration <= 0) {
+                this.player.damageMultiplier /= effect.amount;
+                this.damageBoosts = this.damageBoosts.filter((e) =>
+                    e != effect
+                );
+            }
+        }
+
+        for (const effect of this.attackBoosts) {
+            effect.duration -= DT;
+            if (effect.duration <= 0) {
+                this.player.attackMultiplier /= effect.amount;
+                this.attackBoosts = this.attackBoosts.filter((e) =>
+                    e != effect
+                );
+            }
+        }
+
+        for (const effect of this.attackRangeBoosts) {
+            effect.duration -= DT;
+            if (effect.duration <= 0) {
+                this.player.attackRangeMultiplier /= effect.amount;
+                this.attackRangeBoosts = this.attackRangeBoosts.filter((e) =>
+                    e != effect
+                );
+            }
+        }
+
+        for (const effect of this.kbBoosts) {
+            effect.duration -= DT;
+            if (effect.duration <= 0) {
+                this.player.kbMultiplier /= effect.amount;
+                this.kbBoosts = this.kbBoosts.filter((e) => e != effect);
+            }
+        }
+
+        for (const effect of this.incomingKbBoosts) {
+            effect.duration -= DT;
+            if (effect.duration <= 0) {
+                this.player.incomingKbMultiplier /= effect.amount;
+                this.incomingKbBoosts = this.incomingKbBoosts.filter((e) =>
+                    e != effect
+                );
+            }
+        }
+
+        for (const effect of this.speedBoosts) {
+            effect.duration -= DT;
+            if (effect.duration <= 0) {
+                this.player.speedMultiplier /= effect.amount;
+                this.speedBoosts = this.speedBoosts.filter((e) => e != effect);
+            }
+        }
+
+        for (const effect of this.jumpBoosts) {
+            effect.duration -= DT;
+            if (effect.duration <= 0) {
+                this.player.jumpMultiplier /= effect.amount;
+                this.jumpBoosts = this.jumpBoosts.filter((e) => e != effect);
+            }
+        }
+
+        for (const effect of this.abilityBoosts) {
+            effect.duration -= DT;
+            if (effect.duration <= 0) {
+                this.player.abilitySpeedMultiplier /= effect.amount;
+                this.abilityBoosts = this.abilityBoosts.filter((e) =>
+                    e != effect
+                );
             }
         }
     }
@@ -1417,6 +1560,10 @@ export class PlayerEffectManager {
         this.regenerations.push({ duration, times, amount, timer });
     }
 
+    restore(duration: number, times: number, ratio: number, timer: number = 0) {
+        this.restorations.push({ duration, times, amount: ratio, timer });
+    }
+
     degenerate(
         duration: number,
         times: number,
@@ -1427,14 +1574,69 @@ export class PlayerEffectManager {
     }
 
     poison(duration: number, times: number, ratio: number, timer: number = 0) {
-        this.poisons.push({ duration, times, ratio, timer });
+        this.poisons.push({ duration, times, amount: ratio, timer });
+    }
+
+    healBoost(duration: number, amount: number) {
+        this.player.healMultiplier *= amount;
+        this.healBoosts.push({ duration, amount });
+    }
+
+    damageBoost(duration: number, amount: number) {
+        this.player.damageMultiplier *= amount;
+        this.damageBoosts.push({ duration, amount });
+    }
+
+    attackBoost(duration: number, amount: number) {
+        this.player.attackMultiplier *= amount;
+        this.attackBoosts.push({ duration, amount });
+    }
+
+    attackRangeBoost(duration: number, amount: number) {
+        this.player.attackRangeMultiplier *= amount;
+        this.attackRangeBoosts.push({ duration, amount });
+    }
+
+    kbBoost(duration: number, amount: number) {
+        this.player.kbMultiplier *= amount;
+        this.kbBoosts.push({ duration, amount });
+    }
+
+    incomingKbBoost(duration: number, amount: number) {
+        this.player.incomingKbMultiplier *= amount;
+        this.incomingKbBoosts.push({ duration, amount });
+    }
+
+    speedBoost(duration: number, amount: number) {
+        this.player.speedMultiplier *= amount;
+        this.speedBoosts.push({ duration, amount });
+    }
+
+    jumpBoost(duration: number, amount: number) {
+        this.player.jumpMultiplier *= amount;
+        this.jumpBoosts.push({ duration, amount });
+    }
+
+    abilityBoost(duration: number, amount: number) {
+        this.player.abilitySpeedMultiplier *= amount;
+        this.abilityBoosts.push({ duration, amount });
     }
 
     getState() {
         return {
             regenerations: this.regenerations,
+            restorations: this.restorations,
             degenerations: this.degenerations,
             poisons: this.poisons,
+            healBoosts: this.healBoosts,
+            damageBoosts: this.damageBoosts,
+            attackBoosts: this.attackBoosts,
+            attackRangeBoosts: this.attackRangeBoosts,
+            kbBoosts: this.kbBoosts,
+            incomingKbBoosts: this.incomingKbBoosts,
+            speedBoosts: this.speedBoosts,
+            jumpBoosts: this.jumpBoosts,
+            abilityBoosts: this.abilityBoosts,
         };
     }
 
@@ -1447,7 +1649,17 @@ export class PlayerEffectManager {
             PlayerEffectManager["getState"]
         >;
         this.regenerations = data.regenerations;
+        this.restorations = data.restorations;
         this.degenerations = data.degenerations;
         this.poisons = data.poisons;
+        this.healBoosts = data.healBoosts;
+        this.damageBoosts = data.damageBoosts;
+        this.attackBoosts = data.attackBoosts;
+        this.attackRangeBoosts = data.attackRangeBoosts;
+        this.kbBoosts = data.kbBoosts;
+        this.incomingKbBoosts = data.incomingKbBoosts;
+        this.speedBoosts = data.speedBoosts;
+        this.jumpBoosts = data.jumpBoosts;
+        this.abilityBoosts = data.abilityBoosts;
     }
 }

@@ -1,26 +1,22 @@
 # TODO
 
-- Subclasses System
-> Default: either choose +20% crit chance losing 20 max hp or lose 1 jump but
-  heal 30% of missing health every 4 seconds. Lose 50% damage but attack with
-  poison for 5% every 1 second for 5 seconds (27% HP over 5 seconds).
-> Default:
-> Precise Default:
-> Persistent Default:
-> Poisonous Default:
-- Particles (moving, jump, ground pound, attk, etc.)
-- Combo text somewhere (maybe text particle)
-- add +1 kill or -1 life text (just add more texts)
+- Teams
+> lobby setting to enable teams
+> each playerdata has { team?: PlayerTeam } property
 - add online multiplayer
 > add controls to lobby
 > customize gamemode (and display it on clients)
 > make forming lobbies more convenient, and handle disconnects
+- Particles (moving, jump, ground pound, attk, etc.)
+- Combo text somewhere (maybe text particle)
+- add +1 kill or -1 life text (just add more texts)
 - Add moving platforms (all platforms must save state too)
 - make animated textures for platforms
 > death platform can be veiny with red pulsing through it
 > (it would look very cool)
 - Sounds
 > sync them exactly how the particles are synced up
+- After adding more classes, add random class (host randomly chooses it and sends it)
 - Add healing zones/platforms (probably another map)
 > Use in the map as greenish pulsing damaging platforms
 - Save Replay functionality (map: map, inputs: {tick: input}, players: [...]}

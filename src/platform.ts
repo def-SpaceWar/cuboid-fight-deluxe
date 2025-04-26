@@ -9,15 +9,10 @@ import {
     loadImage,
     rectToGeometry,
 } from "./render.ts";
-// @ts-ignore:
 import dirtImg from "./assets/platforms/dirt.png";
-// @ts-ignore:
 import grassImg from "./assets/platforms/grass.png";
-// @ts-ignore:
 import stoneImg from "./assets/platforms/stone.png";
-// @ts-ignore:
 import stoneWallImg from "./assets/platforms/stone_wall.png";
-// @ts-ignore:
 import deathImg from "./assets/platforms/death.png";
 
 export type Platform = {
@@ -27,7 +22,7 @@ export type Platform = {
     readonly isWall: boolean;
     update(): void;
     render(): void;
-    onCollision(p: Player): void;
+    onCollision(p: Player, index: number): void;
 };
 
 export function resolvePlatformPlayerCollisions(
@@ -37,23 +32,25 @@ export function resolvePlatformPlayerCollisions(
     for (let i = 0; i < players.length; i++) {
         const player = players[i];
         for (let j = 0; j < platforms.length; j++) {
-            const platform = platforms[j];
-            if (
-                !platform.isWall && (player.physicsBody.vel.y < 0 ||
-                    player.physicsBody.pos.y >
-                        platform.pos.y + platform.hitbox.offset.y)
-            ) continue;
-            if (
-                !isColliding(
-                    player.physicsBody.pos,
-                    player.hitbox,
-                    platform.pos,
-                    platform.hitbox,
-                )
-            ) continue;
+            for (let k = 0; k < players[i].physicsBodies.length; k++) {
+                const platform = platforms[j];
+                if (
+                    !platform.isWall && (player.physicsBodies[k].vel.y < 0 ||
+                        player.physicsBodies[k].pos.y >
+                            platform.pos.y + platform.hitbox.offset.y)
+                ) continue;
+                if (
+                    !isColliding(
+                        player.physicsBodies[k].pos,
+                        player.hitboxes[k],
+                        platform.pos,
+                        platform.hitbox,
+                    )
+                ) continue;
 
-            platform.onCollision(player);
-            player.onPlatformCollision(platform);
+                platform.onCollision(player, k);
+                player.onPlatformCollision(platform, k);
+            }
         }
     }
 }
@@ -128,7 +125,7 @@ export class GrassPlatform implements Platform {
         }
     }
 
-    onCollision(_p: Player) {
+    onCollision(_p: Player, _index: number) {
     }
 }
 
@@ -191,7 +188,7 @@ export class StonePlatform implements Platform {
         }
     }
 
-    onCollision(_p: Player) {
+    onCollision(_p: Player, _index: number) {
     }
 }
 
@@ -254,7 +251,7 @@ export class StoneWall implements Platform {
         }
     }
 
-    onCollision(_p: Player) {
+    onCollision(_p: Player, _index: number) {
     }
 }
 
@@ -317,7 +314,7 @@ export class DeathPlatform implements Platform {
         }
     }
 
-    onCollision(p: Player) {
+    onCollision(p: Player, _index: number) {
         if (!p.isDead) p.takeDamage(10, { type: "environment" });
     }
 }

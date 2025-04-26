@@ -48,11 +48,11 @@ export class Connection {
                         //    username: "3caf2a1e6b66b87c7125cb9a",
                         //    credential: "1VEGtRXY6PxtSz07",
                         //},
-                        {
-                            urls: "turn:us-east.relay.metered.ca:443",
-                            username: "3caf2a1e6b66b87c7125cb9a",
-                            credential: "1VEGtRXY6PxtSz07",
-                        },
+                        //{
+                        //    urls: "turn:us-east.relay.metered.ca:443",
+                        //    username: "3caf2a1e6b66b87c7125cb9a",
+                        //    credential: "1VEGtRXY6PxtSz07",
+                        //},
                         //{
                         //    urls:
                         //        "turns:us-east.relay.metered.ca:443?transport=tcp",
@@ -146,6 +146,7 @@ export let playerDatas: PlayerData[] = [
         name: "Mafia",
         classData: {
             class: "default",
+            subclass: "",
             color: [1, .2, .3],
         },
     },
@@ -153,6 +154,7 @@ export let playerDatas: PlayerData[] = [
         name: "Innocent",
         classData: {
             class: "default",
+            subclass: "",
             color: [0, .5, 1],
         },
     },
@@ -160,6 +162,7 @@ export let playerDatas: PlayerData[] = [
         name: "Villager",
         classData: {
             class: "default",
+            subclass: "",
             color: [.2, 1, .3],
         },
     },
@@ -167,6 +170,7 @@ export let playerDatas: PlayerData[] = [
         name: "Mayor",
         classData: {
             class: "default",
+            subclass: "",
             color: [1, .8, .3],
         },
     },
@@ -174,6 +178,7 @@ export let playerDatas: PlayerData[] = [
         name: "King",
         classData: {
             class: "default",
+            subclass: "",
             color: [.6, .2, .9],
         },
     },
@@ -181,6 +186,7 @@ export let playerDatas: PlayerData[] = [
         name: "Jester",
         classData: {
             class: "default",
+            subclass: "",
             color: [1, .6, 1],
         },
     },
@@ -188,6 +194,7 @@ export let playerDatas: PlayerData[] = [
         name: "Politician",
         classData: {
             class: "default",
+            subclass: "",
             color: [.1, .2, .8],
         },
     },
@@ -195,6 +202,7 @@ export let playerDatas: PlayerData[] = [
         name: "Dictator",
         classData: {
             class: "default",
+            subclass: "",
             color: [1, .6, .1],
         },
     },
@@ -210,20 +218,36 @@ export function setPlayerNumbers(numbers: PlayerNumber[]) {
 
 export const localControls = [
     {
-        left: { key: "s" },
-        up: { key: "e" },
-        down: { key: "d" },
-        right: { key: "f" },
-        attack: { key: "w" },
-        special: { key: "q" },
-    },
-    {
         left: { key: "ArrowLeft" },
         up: { key: "ArrowUp" },
         down: { key: "ArrowDown" },
         right: { key: "ArrowRight" },
-        attack: { key: "/" },
-        special: { key: "." },
+        attack: { key: "Slash" },
+        special: { key: "Period" },
+    },
+    {
+        left: { key: "KeyS" },
+        up: { key: "KeyE" },
+        down: { key: "KeyD" },
+        right: { key: "KeyF" },
+        attack: { key: "KeyW" },
+        special: { key: "KeyQ" },
+    },
+    {
+        left: { key: "KeyV" },
+        up: { key: "KeyG" },
+        down: { key: "KeyB" },
+        right: { key: "KeyN" },
+        attack: { key: "Space" },
+        special: { key: "KeyC" },
+    },
+    {
+        left: { key: "Numpad1" },
+        up: { key: "Numpad5" },
+        down: { key: "Numpad2" },
+        right: { key: "Numpad3" },
+        attack: { key: "Numpad4" },
+        special: { key: "Numpad7" },
     },
 ];
 

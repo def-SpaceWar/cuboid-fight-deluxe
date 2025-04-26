@@ -143,6 +143,35 @@ const _PhysicsBody = {
         this.rot += this.angVel * dt;
         this.angVel = Math.exp(dt * Math.log(this.angDrag));
     },
+
+    saveState() {
+        return JSON.stringify({
+            posX: this.pos.x,
+            posY: this.pos.y,
+            velX: this.vel.x,
+            velY: this.vel.y,
+            elasticity: this.elasticity,
+            xDrag: this.xDrag,
+            yDrag: this.yDrag,
+            rot: this.rot,
+            angVel: this.angVel,
+            angDrag: this.angDrag,
+        });
+    },
+
+    restoreState(state: string) {
+        const data = JSON.parse(state);
+        this.pos.x = data.posX;
+        this.pos.y = data.posY;
+        this.vel.x = data.velX;
+        this.vel.y = data.velY;
+        this.elasticity = data.elasticity;
+        this.xDrag = data.xDrag;
+        this.yDrag = data.yDrag;
+        this.rot = data.rot;
+        this.angVel = data.angVel;
+        this.angDrag = data.angDrag;
+    }
 };
 
 type PhysicsBodyParams = {

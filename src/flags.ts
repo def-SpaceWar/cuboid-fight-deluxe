@@ -31,13 +31,26 @@ export const CIRCLE_ACCURACY = 32;
 export const PULSE_ANIM_STEPS = 120;
 
 /** Colors for damages */
-export const DAMAGE_COLOR: GLColor = [1.5, 0.3, 0.5, 1];
-export const DEGENERATE_COLOR: GLColor = [0.6, 0.1, 0.4, 1];
-export const POISON_COLOR: GLColor = [0.3, 0.6, 0.1, 1];
+export const [
+    DAMAGE_COLOR,
+    DEGENERATE_COLOR,
+    POISON_COLOR,
+]: GLColor[] = [
+    [1.5, 0.3, 0.5, 1],
+    [0.6, 0.1, 0.4, 1],
+    [0.3, 0.6, 0.1, 1],
+];
 
 /** Colors for heals */
-export const HEAL_COLOR: GLColor = [0.5, 1.5, 0.3, 1];
-export const REGENERATE_COLOR: GLColor = [1, 0.4, 1, 1];
+export const [
+    HEAL_COLOR,
+    REGENERATE_COLOR,
+    RESTORE_COLOR,
+]: GLColor[] = [
+    [0.5, 1.5, 0.3, 1],
+    [1.5, 0.4, 1.5, 1],
+    [0.2, 1.5, 1.5, 1],
+];
 
 /** How long in seconds someone can get kill credit after hitting a player */
 export const KILL_CREDIT_TIME = 15;

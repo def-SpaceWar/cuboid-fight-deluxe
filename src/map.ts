@@ -1,4 +1,3 @@
-// @ts-ignore:
 import map1BgImg from "./assets/backgrounds/bg1.png";
 import {
     Controls,
@@ -50,6 +49,7 @@ import {
     playerNumbers,
     setGameNumber,
 } from "./networking.ts";
+import { makePhysicsBody } from "./physics.ts";
 
 export interface GameMap extends Scene {
     readonly gamemode: Gamemode;
@@ -312,8 +312,10 @@ export class Map1 implements GameMap {
         for (let i = 0; i < players.length; i++) {
             const player = players[i];
             player.map = this;
-            player.physicsBody.pos
-                .av(this.respawnPoints[player.number - 1]);
+            player.physicsBodies.map((p) =>
+                p.pos
+                    .av(this.respawnPoints[player.number - 1])
+            );
         }
 
         return await new Promise<Scene>((resolve) => {
@@ -506,7 +508,7 @@ export class Map1 implements GameMap {
                                 }),
                             );
                         }
-                        //}, Math.random() * 100);
+                        //}, Math.random() * 1_000);
                         return { state, inputs };
                     }
                     tick(
@@ -537,18 +539,22 @@ export class Map1 implements GameMap {
                         for (const particle of particles) particle.update();
 
                         for (let i = 0; i < players.length; i++) {
-                            if (
-                                !players[i].isDead &&
-                                (
-                                    players[i].physicsBody.pos.y > 1_000 ||
-                                    players[i].physicsBody.pos.y < -1_000 ||
-                                    players[i].physicsBody.pos.x > 2_000 ||
-                                    players[i].physicsBody.pos.x < -2_000
-                                )
+                            for (
+                                const physicsBody of players[i].physicsBodies
                             ) {
-                                players[i].takeDamage(1, {
-                                    type: "environment",
-                                });
+                                if (
+                                    !players[i].isDead &&
+                                    (
+                                        physicsBody.pos.y > 1_000 ||
+                                        physicsBody.pos.y < -1_000 ||
+                                        physicsBody.pos.x > 2_000 ||
+                                        physicsBody.pos.x < -2_000
+                                    )
+                                ) {
+                                    players[i].takeDamage(1, {
+                                        type: "environment",
+                                    });
+                                }
                             }
                         }
 
@@ -624,8 +630,21 @@ export class Map1 implements GameMap {
                                 oldData = JSON.parse(
                                     old.state.playerStates[i],
                                 ) as ReturnType<Player["getState"]>;
-                            data.lagX -= data.posX - oldData.posX;
-                            data.lagY -= data.posY - oldData.posY;
+                            const newLags: Vector2D[] = [];
+                            for (let i = 0; i < data.lags.length; i++) {
+                                const lag = Vector2D.zero(),
+                                    body = makePhysicsBody({}),
+                                    oldBody = makePhysicsBody({});
+                                body.restoreState(data.physicsBodies[i]);
+                                oldBody.restoreState(oldData.physicsBodies[i]);
+                                const pos = body.pos,
+                                    oldPos = oldBody.pos;
+                                newLags.push(
+                                    lag.restoreState(data.lags[i])
+                                        .av(oldPos).av(pos.Sn(-1)),
+                                );
+                            }
+                            data.lags = newLags.map((l) => l.saveState());
                             incoming.state.playerStates[i] = JSON.stringify(
                                 data,
                             );

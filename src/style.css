@@ -76,12 +76,12 @@ input {
 #lobby-answer-data {
     background-color: #444;
     border: none;
-    font-size: 3rem;
+    font-size: 2rem;
     text-align: center;
     outline: none;
     color: #B0BBBF;
-    width: 24rem;
-    height: 24rem;
+    width: calc(20vw - 4rem);
+    min-height: 24rem;
     resize: none;
     overflow: scroll;
     scrollbar-width: none;
@@ -89,42 +89,48 @@ input {
 
 #invite-ui {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 40vw;
-    height: 100vh;
+    top: 2rem;
+    left: 2rem;
+    width: calc(20vw - 4rem);
+    height: calc(100vh - 4rem);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-direction: column;
     background-color: #252525;
-    scale: .9;
     border-radius: 2rem;
+    font-size: 75%;
+}
+
+#invite-ui input {
+    font-size: 100%;
+    width: calc(20vw - 4rem);
 }
 
 #lobby-ui-container, #lobby-ui-container-host {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
+    top: 2rem;
+    left: 2rem;
+    width: calc(100vw - 4rem);
+    height: calc(100vh - 4rem);
     align-items: center;
     justify-content: center;
     flex-direction: row;
     background-color: #252525;
-    scale: .9;
     border-radius: 2rem;
 }
 
 #lobby-ui-container-host {
-    left: 40vw;
-    width: 60vw;
+    left: calc(20vw);
+    width: calc(80vw - 2rem);
 }
 
 #lobby-ui,#lobby-ui-host {
     height: 90%;
     overflow-y: scroll;
     scrollbar-width: none;
+    padding-left: 1rem;
+    padding-right: 1rem;
 }
 
 #lobby-player-manager-container {
@@ -197,12 +203,13 @@ input {
     margin: 0;
     background-color: #252525;
     border: none;
-    font-size: 3rem;
+    font-size: 2.25rem;
     margin: 0;
     padding: 0;
-    margin-left: 2rem;
-    width: 3rem;
-    height: 3rem;
+    margin-left: 1rem;
+    margin-right: -1rem;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
     text-align: center;
 }
 
@@ -249,7 +256,7 @@ input {
 #accept-lobby {
     background-color: #DD1155;
     border: none;
-    font-size: 3rem;
+    font-size: 2rem;
     padding-left: 2rem;
     padding-right: 2rem;
 }
@@ -278,20 +285,6 @@ input {
     z-index: 9999;
 }
 
-.heal {
-    margin: 0;
-    padding: 0;
-    position: absolute;
-    color: green;
-  	text-shadow: 2px 2px black;
-  	transform: translate(-50%, -50%);
-  	animation-name: fade;
-}
-
-.regenerate {
-    color: #FF66FF;
-}
-
 .damage {
     margin: 0;
     padding: 0;
@@ -308,6 +301,24 @@ input {
 
 .poison {
     color: #448822;
+}
+
+.heal {
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    color: green;
+  	text-shadow: 2px 2px black;
+  	transform: translate(-50%, -50%);
+  	animation-name: fade;
+}
+
+.regenerate {
+    color: #FF66FF;
+}
+
+.restore {
+    color: #55EEFF;
 }
 
 @keyframes fade {

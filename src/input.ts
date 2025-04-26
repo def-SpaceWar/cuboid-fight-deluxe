@@ -9,8 +9,8 @@ export const isPressed = (k: string) => keys.has(k),
     getMouseCoords = () => mouseCoords.clone();
 
 const listeners = {
-    "keydown": (e: KeyboardEvent) => keys.add(e.key),
-    "keyup": (e: KeyboardEvent) => keys.delete(e.key),
+    "keydown": (e: KeyboardEvent) => keys.add(e.code),
+    "keyup": (e: KeyboardEvent) => keys.delete(e.code),
     "mousedown": (e: MouseEvent) => {
         e.preventDefault();
         mouseButtons[e.button] = 1;

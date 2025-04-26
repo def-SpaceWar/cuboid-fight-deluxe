@@ -51,11 +51,21 @@ export class Vector2D {
     }
 
     arr: Float32Array;
-    private constructor() { this.arr = new Float32Array(2); }
-    get x(): number { return this.arr[0]; }
-    set x(x: number) { this.arr[0] = x; }
-    get y(): number { return this.arr[1]; }
-    set y(y: number) { this.arr[1] = y; }
+    private constructor() {
+        this.arr = new Float32Array(2);
+    }
+    get x(): number {
+        return this.arr[0];
+    }
+    set x(x: number) {
+        this.arr[0] = x;
+    }
+    get y(): number {
+        return this.arr[1];
+    }
+    set y(y: number) {
+        this.arr[1] = y;
+    }
 
     clone(): Vector2D {
         return Vector2D.xy(this.x, this.y);
@@ -118,6 +128,17 @@ export class Vector2D {
     av(v: Vector2D): this {
         this.x += v.x;
         this.y += v.y;
+        return this;
+    }
+
+    saveState() {
+        return JSON.stringify({ x: this.x, y: this.y });
+    }
+
+    restoreState(state: string) {
+        const data = JSON.parse(state);
+        this.x = data.x;
+        this.y = data.y;
         return this;
     }
 }

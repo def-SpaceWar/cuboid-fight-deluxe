@@ -1,14 +1,8 @@
-// @ts-ignore:
 import mainVert from "./shaders/main.vert?raw";
-// @ts-ignore:
 import mainFrag from "./shaders/main.frag?raw";
-// @ts-ignore:
 import lightingVert from "./shaders/lighting.vert?raw";
-// @ts-ignore:
 import lightingFrag from "./shaders/lighting.frag?raw";
-// @ts-ignore:
 import composeVert from "./shaders/compose.vert?raw";
-// @ts-ignore:
 import composeFrag from "./shaders/compose.frag?raw";
 import { Vector2D } from "./math.ts";
 import { CIRCLE_ACCURACY, DT, PULSE_ANIM_STEPS } from "./flags.ts";
@@ -996,7 +990,7 @@ export function createEndScreen(
                             span.innerText =
                                 `[P${winnerData.players[0].number}] ` +
                                 winnerData.players[0].name;
-                            span.style.color = winnerData.players[0].color
+                            span.style.color = winnerData.players[0].origColor
                                 .toCSS();
                         }
                         header.appendChild(document.createTextNode(" and "));
@@ -1007,7 +1001,7 @@ export function createEndScreen(
                             span.innerText =
                                 `[P${winnerData.players[1].number}] ` +
                                 winnerData.players[1].name;
-                            span.style.color = winnerData.players[1].color
+                            span.style.color = winnerData.players[1].origColor
                                 .toCSS();
                         }
                         header.appendChild(document.createTextNode(" Won!"));
@@ -1020,7 +1014,7 @@ export function createEndScreen(
                             span.innerText =
                                 `[P${winnerData.players[0].number}] ` +
                                 winnerData.players[0].name;
-                            span.style.color = winnerData.players[0].color
+                            span.style.color = winnerData.players[0].origColor
                                 .toCSS();
                         }
                         header.appendChild(document.createTextNode(", "));
@@ -1031,7 +1025,7 @@ export function createEndScreen(
                             span.innerText =
                                 `[P${winnerData.players[1].number}] ` +
                                 winnerData.players[1].name;
-                            span.style.color = winnerData.players[1].color
+                            span.style.color = winnerData.players[1].origColor
                                 .toCSS();
                         }
                         header.appendChild(document.createTextNode(", and "));
@@ -1042,7 +1036,7 @@ export function createEndScreen(
                             span.innerText =
                                 `[P${winnerData.players[2].number}] ` +
                                 winnerData.players[2].name;
-                            span.style.color = winnerData.players[2].color
+                            span.style.color = winnerData.players[2].origColor
                                 .toCSS();
                         }
                         header.appendChild(document.createTextNode(" Won!"));

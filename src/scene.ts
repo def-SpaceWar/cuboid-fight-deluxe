@@ -777,7 +777,7 @@ class DisplayPlayerData {
 
         this.classSelector.disabled = true;
 
-        switch (data.classData.class) {
+        switch (this.data.classData.class) {
             case "default": {
                 const subclassSelector = this.container.appendChild(
                     document.createElement("select"),
